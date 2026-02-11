@@ -2,20 +2,18 @@ import {
   createChart,
   IChartApi,
   ISeriesApi,
-  CandlestickData,
   LineData,
-  Time,
+  CrosshairMode,
+  ColorType
 } from "lightweight-charts";
-import type { OHLCVCandle } from "./types";
-
-function isoToChartTime(iso: string): Time {
-  return (new Date(iso).getTime() / 1000) as Time;
-}
+import { 
+  isoToChartTime,
+} from "./chartAdapters";
 
 export function createChartContainer(parent: HTMLElement): IChartApi {
   const chart = createChart(parent, {
     layout: {
-      background: { type: "solid", color: "#141414" },
+      background: { type: ColorType.Solid, color: "#141414" },
       textColor: "#d1d4dc",
     },
     grid: {
@@ -23,42 +21,43 @@ export function createChartContainer(parent: HTMLElement): IChartApi {
       horzLines: { color: "#fffff720" },
     },
     rightPriceScale: {
-      borderColor: "#fffff740",
+      borderColor: "#404040",
       scaleMargins: { top: 0.1, bottom: 0.2 },
     },
     timeScale: {
-      borderColor: "#fffff740",
+      borderColor: "#404040",
       timeVisible: true,
       secondsVisible: false,
     },
     crosshair: {
-      mode: 1,
+      mode: CrosshairMode.Magnet,
     },
   });
   chart.timeScale().fitContent();
   return chart;
 }
 
-export function candleToSeries(c: OHLCVCandle): CandlestickData {
-  return {
-    time: isoToChartTime(c.timestamp),
-    open: c.open,
-    high: c.high,
-    low: c.low,
-    close: c.close,
-  };
-}
-
 export function addCandlestickSeries(chart: IChartApi): ISeriesApi<"Candlestick"> {
   const series = chart.addCandlestickSeries({
     upColor: "#26a631",
-    downColor: "#a62633",
-    borderDownColor: "#a62633",
+    downColor: "#c21a2a",
+    borderDownColor: "#c21a2a",
     borderUpColor: "#26a631",
-    wickDownColor: "#c41d2e",
+    wickDownColor: "#c21a2a",
     wickUpColor: "#28c41d",
   });
   return series;
+}
+
+export function addAreaSeries(chart: IChartApi): ISeriesApi<"Area"> {
+  const series = chart.addAreaSeries({
+    lastValueVisible: false,
+    crosshairMarkerVisible: false,
+    lineColor: 'transparent',
+    topColor: 'rgba(56, 33, 110, 0.5)',
+    bottomColor: 'rgba(56, 33, 110, 0.05)',
+  });
+  return series
 }
 
 export function addLineSeries(chart: IChartApi, color: string): ISeriesApi<"Line"> {

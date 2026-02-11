@@ -1,10 +1,14 @@
 import type { IChartApi, ISeriesApi } from "lightweight-charts";
+import { 
+  candleOHLCVtoAreaData,
+  candleOHLCVtoCandlestickData,
+} from "./chartAdapters";
 import {
   createChartContainer,
   addCandlestickSeries,
   addLineSeries,
-  candleToSeries,
   linePoint,
+  addAreaSeries,
 } from "./chart";
 import { API_BASE, yfinanceUrl, smaUrl, wsStreamUrl } from "./config";
 import type { OHLCVCandle } from "./types";
@@ -109,6 +113,7 @@ export function initApp(): void {
 
   let chart: IChartApi | null = null;
   let candleSeries: ISeriesApi<"Candlestick"> | null = null;
+  let areaSeries: ISeriesApi<"Area"> | null = null;
   let smaSeries: ISeriesApi<"Line"> | null = null;
   let wsClient: WSClient | null = null;
   let lastCandles: OHLCVCandle[] = [];
@@ -139,9 +144,17 @@ export function initApp(): void {
   function renderChart(candles: OHLCVCandle[], smaValues?: (number | null)[]): void {
     if (!chart) {
       chart = createChartContainer(chartContainer);
+      areaSeries = addAreaSeries(chart);
       candleSeries = addCandlestickSeries(chart);
     }
-    candleSeries!.setData(candles.map(candleToSeries));
+
+    if (candles.length >= 20) {
+        areaSeries!.setData(candles.map(candleOHLCVtoAreaData));
+    } else {
+        areaSeries!.setData([]);
+    }
+
+    candleSeries!.setData(candles.map(candleOHLCVtoCandlestickData));
 
     if (smaValues && smaValues.some((v) => v != null)) {
       if (!smaSeries) {
