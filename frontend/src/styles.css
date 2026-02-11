@@ -1,3 +1,17 @@
+@font-face {
+  font-family: 'Lato';
+  src: url('/fonts/Lato-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Lato';
+  src: url('/fonts/Lato-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
 :root {
   --bg: #141414;
   --surface: #202020;
@@ -7,7 +21,7 @@
   --green: #26a631;
   --red: #c21a2a;
   --accent: #2962ff;
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: 'Lato', 'Segoe UI', system-ui, sans-serif;
 }
 
 * {
@@ -46,6 +60,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-size: 0.9rem;
+  font-family: 'Lato', 'Segoe UI', system-ui, sans-serif;
 }
 
 .header input:focus,
@@ -116,7 +131,7 @@ body {
   position: relative;
 }
 
-.file-input-wrap input[type="file"] {
+.file-input-wrap input[type='file'] {
   position: absolute;
   opacity: 0;
   width: 100%;
