@@ -1,11 +1,11 @@
 :root {
-  --bg: #131722;
-  --surface: #1e222d;
-  --border: #2a2e39;
+  --bg: #141414;
+  --surface: #202020;
+  --border: #404040;
   --text: #d1d4dc;
   --text-muted: #787b86;
-  --green: #26a69a;
-  --red: #ef5350;
+  --green: #26a631;
+  --red: #c21a2a;
   --accent: #2962ff;
   font-family: "Segoe UI", system-ui, sans-serif;
 }

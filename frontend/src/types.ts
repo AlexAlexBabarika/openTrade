@@ -1,5 +1,5 @@
 /**
- * Unified OHLCV candle (matches backend schema).
+ * Unified OHLCV  (Open, High, Low, Close, Volume) candle (matches backend schema).
  */
 export interface OHLCVCandle {
   symbol: string;
