@@ -1,32 +1,37 @@
-import type { IChartApi, ISeriesApi } from "lightweight-charts";
-import { 
+import type {
+  IChartApi,
+  ISeriesApi,
+  MouseEventParams,
+  Time,
+} from 'lightweight-charts';
+import {
   candleOHLCVtoAreaData,
   candleOHLCVtoCandlestickData,
-} from "./chartAdapters";
+} from './chartAdapters';
 import {
   createChartContainer,
   addCandlestickSeries,
   addLineSeries,
   linePoint,
   addAreaSeries,
-} from "./chart";
-import { API_BASE, yfinanceUrl, smaUrl, wsStreamUrl } from "./config";
-import type { OHLCVCandle } from "./types";
-import { WSClient } from "./ws";
-import type { ConnectionStatus } from "./ws";
+} from './chart';
+import { API_BASE, yfinanceUrl, smaUrl, wsStreamUrl } from './config';
+import type { OHLCVCandle } from './types';
+import { WSClient } from './ws';
+import type { ConnectionStatus } from './ws';
 
-type DataSource = "yfinance" | "csv";
+type DataSource = 'yfinance' | 'csv';
 
 export function initApp(): void {
-  const header = document.createElement("div");
-  header.className = "header";
+  const header = document.createElement('div');
+  header.className = 'header';
 
-  const symbolInput = document.createElement("input");
-  symbolInput.type = "text";
-  symbolInput.placeholder = "Symbol (e.g. AAPL)";
-  symbolInput.value = "AAPL";
+  const symbolInput = document.createElement('input');
+  symbolInput.type = 'text';
+  symbolInput.placeholder = 'Symbol (e.g. AAPL)';
+  symbolInput.value = 'AAPL';
 
-  const timeframeSelect = document.createElement("select");
+  const timeframeSelect = document.createElement('select');
   timeframeSelect.innerHTML = `
     <option value="1d">1D</option>
     <option value="5d">5D</option>
@@ -36,65 +41,68 @@ export function initApp(): void {
     <option value="1y">1Y</option>
   `;
 
-  const intervalSelect = document.createElement("select");
+  const intervalSelect = document.createElement('select');
   intervalSelect.innerHTML = `
     <option value="1d" selected>1d</option>
     <option value="1h">1h</option>
     <option value="5m">5m</option>
   `;
 
-  const sourceSelect = document.createElement("select");
-  sourceSelect.id = "source";
+  const sourceSelect = document.createElement('select');
+  sourceSelect.id = 'source';
   sourceSelect.innerHTML = `
     <option value="yfinance">yfinance</option>
     <option value="csv">CSV</option>
   `;
 
-  const loadBtn = document.createElement("button");
-  loadBtn.textContent = "Load";
+  const loadBtn = document.createElement('button');
+  loadBtn.textContent = 'Load';
 
-  const streamBtn = document.createElement("button");
-  streamBtn.textContent = "Stream WS";
-  streamBtn.className = "secondary";
+  const streamBtn = document.createElement('button');
+  streamBtn.textContent = 'Stream WS';
+  streamBtn.className = 'secondary';
 
-  const smaBtn = document.createElement("button");
-  smaBtn.textContent = "SMA(20)";
-  smaBtn.className = "secondary";
+  const smaBtn = document.createElement('button');
+  smaBtn.textContent = 'SMA(20)';
+  smaBtn.className = 'secondary';
 
-  const refreshLabel = document.createElement("label");
-  refreshLabel.style.display = "inline-flex";
-  refreshLabel.style.alignItems = "center";
-  refreshLabel.style.gap = "0.35rem";
-  refreshLabel.style.fontSize = "0.9rem";
-  refreshLabel.style.color = "var(--text-muted)";
-  const refreshCheck = document.createElement("input");
-  refreshCheck.type = "checkbox";
-  refreshCheck.title = "Re-fetch yfinance every 60s when using yfinance";
-  refreshLabel.append(refreshCheck, document.createTextNode("Auto-refresh 60s"));
+  const refreshLabel = document.createElement('label');
+  refreshLabel.style.display = 'inline-flex';
+  refreshLabel.style.alignItems = 'center';
+  refreshLabel.style.gap = '0.35rem';
+  refreshLabel.style.fontSize = '0.9rem';
+  refreshLabel.style.color = 'var(--text-muted)';
+  const refreshCheck = document.createElement('input');
+  refreshCheck.type = 'checkbox';
+  refreshCheck.title = 'Re-fetch yfinance every 60s when using yfinance';
+  refreshLabel.append(
+    refreshCheck,
+    document.createTextNode('Auto-refresh 60s'),
+  );
 
-  const csvWrap = document.createElement("div");
-  csvWrap.className = "file-input-wrap";
-  csvWrap.style.display = "none";
-  const fileInput = document.createElement("input");
-  fileInput.type = "file";
-  fileInput.accept = ".csv";
-  const fileLabel = document.createElement("span");
-  fileLabel.className = "file-label";
-  fileLabel.textContent = "Choose CSV";
+  const csvWrap = document.createElement('div');
+  csvWrap.className = 'file-input-wrap';
+  csvWrap.style.display = 'none';
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.csv';
+  const fileLabel = document.createElement('span');
+  fileLabel.className = 'file-label';
+  fileLabel.textContent = 'Choose CSV';
   csvWrap.append(fileInput, fileLabel);
 
-  const statusEl = document.createElement("span");
-  statusEl.className = "status";
-  const statusDot = document.createElement("span");
-  statusDot.className = "status-dot";
-  statusEl.append(statusDot, document.createTextNode("Disconnected"));
+  const statusEl = document.createElement('span');
+  statusEl.className = 'status';
+  const statusDot = document.createElement('span');
+  statusDot.className = 'status-dot';
+  statusEl.append(statusDot, document.createTextNode('Disconnected'));
 
-  const chartContainer = document.createElement("div");
-  chartContainer.className = "chart-container";
+  const chartContainer = document.createElement('div');
+  chartContainer.className = 'chart-container';
 
-  const errorEl = document.createElement("div");
-  errorEl.className = "error-message";
-  errorEl.style.display = "none";
+  const errorEl = document.createElement('div');
+  errorEl.className = 'error-message';
+  errorEl.style.display = 'none';
 
   header.append(
     symbolInput,
@@ -106,31 +114,38 @@ export function initApp(): void {
     streamBtn,
     smaBtn,
     refreshLabel,
-    statusEl
+    statusEl,
   );
 
-  document.getElementById("app")!.append(header, errorEl, chartContainer);
+  document.getElementById('app')!.append(header, errorEl, chartContainer);
 
   let chart: IChartApi | null = null;
-  let candleSeries: ISeriesApi<"Candlestick"> | null = null;
-  let areaSeries: ISeriesApi<"Area"> | null = null;
-  let smaSeries: ISeriesApi<"Line"> | null = null;
+  let candleSeries: ISeriesApi<'Candlestick'> | null = null;
+  let areaSeries: ISeriesApi<'Area'> | null = null;
+  let smaSeries: ISeriesApi<'Line'> | null = null;
   let wsClient: WSClient | null = null;
   let lastCandles: OHLCVCandle[] = [];
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
+  let legendElement: HTMLDivElement | null = null;
 
   function setError(msg: string | null): void {
-    errorEl.textContent = msg ?? "";
-    errorEl.style.display = msg ? "block" : "none";
+    errorEl.textContent = msg ?? '';
+    errorEl.style.display = msg ? 'block' : 'none';
   }
 
   function setStatus(status: ConnectionStatus): void {
-    statusDot.className = "status-dot " + (status === "connected" ? "connected" : status === "error" ? "error" : "");
+    statusDot.className =
+      'status-dot ' +
+      (status === 'connected'
+        ? 'connected'
+        : status === 'error'
+          ? 'error'
+          : '');
     const labels: Record<ConnectionStatus, string> = {
-      connecting: "Connecting…",
-      connected: "Connected",
-      disconnected: "Disconnected",
-      error: "Error",
+      connecting: 'Connecting…',
+      connected: 'Connected',
+      disconnected: 'Disconnected',
+      error: 'Error',
     };
     statusEl.childNodes[1].textContent = labels[status];
   }
@@ -141,28 +156,157 @@ export function initApp(): void {
     return { period, interval };
   }
 
-  function renderChart(candles: OHLCVCandle[], smaValues?: (number | null)[]): void {
+  function createLegend(symbol: string): void {
+    if (!chart || !areaSeries) {
+      return;
+    }
+
+    // Remove existing legend if present
+    if (legendElement) {
+      legendElement.remove();
+      legendElement = null;
+    }
+
+    const legend = document.createElement('div');
+    legend.style.position = 'absolute';
+    legend.style.left = '12px';
+    legend.style.top = '12px';
+    legend.style.zIndex = '1';
+    legend.style.fontSize = '14px';
+    legend.style.fontFamily = 'sans-serif';
+    legend.style.lineHeight = '18px';
+    legend.style.fontWeight = '300';
+    legend.style.color = 'white';
+    chartContainer.appendChild(legend);
+    legendElement = legend;
+
+    const getLastBar = (series: ISeriesApi<'Area'>) => {
+      // Get the last bar by using a very high index with -1 offset
+      return series.dataByIndex(Number.MAX_SAFE_INTEGER, -1);
+    };
+
+    const formatPrice = (price: number): string =>
+      (Math.round(price * 100) / 100).toFixed(2);
+
+    const formatDate = (time: Time): string => {
+      let date: Date;
+      if (typeof time === 'string') {
+        // Handle "YYYY-MM-DD" format
+        date = new Date(time);
+      } else if (typeof time === 'number') {
+        // Handle timestamp (seconds)
+        date = new Date(time * 1000);
+      } else {
+        // Handle BusinessDay object (has year, month, day properties)
+        date = new Date(time.year, time.month - 1, time.day);
+      }
+
+      const day = date.getDate();
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+
+      return `${day} ${month} ${year}`;
+    };
+
+    const setTooltipHtml = (
+      name: string,
+      date: string,
+      price: string,
+    ): void => {
+      legend.innerHTML = `<div style="font-size: 24px; margin: 4px 0px;">${name}</div><div style="font-size: 22px; margin: 4px 0px;">${price}</div><div>${date}</div>`;
+    };
+
+    const updateLegend = (param: MouseEventParams | undefined): void => {
+      if (!areaSeries) return;
+
+      const validCrosshairPoint = !(
+        param === undefined ||
+        param.time === undefined ||
+        param.point === undefined ||
+        param.point.x < 0 ||
+        param.point.y < 0
+      );
+
+      const bar = validCrosshairPoint
+        ? param.seriesData.get(areaSeries)
+        : getLastBar(areaSeries);
+
+      if (!bar) return;
+
+      const time = bar.time;
+      let price: number | undefined;
+
+      if ('value' in bar && typeof bar.value === 'number') {
+        price = bar.value;
+      } else if ('close' in bar && typeof bar.close === 'number') {
+        price = bar.close;
+      }
+
+      if (price === undefined) return;
+
+      const formattedPrice = formatPrice(price);
+      const formattedDate = formatDate(time);
+      setTooltipHtml(symbol, formattedDate, formattedPrice);
+    };
+
+    chart.subscribeCrosshairMove(updateLegend);
+
+    updateLegend(undefined);
+  }
+
+  function renderChart(
+    candles: OHLCVCandle[],
+    smaValues?: (number | null)[],
+  ): void {
+    const symbol = (symbolInput as HTMLInputElement).value.trim() || 'Unknown';
+
     if (!chart) {
       chart = createChartContainer(chartContainer);
       areaSeries = addAreaSeries(chart);
       candleSeries = addCandlestickSeries(chart);
     }
 
+    // Always update legend with current symbol
+    createLegend(symbol);
+
     if (candles.length >= 20) {
-        areaSeries!.setData(candles.map(candleOHLCVtoAreaData));
+      areaSeries!.setData(candles.map(candleOHLCVtoAreaData));
     } else {
-        areaSeries!.setData([]);
+      areaSeries!.setData([]);
     }
 
     candleSeries!.setData(candles.map(candleOHLCVtoCandlestickData));
 
-    if (smaValues && smaValues.some((v) => v != null)) {
+    if (smaValues && smaValues.some(v => v != null)) {
       if (!smaSeries) {
-        smaSeries = addLineSeries(chart!, "#2962ff");
+        smaSeries = addLineSeries(chart!, '#2962ff');
       }
       const lineData = candles
-        .map((c, i) => (smaValues[i] != null ? linePoint(c.timestamp, smaValues[i]!) : null))
-        .filter((x): x is { time: ReturnType<typeof linePoint>["time"]; value: number } => x != null);
+        .map((c, i) =>
+          smaValues[i] != null ? linePoint(c.timestamp, smaValues[i]!) : null,
+        )
+        .filter(
+          (
+            x,
+          ): x is {
+            time: ReturnType<typeof linePoint>['time'];
+            value: number;
+          } => x != null,
+        );
       smaSeries.setData(lineData);
     } else if (smaSeries) {
       smaSeries.setData([]);
@@ -174,7 +318,7 @@ export function initApp(): void {
   async function loadYfinance(): Promise<void> {
     const symbol = (symbolInput as HTMLInputElement).value.trim();
     if (!symbol) {
-      setError("Enter a symbol");
+      setError('Enter a symbol');
       return;
     }
     setError(null);
@@ -186,32 +330,32 @@ export function initApp(): void {
       lastCandles = data.candles ?? [];
       renderChart(lastCandles);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load");
+      setError(e instanceof Error ? e.message : 'Failed to load');
     }
   }
 
   async function loadWithSma(): Promise<void> {
     const symbol = (symbolInput as HTMLInputElement).value.trim();
     if (!symbol) {
-      setError("Enter a symbol");
+      setError('Enter a symbol');
       return;
     }
     setError(null);
     try {
-      const res = await fetch(smaUrl(symbol, "20"));
+      const res = await fetch(smaUrl(symbol, '20'));
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       lastCandles = data.candles ?? [];
       renderChart(lastCandles, data.sma ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load SMA");
+      setError(e instanceof Error ? e.message : 'Failed to load SMA');
     }
   }
 
   function startStream(): void {
     const symbol = (symbolInput as HTMLInputElement).value.trim();
     if (!symbol) {
-      setError("Enter a symbol");
+      setError('Enter a symbol');
       return;
     }
     setError(null);
@@ -219,7 +363,7 @@ export function initApp(): void {
     const candles: OHLCVCandle[] = [];
     wsClient = new WSClient({
       symbol,
-      onCandle: (c) => {
+      onCandle: c => {
         candles.push(c);
         lastCandles = candles;
         renderChart(candles);
@@ -231,14 +375,15 @@ export function initApp(): void {
     wsClient.connect();
   }
 
-  sourceSelect.addEventListener("change", () => {
+  sourceSelect.addEventListener('change', () => {
     const src = (sourceSelect as HTMLSelectElement).value as DataSource;
-    (csvWrap as HTMLElement).style.display = src === "csv" ? "inline-block" : "none";
+    (csvWrap as HTMLElement).style.display =
+      src === 'csv' ? 'inline-block' : 'none';
   });
 
-  loadBtn.addEventListener("click", async () => {
+  loadBtn.addEventListener('click', async () => {
     const src = (sourceSelect as HTMLSelectElement).value as DataSource;
-    if (src === "yfinance") {
+    if (src === 'yfinance') {
       await loadYfinance();
     } else {
       // CSV: user must select file first; we trigger load via file input
@@ -246,18 +391,21 @@ export function initApp(): void {
     }
   });
 
-  fileInput.addEventListener("change", async () => {
+  fileInput.addEventListener('change', async () => {
     const file = (fileInput as HTMLInputElement).files?.[0];
     if (!file) return;
-    const symbol = (symbolInput as HTMLInputElement).value.trim() || "CSV";
+    const symbol = (symbolInput as HTMLInputElement).value.trim() || 'CSV';
     setError(null);
     const form = new FormData();
-    form.append("file", file);
+    form.append('file', file);
     try {
-      const res = await fetch(`${API_BASE}/data/csv?symbol=${encodeURIComponent(symbol)}`, {
-        method: "POST",
-        body: form,
-      });
+      const res = await fetch(
+        `${API_BASE}/data/csv?symbol=${encodeURIComponent(symbol)}`,
+        {
+          method: 'POST',
+          body: form,
+        },
+      );
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       // After upload, fetch data via stream or reuse: backend caches. We can open WS or call an endpoint that returns candles.
@@ -266,7 +414,7 @@ export function initApp(): void {
       if (wsClient) wsClient.disconnect();
       wsClient = new WSClient({
         symbol,
-        onCandle: (c) => {
+        onCandle: c => {
           lastCandles.push(c);
           renderChart(lastCandles);
         },
@@ -275,26 +423,26 @@ export function initApp(): void {
       wsClient.connect();
       fileLabel.textContent = file.name;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed");
+      setError(e instanceof Error ? e.message : 'Upload failed');
     }
   });
 
-  streamBtn.addEventListener("click", () => {
+  streamBtn.addEventListener('click', () => {
     startStream();
   });
 
-  smaBtn.addEventListener("click", () => {
+  smaBtn.addEventListener('click', () => {
     loadWithSma();
   });
 
-  refreshCheck.addEventListener("change", () => {
+  refreshCheck.addEventListener('change', () => {
     if (refreshIntervalId) {
       clearInterval(refreshIntervalId);
       refreshIntervalId = null;
     }
     if ((refreshCheck as HTMLInputElement).checked) {
       refreshIntervalId = setInterval(() => {
-        if ((sourceSelect as HTMLSelectElement).value === "yfinance") {
+        if ((sourceSelect as HTMLSelectElement).value === 'yfinance') {
           loadYfinance().catch(() => {});
         }
       }, 60_000);
