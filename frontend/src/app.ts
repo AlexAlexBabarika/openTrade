@@ -7,10 +7,12 @@ import type {
 import {
   candleOHLCVtoAreaData,
   candleOHLCVtoCandlestickData,
+  candleOHLCVtoVolumeData,
 } from './chartAdapters';
 import {
   createChartContainer,
   addCandlestickSeries,
+  addVolumeSeries,
   addLineSeries,
   linePoint,
   addAreaSeries,
@@ -117,7 +119,7 @@ export function initApp(): void {
   let chart: IChartApi | null = null;
   let candleSeries: ISeriesApi<'Candlestick'> | null = null;
   let areaSeries: ISeriesApi<'Area'> | null = null;
-  let smaSeries: ISeriesApi<'Line'> | null = null;
+  let volumeSeries: ISeriesApi<'Histogram'> | null = null;
   let wsClient: WSClient | null = null;
   let lastCandles: OHLCVCandle[] = [];
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -175,7 +177,7 @@ export function initApp(): void {
     chartContainer.appendChild(legend);
     legendElement = legend;
 
-    const getLastBar = (series: ISeriesApi<'Area'>) => {
+    const getLastBar = (series: ISeriesApi<any>) => {
       // Get the last bar by using a very high index with -1 offset
       return series.dataByIndex(Number.MAX_SAFE_INTEGER, -1);
     };
@@ -221,8 +223,9 @@ export function initApp(): void {
       name: string,
       date: string,
       price: string,
+      volume: string,
     ): void => {
-      legend.innerHTML = `<div style="font-size: 24px; margin: 4px 0px;">${name}</div><div style="font-size: 22px; margin: 4px 0px;">${price}</div><div>${date}</div>`;
+      legend.innerHTML = `<div style="font-size: 24px; margin: 4px 0px;">${name}</div><div style="font-size: 22px; margin: 4px 0px;">${price}</div><div>${date}</div><div>Volume: ${volume}</div>`;
     };
 
     const updateLegend = (param: MouseEventParams | undefined): void => {
@@ -240,6 +243,12 @@ export function initApp(): void {
         ? param.seriesData.get(areaSeries)
         : getLastBar(areaSeries);
 
+      const volumeBar = volumeSeries
+        ? validCrosshairPoint
+          ? param.seriesData.get(volumeSeries)
+          : getLastBar(volumeSeries)
+        : null;
+
       if (!bar) return;
 
       const time = bar.time;
@@ -253,9 +262,15 @@ export function initApp(): void {
 
       if (price === undefined) return;
 
+      let volume: number | undefined;
+      if (volumeBar && 'value' in volumeBar && typeof volumeBar.value === 'number') {
+        volume = volumeBar.value;
+      }
+
       const formattedPrice = formatPrice(price);
       const formattedDate = formatDate(time);
-      setTooltipHtml(symbol, formattedDate, formattedPrice);
+      const formattedVolume = volume !== undefined ? volume.toLocaleString() : '—';
+      setTooltipHtml(symbol, formattedDate, formattedPrice, formattedVolume);
     };
 
     chart.subscribeCrosshairMove(updateLegend);
@@ -265,12 +280,12 @@ export function initApp(): void {
 
   function renderChart(
     candles: OHLCVCandle[],
-    smaValues?: (number | null)[],
   ): void {
     const symbol = (symbolInput as HTMLInputElement).value.trim() || 'Unknown';
 
     if (!chart) {
       chart = createChartContainer(chartContainer);
+      volumeSeries = addVolumeSeries(chart);
       areaSeries = addAreaSeries(chart);
       candleSeries = addCandlestickSeries(chart);
     }
@@ -285,28 +300,7 @@ export function initApp(): void {
     }
 
     candleSeries!.setData(candles.map(candleOHLCVtoCandlestickData));
-
-    if (smaValues && smaValues.some(v => v != null)) {
-      if (!smaSeries) {
-        smaSeries = addLineSeries(chart!, '#2962ff');
-      }
-      const lineData = candles
-        .map((c, i) =>
-          smaValues[i] != null ? linePoint(c.timestamp, smaValues[i]!) : null,
-        )
-        .filter(
-          (
-            x,
-          ): x is {
-            time: ReturnType<typeof linePoint>['time'];
-            value: number;
-          } => x != null,
-        );
-      smaSeries.setData(lineData);
-    } else if (smaSeries) {
-      smaSeries.setData([]);
-    }
-
+    volumeSeries!.setData(candles.map(candleOHLCVtoVolumeData));
     chart!.timeScale().fitContent();
   }
 
@@ -326,24 +320,6 @@ export function initApp(): void {
       renderChart(lastCandles);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
-    }
-  }
-
-  async function loadWithSma(): Promise<void> {
-    const symbol = (symbolInput as HTMLInputElement).value.trim();
-    if (!symbol) {
-      setError('Enter a symbol');
-      return;
-    }
-    setError(null);
-    try {
-      const res = await fetch(smaUrl(symbol, '20'));
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      lastCandles = data.candles ?? [];
-      renderChart(lastCandles, data.sma ?? []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load SMA');
     }
   }
 

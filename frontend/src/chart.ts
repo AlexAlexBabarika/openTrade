@@ -39,6 +39,22 @@ export function createChartContainer(parent: HTMLElement): IChartApi {
   return chart;
 }
 
+export function addVolumeSeries(chart: IChartApi): ISeriesApi<"Histogram"> {
+  const series = chart.addHistogramSeries({
+    priceFormat: {
+      type: "volume",
+    },
+    priceScaleId: "",
+  });
+  series.priceScale().applyOptions({
+    scaleMargins: {
+        top: 0.77,
+        bottom: 0,
+    },
+  });
+  return series;
+}
+
 export function addCandlestickSeries(chart: IChartApi): ISeriesApi<"Candlestick"> {
   const series = chart.addCandlestickSeries({
     upColor: "#26a631",
