@@ -62,10 +62,6 @@ export function initApp(): void {
   streamBtn.textContent = 'Stream WS';
   streamBtn.className = 'secondary';
 
-  const smaBtn = document.createElement('button');
-  smaBtn.textContent = 'SMA(20)';
-  smaBtn.className = 'secondary';
-
   const refreshLabel = document.createElement('label');
   refreshLabel.style.display = 'inline-flex';
   refreshLabel.style.alignItems = 'center';
@@ -112,7 +108,6 @@ export function initApp(): void {
     csvWrap,
     loadBtn,
     streamBtn,
-    smaBtn,
     refreshLabel,
     statusEl,
   );
@@ -429,10 +424,6 @@ export function initApp(): void {
 
   streamBtn.addEventListener('click', () => {
     startStream();
-  });
-
-  smaBtn.addEventListener('click', () => {
-    loadWithSma();
   });
 
   refreshCheck.addEventListener('change', () => {
