@@ -12,6 +12,8 @@ import {
 
 export function createChartContainer(parent: HTMLElement): IChartApi {
   const chart = createChart(parent, {
+    width: parent.clientWidth,
+    height: parent.clientHeight,
     layout: {
       background: { type: ColorType.Solid, color: "#141414" },
       textColor: "#d1d4dc",

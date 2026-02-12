@@ -440,6 +440,16 @@ export function initApp(): void {
     }
   });
 
+  // Handle window resize to scale chart properly
+  window.addEventListener('resize', () => {
+    if (chart) {
+      chart.applyOptions({
+        width: chartContainer.clientWidth,
+        height: chartContainer.clientHeight,
+      });
+    }
+  });
+
   // Initial load
   loadYfinance().catch(() => {});
 }
