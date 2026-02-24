@@ -151,7 +151,7 @@ export function initApp(): void {
     return { period, interval };
   }
 
-  function createLegend(symbol: string): void {
+  function createLegend(): void {
     if (!chart || !candleSeries) {
       return;
     }
@@ -312,7 +312,7 @@ export function initApp(): void {
     chart!.timeScale().fitContent();
 
     // Update legend after data is set so it reflects the latest data
-    createLegend(symbol);
+    createLegend();
   }
 
   async function loadYfinance(): Promise<void> {
