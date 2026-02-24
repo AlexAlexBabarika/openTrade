@@ -153,8 +153,8 @@ export function initApp(): void {
     return { period, interval };
   }
 
-  function createLegend(): void {
-    if (!chart || !areaSeries) {
+  function createLegend(symbol: string): void {
+    if (!chart || !candleSeries) {
       return;
     }
 
@@ -241,7 +241,7 @@ export function initApp(): void {
     };
 
     const updateLegend = (param: MouseEventParams | undefined): void => {
-      if (!areaSeries) return;
+      if (!candleSeries) return;
 
       const validCrosshairPoint = !(
         param === undefined ||
@@ -252,8 +252,8 @@ export function initApp(): void {
       );
 
       const bar = validCrosshairPoint
-        ? param.seriesData.get(areaSeries)
-        : getLastBar(areaSeries);
+        ? param.seriesData.get(candleSeries)
+        : getLastBar(candleSeries);
 
       const volumeBar = volumeSeries
         ? validCrosshairPoint
@@ -313,7 +313,8 @@ export function initApp(): void {
     volumeSeries!.setData(candles.map(candleOHLCVtoVolumeData));
     chart!.timeScale().fitContent();
 
-    legendUpdateHandler?.(undefined);
+    // Update legend after data is set so it reflects the latest data
+    createLegend(symbol);
   }
 
   async function loadYfinance(): Promise<void> {
