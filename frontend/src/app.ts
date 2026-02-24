@@ -218,7 +218,26 @@ export function initApp(): void {
       price: string,
       volume: string,
     ): void => {
-      legend.innerHTML = `<div style="font-size: 24px; margin: 4px 0px;">${name}</div><div style="font-size: 22px; margin: 4px 0px;">${price}</div><div>${date}</div><div>Volume: ${volume}</div>`;
+      legend.textContent = '';
+
+      const nameDiv = document.createElement('div');
+      nameDiv.style.cssText = 'font-size: 24px; margin: 4px 0px;';
+      nameDiv.textContent = name;
+
+      const priceDiv = document.createElement('div');
+      priceDiv.style.cssText = 'font-size: 22px; margin: 4px 0px;';
+      priceDiv.textContent = price;
+
+      const dateDiv = document.createElement('div');
+      dateDiv.textContent = date;
+
+      const volumeDiv = document.createElement('div');
+      volumeDiv.textContent = `Volume: ${volume}`;
+
+      legend.appendChild(nameDiv);
+      legend.appendChild(priceDiv);
+      legend.appendChild(dateDiv);
+      legend.appendChild(volumeDiv);
     };
 
     const updateLegend = (param: MouseEventParams | undefined): void => {
