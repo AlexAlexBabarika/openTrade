@@ -123,7 +123,7 @@ export function initApp(): void {
   let wsClient: WSClient | null = null;
   let lastCandles: OHLCVCandle[] = [];
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
-  let legendElement: HTMLDivElement | null = null;
+  let legendUpdateHandler: ((param: MouseEventParams | undefined) => void) | null = null;
 
   function setError(msg: string | null): void {
     errorEl.textContent = msg ?? '';
@@ -158,12 +158,6 @@ export function initApp(): void {
       return;
     }
 
-    // Remove existing legend if present
-    if (legendElement) {
-      legendElement.remove();
-      legendElement = null;
-    }
-
     const legend = document.createElement('div');
     legend.style.position = 'absolute';
     legend.style.left = '12px';
@@ -175,7 +169,6 @@ export function initApp(): void {
     legend.style.fontWeight = '300';
     legend.style.color = 'white';
     chartContainer.appendChild(legend);
-    legendElement = legend;
 
     const getLastBar = (series: ISeriesApi<any>) => {
       // Get the last bar by using a very high index with -1 offset
@@ -225,7 +218,26 @@ export function initApp(): void {
       price: string,
       volume: string,
     ): void => {
-      legend.innerHTML = `<div style="font-size: 24px; margin: 4px 0px;">${name}</div><div style="font-size: 22px; margin: 4px 0px;">${price}</div><div>${date}</div><div>Volume: ${volume}</div>`;
+      legend.textContent = '';
+
+      const nameDiv = document.createElement('div');
+      nameDiv.style.cssText = 'font-size: 24px; margin: 4px 0px;';
+      nameDiv.textContent = name;
+
+      const priceDiv = document.createElement('div');
+      priceDiv.style.cssText = 'font-size: 22px; margin: 4px 0px;';
+      priceDiv.textContent = price;
+
+      const dateDiv = document.createElement('div');
+      dateDiv.textContent = date;
+
+      const volumeDiv = document.createElement('div');
+      volumeDiv.textContent = `Volume: ${volume}`;
+
+      legend.appendChild(nameDiv);
+      legend.appendChild(priceDiv);
+      legend.appendChild(dateDiv);
+      legend.appendChild(volumeDiv);
     };
 
     const updateLegend = (param: MouseEventParams | undefined): void => {
@@ -270,9 +282,11 @@ export function initApp(): void {
       const formattedPrice = formatPrice(price);
       const formattedDate = formatDate(time);
       const formattedVolume = volume !== undefined ? volume.toLocaleString() : '—';
-      setTooltipHtml(symbol, formattedDate, formattedPrice, formattedVolume);
+      const currentSymbol = (symbolInput as HTMLInputElement).value.trim() || 'Unknown';
+      setTooltipHtml(currentSymbol, formattedDate, formattedPrice, formattedVolume);
     };
 
+    legendUpdateHandler = updateLegend;
     chart.subscribeCrosshairMove(updateLegend);
 
     updateLegend(undefined);
@@ -281,13 +295,12 @@ export function initApp(): void {
   function renderChart(
     candles: OHLCVCandle[],
   ): void {
-    const symbol = (symbolInput as HTMLInputElement).value.trim() || 'Unknown';
-
     if (!chart) {
       chart = createChartContainer(chartContainer);
       volumeSeries = addVolumeSeries(chart);
       areaSeries = addAreaSeries(chart);
       candleSeries = addCandlestickSeries(chart);
+      createLegend();
     }
 
     if (candles.length >= 20) {
