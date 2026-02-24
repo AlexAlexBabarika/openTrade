@@ -123,7 +123,7 @@ export function initApp(): void {
   let wsClient: WSClient | null = null;
   let lastCandles: OHLCVCandle[] = [];
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
-  let legendElement: HTMLDivElement | null = null;
+  let legendUpdateHandler: ((param: MouseEventParams | undefined) => void) | null = null;
 
   function setError(msg: string | null): void {
     errorEl.textContent = msg ?? '';
@@ -153,15 +153,9 @@ export function initApp(): void {
     return { period, interval };
   }
 
-  function createLegend(symbol: string): void {
+  function createLegend(): void {
     if (!chart || !areaSeries) {
       return;
-    }
-
-    // Remove existing legend if present
-    if (legendElement) {
-      legendElement.remove();
-      legendElement = null;
     }
 
     const legend = document.createElement('div');
@@ -175,7 +169,6 @@ export function initApp(): void {
     legend.style.fontWeight = '300';
     legend.style.color = 'white';
     chartContainer.appendChild(legend);
-    legendElement = legend;
 
     const getLastBar = (series: ISeriesApi<any>) => {
       // Get the last bar by using a very high index with -1 offset
@@ -270,9 +263,11 @@ export function initApp(): void {
       const formattedPrice = formatPrice(price);
       const formattedDate = formatDate(time);
       const formattedVolume = volume !== undefined ? volume.toLocaleString() : '—';
-      setTooltipHtml(symbol, formattedDate, formattedPrice, formattedVolume);
+      const currentSymbol = (symbolInput as HTMLInputElement).value.trim() || 'Unknown';
+      setTooltipHtml(currentSymbol, formattedDate, formattedPrice, formattedVolume);
     };
 
+    legendUpdateHandler = updateLegend;
     chart.subscribeCrosshairMove(updateLegend);
 
     updateLegend(undefined);
@@ -281,17 +276,13 @@ export function initApp(): void {
   function renderChart(
     candles: OHLCVCandle[],
   ): void {
-    const symbol = (symbolInput as HTMLInputElement).value.trim() || 'Unknown';
-
     if (!chart) {
       chart = createChartContainer(chartContainer);
       volumeSeries = addVolumeSeries(chart);
       areaSeries = addAreaSeries(chart);
       candleSeries = addCandlestickSeries(chart);
+      createLegend();
     }
-
-    // Always update legend with current symbol
-    createLegend(symbol);
 
     if (candles.length >= 20) {
       areaSeries!.setData(candles.map(candleOHLCVtoAreaData));
@@ -302,6 +293,8 @@ export function initApp(): void {
     candleSeries!.setData(candles.map(candleOHLCVtoCandlestickData));
     volumeSeries!.setData(candles.map(candleOHLCVtoVolumeData));
     chart!.timeScale().fitContent();
+
+    legendUpdateHandler?.(undefined);
   }
 
   async function loadYfinance(): Promise<void> {
