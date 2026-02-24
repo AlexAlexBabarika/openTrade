@@ -13,11 +13,9 @@ import {
   createChartContainer,
   addCandlestickSeries,
   addVolumeSeries,
-  addLineSeries,
-  linePoint,
   addAreaSeries,
 } from './chart';
-import { API_BASE, yfinanceUrl, smaUrl, wsStreamUrl } from './config';
+import { API_BASE, yfinanceUrl } from './config';
 import type { OHLCVCandle } from './types';
 import { WSClient } from './ws';
 import type { ConnectionStatus } from './ws';
