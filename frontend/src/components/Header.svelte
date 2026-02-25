@@ -26,19 +26,19 @@
     oncsvupload: (file: File) => void;
   } = $props();
 
-  let fileInput: HTMLInputElement;
+  let fileInput: HTMLInputElement | undefined = $state();
   let fileName = $state('Choose CSV');
 
   function handleLoad() {
     if (source === 'csv') {
-      fileInput.click();
+      fileInput?.click();
     } else {
       onload();
     }
   }
 
   function handleFileChange() {
-    const file = fileInput.files?.[0];
+    const file = fileInput?.files?.[0];
     if (!file) return;
     fileName = file.name;
     oncsvupload(file);
