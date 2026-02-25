@@ -170,10 +170,8 @@
   });
 
   $effect(() => {
-    const _c = candles;
-    const _s = symbol;
-    if (chart && _c) {
-      updateChartData(_c);
+    if (chart && candles) {
+      updateChartData(candles);
     }
   });
 </script>
