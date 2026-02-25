@@ -43,12 +43,24 @@
     fileName = file.name;
     oncsvupload(file);
   }
+
+  const inputClasses =
+    'px-3 py-2 border border-border-custom rounded-md bg-bg text-text-primary text-sm font-[family-name:var(--font-family-lato)] focus:outline-none focus:border-accent';
+  const btnClasses =
+    'px-3 py-2 border rounded-md text-sm cursor-pointer font-medium font-[family-name:var(--font-family-lato)]';
 </script>
 
-<div class="header">
-  <input type="text" placeholder="Symbol (e.g. AAPL)" bind:value={symbol} />
+<div
+  class="flex items-center gap-4 px-4 py-3 bg-surface border-b border-border-custom flex-wrap"
+>
+  <input
+    type="text"
+    placeholder="Symbol (e.g. AAPL)"
+    bind:value={symbol}
+    class={inputClasses}
+  />
 
-  <select bind:value={period}>
+  <select bind:value={period} class={inputClasses}>
     <option value="1d">1D</option>
     <option value="5d">5D</option>
     <option value="1mo">1M</option>
@@ -57,33 +69,49 @@
     <option value="1y">1Y</option>
   </select>
 
-  <select bind:value={interval}>
+  <select bind:value={interval} class={inputClasses}>
     <option value="1d">1d</option>
     <option value="1h">1h</option>
     <option value="5m">5m</option>
   </select>
 
-  <select bind:value={source}>
+  <select bind:value={source} class={inputClasses}>
     <option value="yfinance">yfinance</option>
     <option value="csv">CSV</option>
   </select>
 
   {#if source === 'csv'}
-    <div class="file-input-wrap">
+    <div class="relative">
       <input
         type="file"
         accept=".csv"
         bind:this={fileInput}
         onchange={handleFileChange}
+        class="absolute opacity-0 w-full h-full cursor-pointer"
       />
-      <span class="file-label">{fileName}</span>
+      <span
+        class="inline-block px-3 py-2 border border-dashed border-border-custom rounded-md cursor-pointer text-text-muted text-sm hover:border-accent hover:text-text-primary transition-colors"
+      >
+        {fileName}
+      </span>
     </div>
   {/if}
 
-  <button onclick={handleLoad}>Load</button>
-  <button class="secondary" onclick={onstream}>Stream WS</button>
+  <button
+    class="{btnClasses} bg-accent border-accent text-white hover:brightness-110"
+    onclick={handleLoad}
+  >
+    Load
+  </button>
 
-  <label class="refresh-label">
+  <button
+    class="{btnClasses} bg-surface border-border-custom text-text-primary hover:brightness-110"
+    onclick={onstream}
+  >
+    Stream WS
+  </button>
+
+  <label class="inline-flex items-center gap-1.5 text-sm text-text-muted">
     <input
       type="checkbox"
       bind:checked={autoRefresh}
@@ -94,84 +122,3 @@
 
   <StatusDot status={connectionStatus} />
 </div>
-
-<style>
-  .header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-  }
-
-  .header input,
-  .header select,
-  .header button {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 0.9rem;
-    font-family: 'Lato', 'Segoe UI', system-ui, sans-serif;
-  }
-
-  .header input:focus,
-  .header select:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-
-  .header button {
-    cursor: pointer;
-    background: var(--accent);
-    border-color: var(--accent);
-    font-weight: 500;
-  }
-
-  .header button:hover {
-    filter: brightness(1.1);
-  }
-
-  .header button.secondary {
-    background: var(--surface);
-    border-color: var(--border);
-  }
-
-  .refresh-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-  }
-
-  .file-input-wrap {
-    position: relative;
-  }
-
-  .file-input-wrap input[type='file'] {
-    position: absolute;
-    opacity: 0;
-    width: 100%;
-    height: 100%;
-    cursor: pointer;
-  }
-
-  .file-input-wrap .file-label {
-    display: inline-block;
-    padding: 0.5rem 0.75rem;
-    border: 1px dashed var(--border);
-    border-radius: 6px;
-    cursor: pointer;
-    color: var(--text-muted);
-    font-size: 0.9rem;
-  }
-
-  .file-input-wrap:hover .file-label {
-    border-color: var(--accent);
-    color: var(--text);
-  }
-</style>

@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 @font-face {
   font-family: 'Lato';
   src:
@@ -18,16 +20,16 @@
   font-display: swap;
 }
 
-:root {
-  --bg: #141414;
-  --surface: #202020;
-  --border: #404040;
-  --text: #d1d4dc;
-  --text-muted: #787b86;
-  --green: #26a631;
-  --red: #c21a2a;
-  --accent: #2962ff;
-  font-family: 'Lato', 'Segoe UI', system-ui, sans-serif;
+@theme {
+  --color-bg: #141414;
+  --color-surface: #202020;
+  --color-border-custom: #404040;
+  --color-text-primary: #d1d4dc;
+  --color-text-muted: #787b86;
+  --color-green: #26a631;
+  --color-red: #c21a2a;
+  --color-accent: #2962ff;
+  --font-family-lato: 'Lato', 'Segoe UI', system-ui, sans-serif;
 }
 
 * {
@@ -35,14 +37,10 @@
 }
 
 body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
+  @apply m-0 bg-bg text-text-primary min-h-screen;
+  font-family: var(--font-family-lato);
 }
 
 #app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+  @apply flex flex-col min-h-screen;
 }

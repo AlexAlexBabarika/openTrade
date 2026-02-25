@@ -9,38 +9,16 @@
     disconnected: 'Disconnected',
     error: 'Error',
   };
+
+  const dotColor: Record<ConnectionStatus, string> = {
+    connecting: 'bg-text-muted',
+    connected: 'bg-green',
+    disconnected: 'bg-text-muted',
+    error: 'bg-red',
+  };
 </script>
 
-<span class="status">
-  <span
-    class="status-dot"
-    class:connected={status === 'connected'}
-    class:error={status === 'error'}
-  ></span>
+<span class="text-xs text-text-muted flex items-center gap-1.5">
+  <span class="w-2 h-2 rounded-full {dotColor[status]}"></span>
   {labels[status]}
 </span>
-
-<style>
-  .status {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--text-muted);
-  }
-
-  .status-dot.connected {
-    background: var(--green);
-  }
-
-  .status-dot.error {
-    background: var(--red);
-  }
-</style>

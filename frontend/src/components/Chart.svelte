@@ -170,7 +170,6 @@
   });
 
   $effect(() => {
-    // React to candles or symbol changes
     const _c = candles;
     const _s = symbol;
     if (chart && _c) {
@@ -179,11 +178,13 @@
   });
 </script>
 
-<div class="chart-container" bind:this={containerEl}>
+<div class="flex-1 min-h-[400px] relative" bind:this={containerEl}>
   {#if showLegend}
-    <div class="legend">
-      <div class="legend-name">{legendName}</div>
-      <div class="legend-price">{legendPrice}</div>
+    <div
+      class="absolute left-3 top-3 z-10 text-sm font-light text-white pointer-events-none font-sans leading-[18px]"
+    >
+      <div class="text-2xl my-1">{legendName}</div>
+      <div class="text-[22px] my-1">{legendPrice}</div>
       <div>{legendDate}</div>
       <div>Volume: {legendVolume}</div>
     </div>
@@ -191,37 +192,9 @@
 </div>
 
 <style>
-  .chart-container {
-    flex: 1;
-    min-height: 400px;
-    position: relative;
-  }
-
-  .chart-container :global(canvas) {
+  /* lightweight-charts injects canvas elements that need full sizing */
+  div :global(canvas) {
     width: 100% !important;
     height: 100% !important;
-  }
-
-  .legend {
-    position: absolute;
-    left: 12px;
-    top: 12px;
-    z-index: 1;
-    font-size: 14px;
-    font-family: sans-serif;
-    line-height: 18px;
-    font-weight: 300;
-    color: white;
-    pointer-events: none;
-  }
-
-  .legend-name {
-    font-size: 24px;
-    margin: 4px 0;
-  }
-
-  .legend-price {
-    font-size: 22px;
-    margin: 4px 0;
   }
 </style>
