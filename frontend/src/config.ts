@@ -1,5 +1,6 @@
 /**
- * Backend URL. In Electron/Tauri use env or default to localhost.
+ * Backend URL. Override at runtime by setting window.__API_BASE__ before app init,
+ * or fall back to same-origin /api when served by FastAPI, or localhost for dev.
  */
 export const API_BASE =
   typeof window !== "undefined" && (window as unknown as { __API_BASE__?: string }).__API_BASE__ != null

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Entry point to run the FastAPI backend. Used by Tauri to spawn the server.
+Entry point to run the FastAPI backend.
 Run from project root: python run_backend.py
 """
 import uvicorn
