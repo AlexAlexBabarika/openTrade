@@ -272,15 +272,26 @@ export function initApp(): void {
       if (price === undefined) return;
 
       let volume: number | undefined;
-      if (volumeBar && 'value' in volumeBar && typeof volumeBar.value === 'number') {
+      if (
+        volumeBar &&
+        'value' in volumeBar &&
+        typeof volumeBar.value === 'number'
+      ) {
         volume = volumeBar.value;
       }
 
       const formattedPrice = formatPrice(price);
       const formattedDate = formatDate(time);
-      const formattedVolume = volume !== undefined ? volume.toLocaleString() : '—';
-      const currentSymbol = (symbolInput as HTMLInputElement).value.trim() || 'Unknown';
-      setTooltipHtml(currentSymbol, formattedDate, formattedPrice, formattedVolume);
+      const formattedVolume =
+        volume !== undefined ? volume.toLocaleString() : '—';
+      const currentSymbol =
+        (symbolInput as HTMLInputElement).value.trim() || 'Unknown';
+      setTooltipHtml(
+        currentSymbol,
+        formattedDate,
+        formattedPrice,
+        formattedVolume,
+      );
     };
 
     chart.subscribeCrosshairMove(updateLegend);
@@ -288,9 +299,7 @@ export function initApp(): void {
     updateLegend(undefined);
   }
 
-  function renderChart(
-    candles: OHLCVCandle[],
-  ): void {
+  function renderChart(candles: OHLCVCandle[]): void {
     if (!chart) {
       chart = createChartContainer(chartContainer);
       volumeSeries = addVolumeSeries(chart);

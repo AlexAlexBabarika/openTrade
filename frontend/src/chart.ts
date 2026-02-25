@@ -4,30 +4,28 @@ import {
   ISeriesApi,
   LineData,
   CrosshairMode,
-  ColorType
-} from "lightweight-charts";
-import { 
-  isoToChartTime,
-} from "./chartAdapters";
+  ColorType,
+} from 'lightweight-charts';
+import { isoToChartTime } from './chartAdapters';
 
 export function createChartContainer(parent: HTMLElement): IChartApi {
   const chart = createChart(parent, {
     width: parent.clientWidth,
     height: parent.clientHeight,
     layout: {
-      background: { type: ColorType.Solid, color: "#141414" },
-      textColor: "#d1d4dc",
+      background: { type: ColorType.Solid, color: '#141414' },
+      textColor: '#d1d4dc',
     },
     grid: {
-      vertLines: { color: "#fffff720" },
-      horzLines: { color: "#fffff720" },
+      vertLines: { color: '#fffff720' },
+      horzLines: { color: '#fffff720' },
     },
     rightPriceScale: {
-      borderColor: "#404040",
+      borderColor: '#404040',
       scaleMargins: { top: 0.1, bottom: 0.2 },
     },
     timeScale: {
-      borderColor: "#404040",
+      borderColor: '#404040',
       timeVisible: true,
       secondsVisible: false,
     },
@@ -39,35 +37,37 @@ export function createChartContainer(parent: HTMLElement): IChartApi {
   return chart;
 }
 
-export function addVolumeSeries(chart: IChartApi): ISeriesApi<"Histogram"> {
+export function addVolumeSeries(chart: IChartApi): ISeriesApi<'Histogram'> {
   const series = chart.addHistogramSeries({
     priceFormat: {
-      type: "volume",
+      type: 'volume',
     },
-    priceScaleId: "",
+    priceScaleId: '',
   });
   series.priceScale().applyOptions({
     scaleMargins: {
-        top: 0.77,
-        bottom: 0,
+      top: 0.77,
+      bottom: 0,
     },
   });
   return series;
 }
 
-export function addCandlestickSeries(chart: IChartApi): ISeriesApi<"Candlestick"> {
+export function addCandlestickSeries(
+  chart: IChartApi,
+): ISeriesApi<'Candlestick'> {
   const series = chart.addCandlestickSeries({
-    upColor: "#26a631",
-    downColor: "#c21a2a",
-    borderDownColor: "#c21a2a",
-    borderUpColor: "#26a631",
-    wickDownColor: "#c21a2a",
-    wickUpColor: "#28c41d",
+    upColor: '#26a631',
+    downColor: '#c21a2a',
+    borderDownColor: '#c21a2a',
+    borderUpColor: '#26a631',
+    wickDownColor: '#c21a2a',
+    wickUpColor: '#28c41d',
   });
   return series;
 }
 
-export function addAreaSeries(chart: IChartApi): ISeriesApi<"Area"> {
+export function addAreaSeries(chart: IChartApi): ISeriesApi<'Area'> {
   const series = chart.addAreaSeries({
     lastValueVisible: false,
     crosshairMarkerVisible: false,
@@ -75,10 +75,13 @@ export function addAreaSeries(chart: IChartApi): ISeriesApi<"Area"> {
     topColor: 'rgba(56, 33, 110, 0.5)',
     bottomColor: 'rgba(56, 33, 110, 0.05)',
   });
-  return series
+  return series;
 }
 
-export function addLineSeries(chart: IChartApi, color: string): ISeriesApi<"Line"> {
+export function addLineSeries(
+  chart: IChartApi,
+  color: string,
+): ISeriesApi<'Line'> {
   return chart.addLineSeries({ color });
 }
 

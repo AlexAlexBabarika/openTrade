@@ -1,20 +1,20 @@
-import { defineConfig } from "vite";
+import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: "./",
+  base: './',
   build: {
-    outDir: "dist",
+    outDir: 'dist',
     emptyOutDir: true,
   },
   server: {
     port: 5173,
     proxy: {
-      "/data": "http://127.0.0.1:8000",
-      "/ws": {
-        target: "http://127.0.0.1:8000",
+      '/data': 'http://127.0.0.1:8000',
+      '/ws': {
+        target: 'http://127.0.0.1:8000',
         ws: true,
       },
-      "/health": "http://127.0.0.1:8000",
+      '/health': 'http://127.0.0.1:8000',
     },
   },
 });

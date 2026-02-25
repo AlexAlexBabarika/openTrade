@@ -43,7 +43,9 @@ def load_csv(
     return normalize_rows(rows, symbol)
 
 
-def csv_preview(path: str | Path, max_rows: int = 5) -> tuple[list[str], list[dict[str, Any]]]:
+def csv_preview(
+    path: str | Path, max_rows: int = 5
+) -> tuple[list[str], list[dict[str, Any]]]:
     """
     Preview CSV: return column names and first max_rows as list of dicts.
     Useful for CSV preview endpoint.

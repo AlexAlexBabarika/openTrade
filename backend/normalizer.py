@@ -61,6 +61,7 @@ def _parse_timestamp(value: Any) -> datetime:
                 continue
         else:
             from dateutil import parser as date_parser
+
             dt = date_parser.parse(value)
     else:
         raise ValueError(f"Cannot parse timestamp: {value!r}")

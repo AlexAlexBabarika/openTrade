@@ -1,7 +1,11 @@
-import type { OHLCVCandle } from "./types";
-import { wsStreamUrl } from "./config";
+import type { OHLCVCandle } from './types';
+import { wsStreamUrl } from './config';
 
-export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
+export type ConnectionStatus =
+  | 'connecting'
+  | 'connected'
+  | 'disconnected'
+  | 'error';
 
 export interface WSClientOptions {
   symbol: string;
@@ -37,27 +41,30 @@ export class WSClient {
   }
 
   private doConnect(): void {
-    this.onStatus?.("connecting");
+    this.onStatus?.('connecting');
     const url = wsStreamUrl(this.symbol);
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
       this.reconnectAttempts = 0;
-      this.onStatus?.("connected");
+      this.onStatus?.('connected');
     };
 
-    this.ws.onmessage = (event) => {
+    this.ws.onmessage = event => {
       try {
-        const data = JSON.parse(event.data as string) as Record<string, unknown>;
+        const data = JSON.parse(event.data as string) as Record<
+          string,
+          unknown
+        >;
         if (data.error) {
-          this.onStatus?.("error");
+          this.onStatus?.('error');
           return;
         }
         if (
-          typeof data.symbol === "string" &&
-          typeof data.timestamp === "string" &&
-          typeof data.open === "number" &&
-          typeof data.close === "number"
+          typeof data.symbol === 'string' &&
+          typeof data.timestamp === 'string' &&
+          typeof data.open === 'number' &&
+          typeof data.close === 'number'
         ) {
           this.onCandle(data as unknown as OHLCVCandle);
         }
@@ -68,8 +75,11 @@ export class WSClient {
 
     this.ws.onclose = () => {
       this.ws = null;
-      this.onStatus?.("disconnected");
-      if (!this.intentionalClose && this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.onStatus?.('disconnected');
+      if (
+        !this.intentionalClose &&
+        this.reconnectAttempts < this.maxReconnectAttempts
+      ) {
         this.reconnectTimer = setTimeout(() => {
           this.reconnectAttempts++;
           this.doConnect();
@@ -78,7 +88,7 @@ export class WSClient {
     };
 
     this.ws.onerror = () => {
-      this.onStatus?.("error");
+      this.onStatus?.('error');
     };
   }
 
@@ -92,6 +102,6 @@ export class WSClient {
       this.ws.close();
       this.ws = null;
     }
-    this.onStatus?.("disconnected");
+    this.onStatus?.('disconnected');
   }
 }
