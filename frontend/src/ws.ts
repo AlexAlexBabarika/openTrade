@@ -59,7 +59,7 @@ export class WSClient {
           typeof data.open === "number" &&
           typeof data.close === "number"
         ) {
-          this.onCandle(data as OHLCVCandle);
+          this.onCandle(data as unknown as OHLCVCandle);
         }
       } catch {
         // ignore parse errors

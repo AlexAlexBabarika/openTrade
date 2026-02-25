@@ -26,14 +26,10 @@ wheels/
 # Node / frontend
 node_modules/
 frontend/dist/
-frontend/dist-electron/
 *.local
 .npm
 .eslintcache
 *.tsbuildinfo
-
-# Tauri / Rust
-tauri/target/
 
 # Environment
 .env

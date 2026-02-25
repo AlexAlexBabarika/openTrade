@@ -121,7 +121,6 @@ export function initApp(): void {
   let wsClient: WSClient | null = null;
   let lastCandles: OHLCVCandle[] = [];
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
-  let legendUpdateHandler: ((param: MouseEventParams | undefined) => void) | null = null;
 
   function setError(msg: string | null): void {
     errorEl.textContent = msg ?? '';
@@ -284,7 +283,6 @@ export function initApp(): void {
       setTooltipHtml(currentSymbol, formattedDate, formattedPrice, formattedVolume);
     };
 
-    legendUpdateHandler = updateLegend;
     chart.subscribeCrosshairMove(updateLegend);
 
     updateLegend(undefined);
@@ -389,9 +387,7 @@ export function initApp(): void {
         },
       );
       if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      // After upload, fetch data via stream or reuse: backend caches. We can open WS or call an endpoint that returns candles.
-      // Backend doesn't have GET /data/csv/{symbol}; we have WS that uses cache. So start stream to get cached CSV data.
+      await res.json();
       lastCandles = [];
       if (wsClient) wsClient.disconnect();
       wsClient = new WSClient({
