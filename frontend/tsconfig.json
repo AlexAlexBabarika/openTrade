@@ -20,8 +20,17 @@
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": true,
     "types": [
-      "svelte"
-    ]
+      "svelte",
+      "node"
+    ],
+    "paths": {
+      "$lib": [
+        "./src/lib"
+      ],
+      "$lib/*": [
+        "./src/lib/*"
+      ]
+    }
   },
   "include": [
     "src"
