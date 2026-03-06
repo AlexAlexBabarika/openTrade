@@ -118,16 +118,18 @@
   loadYfinance().catch(() => {});
 </script>
 
-<Header
-  bind:symbol
-  bind:period
-  bind:interval
-  bind:source
-  bind:autoRefresh
-  {connectionStatus}
-  onload={loadYfinance}
-  onstream={startStream}
-  oncsvupload={handleCsvUpload}
-/>
-<ErrorMessage message={errorMessage} />
-<Chart {candles} {symbol} />
+<div class="flex flex-col h-screen bg-background">
+  <Header
+    bind:symbol
+    bind:period
+    bind:interval
+    bind:source
+    bind:autoRefresh
+    {connectionStatus}
+    onload={loadYfinance}
+    onstream={startStream}
+    oncsvupload={handleCsvUpload}
+  />
+  <ErrorMessage message={errorMessage} />
+  <Chart {candles} {symbol} />
+</div>
