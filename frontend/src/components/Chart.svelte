@@ -18,7 +18,6 @@
     addAreaSeries,
   } from '../lib/chart';
   import type { OHLCVCandle } from '../lib/types';
-  import * as Card from '$lib/components/ui/card';
 
   let {
     candles = [] as OHLCVCandle[],
@@ -177,22 +176,20 @@
   });
 </script>
 
-<Card.Root class="flex-1 m-4 overflow-hidden flex flex-col pt-0 relative z-0">
-  <Card.Content class="p-0 flex-1 relative flex flex-col">
-    <div class="flex-1 min-h-[400px] relative w-full" bind:this={containerEl}>
-      {#if showLegend}
-        <div
-          class="absolute left-4 top-4 z-10 text-sm font-light text-foreground pointer-events-none font-sans leading-[18px]"
-        >
-          <div class="text-2xl my-1 font-medium">{legendName}</div>
-          <div class="text-[22px] my-1 font-semibold">{legendPrice}</div>
-          <div class="text-muted-foreground">{legendDate}</div>
-          <div class="text-muted-foreground">Volume: {legendVolume}</div>
-        </div>
-      {/if}
-    </div>
-  </Card.Content>
-</Card.Root>
+<div class="flex-1 flex flex-col relative z-0 w-full overflow-hidden">
+  <div class="flex-1 min-h-[400px] relative w-full" bind:this={containerEl}>
+    {#if showLegend}
+      <div
+        class="absolute left-4 top-4 z-10 text-sm font-light text-foreground pointer-events-none font-sans leading-[18px]"
+      >
+        <div class="text-2xl my-1 font-medium">{legendName}</div>
+        <div class="text-[22px] my-1 font-semibold">{legendPrice}</div>
+        <div class="text-muted-foreground">{legendDate}</div>
+        <div class="text-muted-foreground">Volume: {legendVolume}</div>
+      </div>
+    {/if}
+  </div>
+</div>
 
 <style>
   /* lightweight-charts injects canvas elements that need full sizing */
