@@ -1,13 +1,5 @@
-import {
-  createChart,
-  CrosshairMode,
-  ColorType,
-} from 'lightweight-charts';
-import type {
-  IChartApi,
-  ISeriesApi,
-  LineData,
-} from 'lightweight-charts';
+import { createChart, CrosshairMode, ColorType } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, LineData } from 'lightweight-charts';
 import { isoToChartTime } from './chartAdapters';
 
 export function createChartContainer(parent: HTMLElement): IChartApi {
