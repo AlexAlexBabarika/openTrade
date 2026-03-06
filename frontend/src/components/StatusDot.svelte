@@ -11,14 +11,14 @@
   };
 
   const dotColor: Record<ConnectionStatus, string> = {
-    connecting: 'bg-text-muted',
-    connected: 'bg-green',
-    disconnected: 'bg-text-muted',
-    error: 'bg-red',
+    connecting: 'bg-muted-foreground',
+    connected: 'bg-primary',
+    disconnected: 'bg-muted-foreground',
+    error: 'bg-destructive',
   };
 </script>
 
-<span class="text-xs text-text-muted flex items-center gap-1.5">
+<span class="text-xs text-muted-foreground flex items-center gap-1.5">
   <span class="w-2 h-2 rounded-full {dotColor[status]}"></span>
   {labels[status]}
 </span>
