@@ -23,17 +23,19 @@ from backend.database import create_db_and_tables
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # This creates tables on startup
     create_db_and_tables()
     yield
 
+
 app = FastAPI(
     title="OpenTrade API",
     description="OHLCV data API with yfinance and CSV sources, WebSocket streaming",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -169,6 +171,10 @@ async def ws_stream(websocket: WebSocket, symbol: str) -> None:
             await websocket.send_json({"error": str(e)})
         except Exception:
             pass
+
+
 # Mount static files (must be at the end of the file to capture all remaining routes)
 if FRONTEND_DIST.is_dir():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+    app.mount(
+        "/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend"
+    )

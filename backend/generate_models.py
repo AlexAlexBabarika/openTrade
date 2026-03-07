@@ -9,22 +9,25 @@ Prerequisites:
 Usage:
   python backend/generate_models.py
 """
+
 import os
 import subprocess
 import sys
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://user:password@localhost:5432/opentrade"
+    "DATABASE_URL", "postgresql://user:password@localhost:5432/opentrade"
 )
 
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "db_models.py")
 
 result = subprocess.run(
     [
-        sys.executable, "-m", "sqlacodegen",
+        sys.executable,
+        "-m",
+        "sqlacodegen",
         DATABASE_URL,
-        "--generator", "dataclasses",
+        "--generator",
+        "dataclasses",
     ],
     capture_output=True,
     text=True,
