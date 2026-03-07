@@ -12,17 +12,33 @@ from pathlib import Path
 from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 
 from backend import cache
 from backend.data_sources import load_csv, load_yfinance
 from backend.indicators import sma
 from backend.models import OHLCVCandle, OHLCVCandleList
 from backend.websocket import stream_candles
+from backend.database import create_db_and_tables
+
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # This creates tables on startup
+    create_db_and_tables()
+    
+    # Mount frontend if dist exists
+    if FRONTEND_DIST.is_dir():
+        app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+    
+    yield
 
 app = FastAPI(
     title="OpenTrade API",
     description="OHLCV data API with yfinance and CSV sources, WebSocket streaming",
     version="1.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -32,17 +48,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
-
-
-@app.on_event("startup")
-def _mount_frontend() -> None:
-    """Serve the built frontend as static files when the dist folder exists."""
-    if FRONTEND_DIST.is_dir():
-        app.mount(
-            "/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend"
-        )
 
 
 @app.get("/health")
