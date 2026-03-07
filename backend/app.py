@@ -27,11 +27,6 @@ FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 async def lifespan(app: FastAPI):
     # This creates tables on startup
     create_db_and_tables()
-    
-    # Mount frontend if dist exists
-    if FRONTEND_DIST.is_dir():
-        app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
-    
     yield
 
 app = FastAPI(
@@ -174,3 +169,6 @@ async def ws_stream(websocket: WebSocket, symbol: str) -> None:
             await websocket.send_json({"error": str(e)})
         except Exception:
             pass
+# Mount static files (must be at the end of the file to capture all remaining routes)
+if FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")

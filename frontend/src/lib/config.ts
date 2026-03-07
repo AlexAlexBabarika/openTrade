@@ -4,12 +4,18 @@
  */
 export const API_BASE =
   typeof window !== 'undefined' &&
-  (window as unknown as { __API_BASE__?: string }).__API_BASE__ != null
-    ? (window as unknown as { __API_BASE__: string }).__API_BASE__
-    : 'http://127.0.0.1:8000';
+    (window as any).__API_BASE__
+    ? (window as any).__API_BASE__
+    : '';
 
 export function wsStreamUrl(symbol: string): string {
-  const base = API_BASE.replace(/^http/, 'ws');
+  let base = API_BASE;
+  if (!base && typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    base = `${proto}//${window.location.host}`;
+  } else if (base) {
+    base = base.replace(/^http/, 'ws');
+  }
   return `${base}/ws/stream/${encodeURIComponent(symbol)}`;
 }
 
