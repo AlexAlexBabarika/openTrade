@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "culori": "^4.0.2",
     "lightweight-charts": "^4.1.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7"
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "@tailwindcss/vite": "^4.2.1",
+    "@types/culori": "^4.0.1",
     "@types/node": "^25.3.0",
     "@vitest/coverage-v8": "4.0.18",
     "bits-ui": "^1.0.0-next.78",
