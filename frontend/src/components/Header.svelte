@@ -51,7 +51,7 @@
 </script>
 
 <div
-  class="flex items-center gap-4 px-4 py-3 bg-background border-b border-border flex-wrap relative z-[100]"
+  class="flex items-center gap-4 px-4 py-3 bg-background border-b border-border flex-wrap relative z-40"
 >
   <div class="w-32">
     <Input type="text" placeholder="Symbol (e.g. AAPL)" bind:value={symbol} />
