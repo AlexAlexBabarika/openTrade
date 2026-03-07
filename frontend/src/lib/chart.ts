@@ -155,14 +155,23 @@ export function syncChartTheme(
   const textColor = getCssVarColor('--foreground', '#d1d4dc');
   const borderColor = getCssVarColor('--border', '#404040');
 
+  const parsedBorderColor = parse(borderColor);
+  let gridLineColor = borderColor;
+  if (parsedBorderColor) {
+    const formatted = formatRgb({ ...parsedBorderColor, alpha: 0.125 });
+    if (formatted) {
+      gridLineColor = formatted;
+    }
+  }
+
   chart.applyOptions({
     layout: {
       background: { type: ColorType.Solid, color: bgColor },
       textColor: textColor,
     },
     grid: {
-      vertLines: { color: borderColor + '20' },
-      horzLines: { color: borderColor + '20' },
+      vertLines: { color: gridLineColor },
+      horzLines: { color: gridLineColor },
     },
     rightPriceScale: {
       borderColor: borderColor,
