@@ -16,6 +16,7 @@
     addCandlestickSeries,
     addVolumeSeries,
     addAreaSeries,
+    syncChartTheme,
   } from '../lib/chart';
   import type { OHLCVCandle } from '../lib/types';
 
@@ -29,6 +30,7 @@
   let candleSeries: ISeriesApi<'Candlestick'> | null = null;
   let areaSeries: ISeriesApi<'Area'> | null = null;
   let volumeSeries: ISeriesApi<'Histogram'> | null = null;
+  let themeObserver: MutationObserver | null = null;
 
   // Legend state
   let legendName = $state('');
@@ -159,10 +161,25 @@
       updateChartData(candles);
     }
     window.addEventListener('resize', handleResize);
+
+    // Watch for theme changes on the html element
+    themeObserver = new MutationObserver(() => {
+      if (chart) {
+        syncChartTheme(chart, candleSeries, areaSeries);
+      }
+    });
+
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
   });
 
   onDestroy(() => {
     window.removeEventListener('resize', handleResize);
+    if (themeObserver) {
+      themeObserver.disconnect();
+    }
     if (chart) {
       chart.remove();
       chart = null;
