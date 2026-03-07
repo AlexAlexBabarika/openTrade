@@ -79,8 +79,8 @@ export function createChartContainer(parent: HTMLElement): IChartApi {
       textColor: textColor,
     },
     grid: {
-      vertLines: { color: borderColor + '20' }, // adding transparency
-      horzLines: { color: borderColor + '20' },
+      vertLines: { color: borderColor }, // adding transparency
+      horzLines: { color: borderColor },
     },
     rightPriceScale: {
       borderColor: borderColor,
