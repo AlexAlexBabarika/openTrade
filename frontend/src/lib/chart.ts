@@ -27,23 +27,31 @@ export function getCssVarColor(
   }
 
   if (!value) {
-    console.warn(`[Chart] Variable ${variableName} not found. Using fallback ${fallback}`);
+    console.warn(
+      `[Chart] Variable ${variableName} not found. Using fallback ${fallback}`,
+    );
     return fallback;
   }
 
   // Robust OKLCH parsing via RegEx to handle raw values and space/comma separation
-  const oklchMatch = value.match(/(?:oklch\()?([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[/\s,]\s*([\d.%]+))?\)?/);
+  const oklchMatch = value.match(
+    /(?:oklch\()?([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[/\s,]\s*([\d.%]+))?\)?/,
+  );
 
   if (oklchMatch) {
     const [_, l, c, h, a] = oklchMatch;
     try {
-      const alpha = a ? (a.includes('%') ? parseFloat(a) / 100 : parseFloat(a)) : 1;
+      const alpha = a
+        ? a.includes('%')
+          ? parseFloat(a) / 100
+          : parseFloat(a)
+        : 1;
       const color = formatRgb({
         mode: 'oklch',
         l: parseFloat(l),
         c: parseFloat(c),
         h: parseFloat(h),
-        alpha
+        alpha,
       });
       if (color) return color;
     } catch (e) {
@@ -62,7 +70,9 @@ export function getCssVarColor(
     // Ignore
   }
 
-  console.warn(`[Chart] Could not parse color "${value}" for ${variableName}. Using fallback ${fallback}`);
+  console.warn(
+    `[Chart] Could not parse color "${value}" for ${variableName}. Using fallback ${fallback}`,
+  );
   return fallback;
 }
 
@@ -79,8 +89,8 @@ export function createChartContainer(parent: HTMLElement): IChartApi {
       textColor: textColor,
     },
     grid: {
-      vertLines: { color: borderColor + '20' }, // adding transparency
-      horzLines: { color: borderColor + '20' },
+      vertLines: { color: borderColor }, // adding transparency
+      horzLines: { color: borderColor },
     },
     rightPriceScale: {
       borderColor: borderColor,
@@ -134,7 +144,10 @@ export function addCandlestickSeries(
 
 export function addAreaSeries(chart: IChartApi): ISeriesApi<'Area'> {
   const topColor = getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
-  const bottomColor = getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)');
+  const bottomColor = getCssVarColor(
+    '--area-bottom-color',
+    'rgba(56, 33, 110, 0.05)',
+  );
 
   const series = chart.addAreaSeries({
     lastValueVisible: false,
@@ -155,14 +168,23 @@ export function syncChartTheme(
   const textColor = getCssVarColor('--foreground', '#d1d4dc');
   const borderColor = getCssVarColor('--border', '#404040');
 
+  const parsedBorderColor = parse(borderColor);
+  let gridLineColor = borderColor;
+  if (parsedBorderColor) {
+    const formatted = formatRgb({ ...parsedBorderColor, alpha: 0.125 });
+    if (formatted) {
+      gridLineColor = formatted;
+    }
+  }
+
   chart.applyOptions({
     layout: {
       background: { type: ColorType.Solid, color: bgColor },
       textColor: textColor,
     },
     grid: {
-      vertLines: { color: borderColor + '20' },
-      horzLines: { color: borderColor + '20' },
+      vertLines: { color: gridLineColor },
+      horzLines: { color: gridLineColor },
     },
     rightPriceScale: {
       borderColor: borderColor,
@@ -186,8 +208,14 @@ export function syncChartTheme(
   }
 
   if (areaSeries) {
-    const topColor = getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
-    const bottomColor = getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)');
+    const topColor = getCssVarColor(
+      '--area-top-color',
+      'rgba(56, 33, 110, 0.5)',
+    );
+    const bottomColor = getCssVarColor(
+      '--area-bottom-color',
+      'rgba(56, 33, 110, 0.05)',
+    );
     areaSeries.applyOptions({
       topColor: topColor,
       bottomColor: bottomColor,
