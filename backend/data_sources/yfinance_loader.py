@@ -35,12 +35,14 @@ def load_yfinance(
             ts = ts.astimezone(timezone.utc).replace(tzinfo=None)
         else:
             ts = ts.replace(tzinfo=timezone.utc) if hasattr(ts, "replace") else ts
-        rows.append({
-            "Date": ts,
-            "Open": float(row.get("Open", 0)),
-            "High": float(row.get("High", 0)),
-            "Low": float(row.get("Low", 0)),
-            "Close": float(row.get("Close", 0)),
-            "Volume": float(row.get("Volume", 0)),
-        })
+        rows.append(
+            {
+                "Date": ts,
+                "Open": float(row.get("Open", 0)),
+                "High": float(row.get("High", 0)),
+                "Low": float(row.get("Low", 0)),
+                "Close": float(row.get("Close", 0)),
+                "Volume": float(row.get("Volume", 0)),
+            }
+        )
     return normalize_rows(rows, symbol)

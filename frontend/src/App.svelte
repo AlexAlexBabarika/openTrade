@@ -1,0 +1,135 @@
+<script lang="ts">
+  import { onDestroy } from 'svelte';
+  import Header from './components/Header.svelte';
+  import ErrorMessage from './components/ErrorMessage.svelte';
+  import Chart from './components/Chart.svelte';
+  import { API_BASE, yfinanceUrl } from './lib/config';
+  import { WSClient } from './lib/ws';
+  import type { ConnectionStatus } from './lib/ws';
+  import type { OHLCVCandle } from './lib/types';
+
+  type DataSource = 'yfinance' | 'csv';
+
+  let symbol = $state('AAPL');
+  let period = $state('1mo');
+  let interval = $state('1d');
+  let source = $state<DataSource>('yfinance');
+  let autoRefresh = $state(false);
+
+  let errorMessage = $state<string | null>(null);
+  let connectionStatus = $state<ConnectionStatus>('disconnected');
+  let candles = $state<OHLCVCandle[]>([]);
+  let wsClient: WSClient | null = null;
+  let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
+
+  async function loadYfinance(): Promise<void> {
+    const sym = symbol.trim();
+    if (!sym) {
+      errorMessage = 'Enter a symbol';
+      return;
+    }
+    errorMessage = null;
+    try {
+      const res = await fetch(yfinanceUrl(sym, period, interval));
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      candles = data.candles ?? [];
+    } catch (e) {
+      errorMessage = e instanceof Error ? e.message : 'Failed to load';
+    }
+  }
+
+  function startStream(): void {
+    const sym = symbol.trim();
+    if (!sym) {
+      errorMessage = 'Enter a symbol';
+      return;
+    }
+    errorMessage = null;
+    if (wsClient) wsClient.disconnect();
+    const streamCandles: OHLCVCandle[] = [];
+    wsClient = new WSClient({
+      symbol: sym,
+      onCandle: c => {
+        streamCandles.push(c);
+        candles = [...streamCandles];
+      },
+      onStatus: s => {
+        connectionStatus = s;
+      },
+      reconnectDelayMs: 3000,
+      maxReconnectAttempts: 10,
+    });
+    wsClient.connect();
+  }
+
+  async function handleCsvUpload(file: File): Promise<void> {
+    const sym = symbol.trim() || 'CSV';
+    errorMessage = null;
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await fetch(
+        `${API_BASE}/data/csv?symbol=${encodeURIComponent(sym)}`,
+        { method: 'POST', body: form },
+      );
+      if (!res.ok) throw new Error(await res.text());
+      await res.json();
+      candles = [];
+      if (wsClient) wsClient.disconnect();
+      const streamCandles: OHLCVCandle[] = [];
+      wsClient = new WSClient({
+        symbol: sym,
+        onCandle: c => {
+          streamCandles.push(c);
+          candles = [...streamCandles];
+        },
+        onStatus: s => {
+          connectionStatus = s;
+        },
+      });
+      wsClient.connect();
+    } catch (e) {
+      errorMessage = e instanceof Error ? e.message : 'Upload failed';
+    }
+  }
+
+  // Auto-refresh effect
+  $effect(() => {
+    if (refreshIntervalId) {
+      clearInterval(refreshIntervalId);
+      refreshIntervalId = null;
+    }
+    if (autoRefresh) {
+      refreshIntervalId = setInterval(() => {
+        if (source === 'yfinance') {
+          loadYfinance().catch(() => {});
+        }
+      }, 60_000);
+    }
+  });
+
+  onDestroy(() => {
+    if (refreshIntervalId) clearInterval(refreshIntervalId);
+    if (wsClient) wsClient.disconnect();
+  });
+
+  // Initial load
+  loadYfinance().catch(() => {});
+</script>
+
+<div class="flex flex-col h-screen bg-background">
+  <Header
+    bind:symbol
+    bind:period
+    bind:interval
+    bind:source
+    bind:autoRefresh
+    {connectionStatus}
+    onload={loadYfinance}
+    onstream={startStream}
+    oncsvupload={handleCsvUpload}
+  />
+  <ErrorMessage message={errorMessage} />
+  <Chart {candles} {symbol} />
+</div>

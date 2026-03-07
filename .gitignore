@@ -13,9 +13,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-parts/
+/lib/
+/lib64/
+/parts/
 sdist/
 var/
 wheels/
@@ -26,14 +26,10 @@ wheels/
 # Node / frontend
 node_modules/
 frontend/dist/
-frontend/dist-electron/
 *.local
 .npm
 .eslintcache
 *.tsbuildinfo
-
-# Tauri / Rust
-tauri/target/
 
 # Environment
 .env
@@ -54,3 +50,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Coverage
+coverage/

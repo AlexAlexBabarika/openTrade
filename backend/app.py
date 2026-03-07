@@ -1,6 +1,9 @@
 """
 FastAPI backend: REST + WebSocket for OHLCV data.
 Standalone runnable (uvicorn backend.app:app).
+
+In production the built frontend (frontend/dist/) can be served as static
+files by mounting it on "/" — see the startup event below.
 """
 
 import tempfile
@@ -8,6 +11,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from backend import cache
 from backend.data_sources import load_csv, load_yfinance
@@ -28,6 +32,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+
+@app.on_event("startup")
+def _mount_frontend() -> None:
+    """Serve the built frontend as static files when the dist folder exists."""
+    if FRONTEND_DIST.is_dir():
+        app.mount(
+            "/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend"
+        )
 
 
 @app.get("/health")
@@ -85,6 +100,7 @@ async def csv_preview_endpoint(
     Request body: multipart form with 'file' and optional 'max_rows'.
     """
     from backend.data_sources.csv_loader import csv_preview
+
     content = await file.read()
     suffix = Path(file.filename or "data.csv").suffix or ".csv"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -95,7 +111,9 @@ async def csv_preview_endpoint(
         # Serialize rows for JSON (datetime -> str)
         out_rows = []
         for r in rows:
-            out_rows.append({k: str(v) if hasattr(v, "isoformat") else v for k, v in r.items()})
+            out_rows.append(
+                {k: str(v) if hasattr(v, "isoformat") else v for k, v in r.items()}
+            )
         return {"columns": columns, "preview": out_rows}
     finally:
         Path(tmp_path).unlink(missing_ok=True)

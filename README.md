@@ -1,27 +1,25 @@
 # OpenTrade
 
-A TradingView-like desktop trading application with a **Python FastAPI backend**, **Electron + TypeScript frontend**, and **Tauri** wrapper. Data sources: **yfinance** and **CSV** (polars). Unified OHLCV schema, WebSocket streaming, and optional SMA indicator.
+A TradingView-style web trading application with a **Python FastAPI backend** and **TypeScript frontend**. Data sources: **yfinance** and **CSV** (polars). Unified OHLCV schema, WebSocket streaming, and optional SMA indicator.
 
 ## Architecture
 
 ```
-[Tauri Wrapper]
-   └── Electron App (UI) / or Tauri webview
-          └── WebSocket client
+Browser (any modern browser)
+   └── Vite-built SPA (TypeScript + Lightweight Charts)
+          └── fetch / WebSocket
                  ⇄
-         FastAPI Python Backend
+         FastAPI Python Backend (Uvicorn)
             ├── yfinance loader
             ├── CSV loader (polars)
             ├── data normalizer
-            └── websocket broadcaster
+            └── WebSocket broadcaster
 ```
 
 ## Prerequisites
 
 - **Python 3.11+** with venv recommended
 - **Node.js 18+** and npm
-- **Rust** (for Tauri; install from https://rustup.rs)
-- **Tauri CLI** (optional): `cargo install tauri-cli`
 
 ## Quick Start
 
@@ -32,31 +30,26 @@ From the project root:
 ```bash
 ./run.sh              # start backend + Vite frontend (open http://localhost:5173)
 ./run.sh --install    # install pip + npm deps, then start
-./run.sh --electron   # start backend + Electron (Vite + Electron window)
 ```
 
 The script starts the FastAPI backend in the background and the frontend in the foreground; pressing Ctrl+C stops both.
 
 ### 1. Backend (standalone)
 
-Backend can run independently for development or production.
-
 ```bash
-cd openTrade
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r backend/requirements.txt
-# From project root so `backend` is a package
 export PYTHONPATH="${PWD}"
 python run_backend.py
 ```
 
 Server: **http://127.0.0.1:8000**
 
-- API docs: http://127.0.0.1:8000/docs  
-- Health: http://127.0.0.1:8000/health  
+- API docs: http://127.0.0.1:8000/docs
+- Health: http://127.0.0.1:8000/health
 
-### 2. Frontend (dev in browser or Electron)
+### 2. Frontend (dev)
 
 ```bash
 cd frontend
@@ -64,37 +57,22 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 (ensure backend is running on 8000).
+Open http://localhost:5173 (ensure backend is running on 8000). The Vite dev server proxies `/data`, `/ws`, and `/health` to the backend automatically.
 
-**Electron (dev):**
-
-```bash
-cd frontend
-npm run electron:dev
-```
-
-Starts Vite and then Electron; backend must be running separately.
-
-### 3. Tauri (desktop app: backend + frontend)
-
-Tauri spawns the Python backend and loads the frontend; it kills the backend on exit.
+### 3. Production build
 
 ```bash
-# From project root
-cd openTrade
-pip install -r backend/requirements.txt
-cd frontend && npm install && npm run build && cd ..
-cd tauri
-cargo tauri build
+cd frontend && npm run build
+python run_backend.py
 ```
 
-Run the built app from `tauri/target/release/` or:
+FastAPI serves the built frontend from `frontend/dist/` as static files. The entire app is available at http://127.0.0.1:8000.
+
+### 4. Docker
 
 ```bash
-cargo tauri dev
+docker compose up --build    # everything on http://localhost:8000
 ```
-
-For `tauri dev`, the config starts the frontend dev server; start the backend in another terminal (`python run_backend.py`) or rely on Tauri to spawn it (Tauri spawns backend from `run_backend.py` when the app starts).
 
 ## API Overview
 
@@ -123,15 +101,15 @@ All data is normalized to:
 }
 ```
 
-- Timestamps: UTC, ISO8601  
-- Column aliases: Date/Datetime/time → `timestamp`; Open/o → `open`; High/h → `high`; Low/l → `low`; Close/c → `close`; Volume/v → `volume`
+- Timestamps: UTC, ISO8601
+- Column aliases: Date/Datetime/time -> `timestamp`; Open/o -> `open`; High/h -> `high`; Low/l -> `low`; Close/c -> `close`; Volume/v -> `volume`
 
 ## Project Layout
 
 ```
 openTrade/
 ├── backend/
-│   ├── app.py              # FastAPI app, routes, WebSocket
+│   ├── app.py              # FastAPI app, routes, WebSocket, static file serving
 │   ├── models.py           # Pydantic OHLCV models
 │   ├── normalizer.py       # Column normalization, UTC timestamps
 │   ├── cache.py            # In-memory OHLCV cache
@@ -142,14 +120,15 @@ openTrade/
 │   │   └── csv_loader.py   # polars, auto-detect columns
 │   └── requirements.txt
 ├── frontend/
-│   ├── electron/           # Electron main & preload
-│   ├── src/                # TS, chart, WebSocket client
+│   ├── src/                # TypeScript, chart, WebSocket client
+│   ├── public/             # Static assets (fonts, etc.)
 │   ├── index.html
+│   ├── vite.config.ts      # Vite config with API proxy
 │   └── package.json
-├── tauri/                  # Tauri 2 app (spawns backend, loads frontend)
-│   ├── src/
-│   └── tauri.conf.json
-├── run_backend.py          # Entry point for backend (used by Tauri)
+├── run_backend.py          # Entry point for backend
+├── run.sh                  # Start backend + frontend in one command
+├── Dockerfile              # Multi-stage build (Node + Python)
+├── docker-compose.yml      # Single-service compose
 └── README.md
 ```
 
@@ -160,7 +139,20 @@ openTrade/
 - **WebSocket**: `/ws/stream/{symbol}` streams cached candles progressively.
 - **SMA**: GET `/data/indicators/sma?symbol=...&period=20` returns candles plus SMA(20).
 - **CSV preview**: POST `/data/csv/preview` with file for column names and first rows.
-- **Frontend**: symbol input, timeframe/interval, data source (yfinance/CSV), Load / Stream WS / SMA(20), candlestick chart (Lightweight Charts), connection status, auto-reconnect on disconnect.
+- **Frontend**: symbol input, timeframe/interval, data source (yfinance/CSV), Load / Stream WS, candlestick + volume chart (Lightweight Charts), legend with price/volume/date, connection status, auto-reconnect, responsive resize.
+
+## Deployment
+
+**Option A — Single unit (recommended):** Build the frontend, then run the backend. FastAPI serves the SPA as static files.
+
+```bash
+cd frontend && npm run build && cd ..
+python run_backend.py
+```
+
+**Option B — Split:** Deploy `frontend/dist/` to Vercel/Netlify/Cloudflare Pages. Deploy the Python backend to Railway/Render/Fly.io. Set `window.__API_BASE__` to the backend URL in the hosting config.
+
+**Docker:** `docker compose up --build` runs everything on port 8000.
 
 ## Engineering Notes
 
@@ -168,4 +160,5 @@ openTrade/
 - No hardcoded CSV column names; normalization via `normalizer.py`.
 - Pydantic for strict validation; type hints throughout.
 - Async FastAPI; WebSocket streams data progressively.
-- Tauri runs from project root so `run_backend.py` and `backend` are found; Python must be on PATH.
+- CORS is configured to allow all origins for development flexibility.
+- Frontend uses no native APIs; runs in any modern browser.

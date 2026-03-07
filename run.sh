@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # OpenTrade: run backend + frontend in one command.
-# Usage: ./run.sh [--install] [--electron]
+# Usage: ./run.sh [--install]
 #   --install  install deps (pip + npm) before starting
-#   --electron start Electron after frontend is up (requires backend already running)
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,12 +37,6 @@ run_frontend() {
   npm run dev
 }
 
-# --- Electron (optional, after frontend is up in another terminal or background) ---
-run_electron() {
-  cd "$ROOT/frontend"
-  npm run electron:dev
-}
-
 # --- Install ---
 do_install() {
   echo "Installing dependencies..."
@@ -60,11 +53,9 @@ do_install() {
 
 # --- Parse args ---
 INSTALL=false
-ELECTRON=false
 for arg in "$@"; do
   case "$arg" in
     --install)  INSTALL=true ;;
-    --electron) ELECTRON=true ;;
   esac
 done
 
@@ -100,10 +91,5 @@ for i in {1..30}; do
   sleep 0.5
 done
 
-if "$ELECTRON"; then
-  echo "Starting frontend + Electron..."
-  run_electron
-else
-  echo "Starting frontend on http://localhost:5173 ..."
-  run_frontend
-fi
+echo "Starting frontend on http://localhost:5173 ..."
+run_frontend
