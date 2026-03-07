@@ -95,6 +95,13 @@
     --sidebar-accent-foreground: 0.21 0.006 285.885;
     --sidebar-border: 0.92 0.004 286.32;
     --sidebar-ring: 0.841 0.238 128.85;
+
+    --up-color: 0.648 0.2 131.684;
+    /* Matches --primary */
+    --down-color: 0.577 0.245 27.325;
+    /* Matches --destructive */
+    --area-top-color: 0.648 0.2 131.684 / 50%;
+    --area-bottom-color: 0.648 0.2 131.684 / 5%;
   }
 
   .dark {
@@ -112,7 +119,7 @@
     --muted-foreground: 0.705 0.015 286.067;
     --accent: 0.274 0.006 286.033;
     --accent-foreground: 0.985 0 0;
-    --destructive: 0.704 0.191 22.216;
+    --destructive: 0.577 0.245 27.325;
     --border: 1 0 0 / 10%;
     --input: 1 0 0 / 15%;
     --ring: 0.405 0.101 131.063;
@@ -129,6 +136,13 @@
     --sidebar-accent-foreground: 0.985 0 0;
     --sidebar-border: 1 0 0 / 10%;
     --sidebar-ring: 0.405 0.101 131.063;
+
+    --up-color: 0.648 0.2 131.684;
+    /* Matches --primary */
+    --down-color: 0.577 0.245 27.325;
+    /* Matches --destructive */
+    --area-top-color: 0.326 0.1261 291.57 / 50%;
+    --area-bottom-color: 0.326 0.1261 291.57 / 5%;
   }
 }
 
