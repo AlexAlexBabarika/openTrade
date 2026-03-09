@@ -6,6 +6,7 @@ In production the built frontend (frontend/dist/) can be served as static
 files by mounting it on "/" — see the startup event below.
 """
 
+import logging
 import tempfile
 from pathlib import Path
 
@@ -21,13 +22,23 @@ from backend.models import OHLCVCandle, OHLCVCandleList
 from backend.websocket import stream_candles
 from backend.database import create_db_and_tables
 
+logger = logging.getLogger(__name__)
+
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # This creates tables on startup
-    create_db_and_tables()
+    try:
+        create_db_and_tables()
+        logger.info("Database tables initialized successfully.")
+    except Exception as e:
+        logger.warning(
+            "Could not connect to the database: %s. "
+            "The app will start, but DB-backed features will be unavailable. "
+            "Make sure Postgres is running (e.g. `docker compose up db -d`).",
+            e,
+        )
     yield
 
 
