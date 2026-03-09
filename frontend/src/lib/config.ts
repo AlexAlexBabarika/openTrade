@@ -1,11 +1,17 @@
+declare global {
+  interface Window {
+    __API_BASE__?: string;
+  }
+}
+
 /**
  * Backend URL. Override at runtime by setting window.__API_BASE__ before app init,
  * or fall back to same-origin /api when served by FastAPI, or localhost for dev.
  */
 export const API_BASE =
   typeof window !== 'undefined' &&
-    (window as any).__API_BASE__
-    ? (window as any).__API_BASE__
+    window.__API_BASE__
+    ? window.__API_BASE__
     : '';
 
 export function wsStreamUrl(symbol: string): string {
