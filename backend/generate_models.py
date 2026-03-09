@@ -15,7 +15,7 @@ import subprocess
 import sys
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://user:password@localhost:5432/opentrade"
+    "DATABASE_URL", "postgresql://user:password@localhost:5433/opentrade"
 )
 
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "db_models.py")
