@@ -1,1 +1,2 @@
 black>=25.0.0
+sqlacodegen[postgresql]>=4.0.2
