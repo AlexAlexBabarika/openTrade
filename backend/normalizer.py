@@ -32,8 +32,29 @@ def _normalize_column_name(name: str) -> str | None:
     return None
 
 
+def _is_null_timestamp(value: Any) -> bool:
+    """Return True if value represents a null/unparseable timestamp."""
+    if value is None:
+        return True
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return True
+    try:
+        import pandas as pd
+        if pd.isna(value):
+            return True
+    except ImportError:
+        pass
+    return False
+
+
 def _parse_timestamp(value: Any) -> datetime:
     """Parse value to UTC datetime. Returns naive UTC."""
+    if _is_null_timestamp(value):
+        raise ValueError(
+            "Invalid timestamp: null/NaT/unparseable value. "
+            "The CSV contains dates that could not be parsed. "
+            "Check date format (e.g. YYYY-MM-DD, DD/MM/YYYY) or ensure no empty/invalid cells in the date column."
+        )
     if isinstance(value, datetime):
         dt = value
     elif isinstance(value, (int, float)):
