@@ -35,6 +35,12 @@ class AuthSessionResponse(BaseModel):
     user: AuthUserInfo
 
 
+class AuthSignupPendingResponse(BaseModel):
+    """Response when signup succeeds but email confirmation is required (202)."""
+
+    message: str
+
+
 class AuthSessionUserResponse(BaseModel):
     """Response for GET /auth/session: current user info."""
 

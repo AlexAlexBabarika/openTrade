@@ -14,6 +14,7 @@ from backend.auth_models import (
     AuthLoginRequest,
     AuthSessionResponse,
     AuthSessionUserResponse,
+    AuthSignupPendingResponse,
     AuthSignupRequest,
     AuthUserInfo,
 )
@@ -42,10 +43,19 @@ def _auth_response_from_supabase(response) -> AuthSessionResponse:
     )
 
 
-@router.post("/signup", response_model=AuthSessionResponse)
+@router.post(
+    "/signup",
+    response_model=AuthSessionResponse,
+    responses={
+        202: {
+            "model": AuthSignupPendingResponse,
+            "description": "Email confirmation required. Check your email to confirm your account, then log in.",
+        },
+    },
+)
 def signup(body: AuthSignupRequest):
     """
-    Create a new user account. Returns access_token and refresh_token.
+    Create a new user account. Returns access_token and refresh_token on success.
     If email confirmation is required, returns 202 with a message to check email.
     """
     supabase = require_supabase_client()
@@ -63,12 +73,10 @@ def signup(body: AuthSignupRequest):
         return _auth_response_from_supabase(response)
     # Signup succeeded but no session (e.g. email confirmation required)
     if response.user:
-        return JSONResponse(
-            status_code=202,
-            content={
-                "message": "Check your email to confirm your account, then log in."
-            },
+        pending = AuthSignupPendingResponse(
+            message="Check your email to confirm your account, then log in."
         )
+        return JSONResponse(status_code=202, content=pending.model_dump())
     raise HTTPException(status_code=400, detail="Signup failed")
 
 
