@@ -7,6 +7,8 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
+from fastapi import HTTPException, status
+
 if TYPE_CHECKING:
     from supabase import Client
 
@@ -40,13 +42,14 @@ def get_supabase_client() -> "Client | None":
 
 def require_supabase_client() -> "Client":
     """
-    Return the Supabase client, or raise RuntimeError if not configured.
+    Return the Supabase client, or raise HTTP 503 if not configured.
     Use for auth endpoints that must have Supabase available.
     """
     client = get_supabase_client()
     if client is None:
-        raise RuntimeError(
-            "Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Auth is not configured on this server. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
         )
     return client
 
