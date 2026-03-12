@@ -2,7 +2,7 @@
 User profile endpoints backed by Supabase public.profiles.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from backend.auth_deps import get_current_user
 from backend.auth_models import (
