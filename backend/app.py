@@ -23,6 +23,7 @@ from backend.models import OHLCVCandle, OHLCVCandleList
 from backend.websocket import stream_candles
 from backend.supabase_client import get_supabase_client, is_supabase_configured
 from backend.auth_routes import router as auth_router
+from backend.user_routes import router as user_router
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(user_router)
 
 
 @app.get("/health")
