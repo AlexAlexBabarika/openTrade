@@ -3,8 +3,9 @@ Auth endpoints: signup, login, logout, session.
 All auth is proxied through the backend to Supabase.
 """
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 
+from backend.auth_deps import get_current_user
 from backend.auth_models import (
     AuthLoginRequest,
     AuthSessionResponse,
@@ -15,14 +16,6 @@ from backend.auth_models import (
 from backend.supabase_client import require_supabase_client
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-def _extract_bearer_token(request: Request) -> str | None:
-    """Extract Bearer token from Authorization header."""
-    auth = request.headers.get("Authorization")
-    if auth and auth.startswith("Bearer "):
-        return auth[7:].strip()
-    return None
 
 
 def _auth_response_from_supabase(response) -> AuthSessionResponse:
@@ -92,24 +85,9 @@ def logout():
 
 
 @router.get("/session", response_model=AuthSessionUserResponse)
-def get_session(request: Request):
+def get_session(user: AuthUserInfo = Depends(get_current_user)):
     """
     Return the current user if the Bearer token is valid.
     Requires Authorization: Bearer <access_token>.
     """
-    token = _extract_bearer_token(request)
-    if not token:
-        raise HTTPException(
-            status_code=401, detail="Missing or invalid Authorization header"
-        )
-    supabase = require_supabase_client()
-    try:
-        response = supabase.auth.get_user(token)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    user = getattr(response, "user", response) if response else None
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    return AuthSessionUserResponse(
-        user=AuthUserInfo(id=str(user.id), email=getattr(user, "email", None))
-    )
+    return AuthSessionUserResponse(user=user)
