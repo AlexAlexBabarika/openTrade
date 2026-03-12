@@ -4,6 +4,7 @@ Maps various column names (Date, Open, o, etc.) to canonical: timestamp, open, h
 Ensures UTC ISO8601 timestamps.
 """
 
+import math
 from datetime import datetime, timezone
 from typing import Any
 
@@ -71,8 +72,10 @@ def _parse_timestamp(value: Any) -> datetime:
 
 
 def _to_float(value: Any) -> float:
-    """Coerce to float for OHLCV numeric fields."""
+    """Coerce to float for OHLCV numeric fields. NaN/inf from pandas/polars become 0.0."""
     if value is None or (isinstance(value, str) and value.strip() == ""):
+        return 0.0
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
         return 0.0
     if isinstance(value, (int, float)):
         return float(value)
