@@ -3,8 +3,11 @@ Auth endpoints: signup, login, logout, session.
 All auth is proxied through the backend to Supabase.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.auth_deps import get_current_user
 from backend.auth_models import (
@@ -14,7 +17,11 @@ from backend.auth_models import (
     AuthSignupRequest,
     AuthUserInfo,
 )
-from backend.supabase_client import require_supabase_client
+from backend.supabase_client import get_supabase_client, require_supabase_client
+
+logger = logging.getLogger(__name__)
+
+_bearer_scheme = HTTPBearer(auto_error=False)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -71,7 +78,8 @@ def login(body: AuthLoginRequest):
         response = supabase.auth.sign_in_with_password(
             {"email": body.email, "password": body.password}
         )
-    except Exception as e:
+    except Exception as exc:
+        logger.warning("Supabase sign_in_with_password failed: %s", exc)
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not response.session or not response.user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
@@ -79,11 +87,20 @@ def login(body: AuthLoginRequest):
 
 
 @router.post("/logout")
-def logout():
+def logout(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+):
     """
-    Log out. Client should discard stored tokens.
-    Server-side session invalidation is optional; JWT remains valid until expiry.
+    Revoke the current session in Supabase and instruct the client to discard tokens.
+    Requires Authorization: Bearer <access_token>.
     """
+    if credentials:
+        supabase = get_supabase_client()
+        if supabase:
+            try:
+                supabase.auth.admin.sign_out(credentials.credentials)
+            except Exception as exc:
+                logger.warning("Supabase sign-out failed: %s", exc)
     return {"message": "Logged out"}
 
 
