@@ -1,10 +1,10 @@
-import { get, writable } from 'svelte/store';
+import { writable } from 'svelte/store';
 import {
   apiFetch,
-  clearTokens,
+  clearAccessToken,
   getAccessToken,
   readErrorMessage,
-  setTokens,
+  setAccessToken,
 } from './api';
 
 export type AuthUser = {
@@ -14,7 +14,6 @@ export type AuthUser = {
 
 type AuthSessionPayload = {
   access_token: string;
-  refresh_token: string;
   expires_at: number | null;
   user: AuthUser;
 };
@@ -25,16 +24,12 @@ type SignupPendingPayload = {
 
 export type AuthState = {
   user: AuthUser | null;
-  accessToken: string | null;
   loading: boolean;
   error: string | null;
 };
 
-const initialToken = getAccessToken();
-
 export const authState = writable<AuthState>({
   user: null,
-  accessToken: initialToken,
   loading: false,
   error: null,
 });
@@ -48,20 +43,18 @@ function setError(error: string | null): void {
 }
 
 function setAuthenticated(payload: AuthSessionPayload): void {
-  setTokens(payload.access_token, payload.refresh_token);
+  setAccessToken(payload.access_token);
   authState.set({
     user: payload.user,
-    accessToken: payload.access_token,
     loading: false,
     error: null,
   });
 }
 
 function clearAuthState(): void {
-  clearTokens();
+  clearAccessToken();
   authState.set({
     user: null,
-    accessToken: null,
     loading: false,
     error: null,
   });
@@ -134,7 +127,7 @@ export async function signup(
 }
 
 export async function logout(): Promise<void> {
-  const token = get(authState).accessToken;
+  const token = getAccessToken();
   try {
     await apiFetch('/auth/logout', { method: 'POST' }, Boolean(token));
   } finally {
@@ -142,17 +135,16 @@ export async function logout(): Promise<void> {
   }
 }
 
+/**
+ * Attempt to restore a session using the HttpOnly refresh_token cookie.
+ * Called on app startup / page reload. The cookie is sent automatically
+ * by the browser (same-origin), so no JS token handling is needed.
+ */
 export async function fetchSession(): Promise<AuthUser | null> {
-  const token = getAccessToken();
-  if (!token) {
-    clearAuthState();
-    return null;
-  }
-
   setLoading(true);
   setError(null);
   try {
-    const response = await apiFetch('/auth/session', { method: 'GET' }, true);
+    const response = await apiFetch('/auth/refresh', { method: 'POST' });
     if (response.status === 401) {
       clearAuthState();
       return null;
@@ -160,19 +152,11 @@ export async function fetchSession(): Promise<AuthUser | null> {
     if (!response.ok) {
       throw new Error(await readErrorMessage(response));
     }
-    const payload = (await response.json()) as { user: AuthUser };
-    authState.set({
-      user: payload.user,
-      accessToken: token,
-      loading: false,
-      error: null,
-    });
+    const payload = (await response.json()) as AuthSessionPayload;
+    setAuthenticated(payload);
     return payload.user;
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Failed to fetch session';
-    setError(message);
-    setLoading(false);
-    throw error;
+    clearAuthState();
+    return null;
   }
 }

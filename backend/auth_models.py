@@ -27,10 +27,11 @@ class AuthUserInfo(BaseModel):
 
 
 class AuthSessionResponse(BaseModel):
-    """Response for login/signup: tokens and user."""
+    """Response for login/signup/refresh: access token and user info.
+    The refresh token is delivered via HttpOnly cookie, not in the body.
+    """
 
     access_token: str
-    refresh_token: str
     expires_at: int | None = None
     user: AuthUserInfo
 
