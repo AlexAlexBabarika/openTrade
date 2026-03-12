@@ -50,7 +50,7 @@ def _user_from_token(token: str) -> AuthUserInfo:
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = getattr(response, "user", response) if response else None
+    user = getattr(response, "user", None) if response else None
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
