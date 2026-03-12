@@ -31,7 +31,7 @@ def load_csv(
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(str(path))
-    df = pd.read_csv(path, parse_dates=True)
+    df = pd.read_csv(path)
     if df.empty:
         return []
     time_col = _detect_time_column(df)
@@ -64,7 +64,10 @@ def csv_preview(
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(str(path))
-    df = pd.read_csv(path, parse_dates=True, nrows=max_rows + 10)
+    df = pd.read_csv(path, nrows=max_rows + 10)
+    time_col = _detect_time_column(df)
+    if time_col is not None:
+        df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
     columns = list(df.columns)
     rows = df.head(max_rows).to_dict(orient="records")
     return columns, rows

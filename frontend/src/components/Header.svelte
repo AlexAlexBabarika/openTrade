@@ -7,7 +7,7 @@
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Label } from '$lib/components/ui/label';
   import * as Select from '$lib/components/ui/select';
-  import { authState, logout, type AuthUser } from '$lib/auth';
+  import { authState, logout } from '$lib/auth';
 
   type DataSource = 'yfinance' | 'csv';
 
@@ -34,11 +34,7 @@
   } = $props();
 
   let authDialogOpen = $state(false);
-  let currentUser: AuthUser | null = $state(null);
-
-  authState.subscribe(s => {
-    currentUser = s.user;
-  });
+  let currentUser = $derived($authState.user);
 
   async function handleLogout() {
     await logout();

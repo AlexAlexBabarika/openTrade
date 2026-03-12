@@ -116,7 +116,9 @@
   });
 
   onMount(() => {
-    fetchSession().catch(() => {});
+    fetchSession().catch((err) => {
+      console.warn('Session fetch failed:', err);
+    });
   });
 
   // Initial load

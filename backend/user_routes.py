@@ -39,7 +39,10 @@ def _fetch_profile_row(user_id: str) -> dict | None:
         .maybe_single()
         .execute()
     )
-    return response.data
+    data = response.data
+    if isinstance(data, list):
+        return data[0] if data else None
+    return data
 
 
 @router.get("/profile", response_model=UserProfileResponse)
@@ -47,10 +50,11 @@ def get_profile(user: AuthUserInfo = Depends(get_current_user)):
     """
     Return the authenticated user's profile.
     """
-    supabase = require_supabase_client()
-    # Ensure profile row exists even if auth trigger did not run (e.g. imports/migrations).
-    supabase.table("profiles").upsert(
-        {"id": user.id, "email": user.email}, on_conflict="id"
-    ).execute()
     row = _fetch_profile_row(user.id)
+    if row is None:
+        supabase = require_supabase_client()
+        supabase.table("profiles").upsert(
+            {"id": user.id, "email": user.email}, on_conflict="id"
+        ).execute()
+        row = _fetch_profile_row(user.id)
     return UserProfileResponse(profile=_to_profile(user, row))

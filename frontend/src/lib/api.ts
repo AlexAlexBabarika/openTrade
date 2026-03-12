@@ -61,8 +61,17 @@ export async function readErrorMessage(response: Response): Promise<string> {
   try {
     const contentType = response.headers.get('content-type') ?? '';
     if (contentType.includes('application/json')) {
-      const data = await response.json();
+      const data = (await response.json()) as {
+        detail?: string | Array<{ msg?: string }>;
+        message?: string;
+      };
       if (typeof data?.detail === 'string') return data.detail;
+      if (Array.isArray(data?.detail) && data.detail.length > 0) {
+        const msgs = data.detail
+          .map((d) => d.msg)
+          .filter((m): m is string => typeof m === 'string');
+        return msgs.length > 0 ? msgs.join('; ') : 'Validation error';
+      }
       if (typeof data?.message === 'string') return data.message;
     }
     const text = await response.text();
