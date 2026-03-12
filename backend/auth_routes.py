@@ -4,6 +4,7 @@ All auth is proxied through the backend to Supabase.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 
 from backend.auth_deps import get_current_user
 from backend.auth_models import (
@@ -51,9 +52,11 @@ def signup(body: AuthSignupRequest):
         return _auth_response_from_supabase(response)
     # Signup succeeded but no session (e.g. email confirmation required)
     if response.user:
-        raise HTTPException(
+        return JSONResponse(
             status_code=202,
-            detail="Check your email to confirm your account, then log in.",
+            content={
+                "message": "Check your email to confirm your account, then log in."
+            },
         )
     raise HTTPException(status_code=400, detail="Signup failed")
 
