@@ -46,7 +46,7 @@ def _auth_response_from_supabase(response) -> AuthSessionResponse:
 def signup(body: AuthSignupRequest):
     """
     Create a new user account. Returns access_token and refresh_token.
-    If email confirmation is required, returns 200 with a message to check email.
+    If email confirmation is required, returns 202 with a message to check email.
     """
     supabase = require_supabase_client()
     try:
