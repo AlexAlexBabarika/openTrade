@@ -21,8 +21,12 @@ def _to_profile(user: AuthUserInfo, row: dict | None) -> UserProfile:
     return UserProfile(
         id=str(row.get("id", user.id)),
         email=row.get("email", user.email),
-        created_at=str(row["created_at"]) if row.get("created_at") is not None else None,
-        updated_at=str(row["updated_at"]) if row.get("updated_at") is not None else None,
+        created_at=(
+            str(row["created_at"]) if row.get("created_at") is not None else None
+        ),
+        updated_at=(
+            str(row["updated_at"]) if row.get("updated_at") is not None else None
+        ),
     )
 
 
