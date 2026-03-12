@@ -81,7 +81,7 @@ export async function login(
     const message = error instanceof Error ? error.message : 'Login failed';
     setError(message);
     setLoading(false);
-    throw error;
+    throw new Error(message);
   }
 }
 
@@ -122,7 +122,7 @@ export async function signup(
     const message = error instanceof Error ? error.message : 'Signup failed';
     setError(message);
     setLoading(false);
-    throw error;
+    throw new Error(message);
   }
 }
 
