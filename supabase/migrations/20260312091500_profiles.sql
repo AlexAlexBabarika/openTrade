@@ -1,5 +1,5 @@
 -- User profile data linked to Supabase Auth users.
-create table if not exists public.profiles (
+create table public.profiles (
     id uuid primary key references auth.users(id) on delete cascade,
     email text unique,
     created_at timestamptz not null default now(),
