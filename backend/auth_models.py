@@ -45,3 +45,25 @@ class AuthSessionUserResponse(BaseModel):
     """Response for GET /auth/session: current user info."""
 
     user: AuthUserInfo
+
+
+class UserProfile(BaseModel):
+    """User profile stored in Supabase public.profiles."""
+
+    id: str
+    email: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class UserProfileResponse(BaseModel):
+    """Response for GET/PATCH /user/profile."""
+
+    profile: UserProfile
+
+
+class UserProfileUpdateRequest(BaseModel):
+    """Request body for PATCH /user/profile."""
+
+    display_name: str | None = Field(default=None, max_length=120)
+    avatar_url: str | None = Field(default=None, max_length=500)
