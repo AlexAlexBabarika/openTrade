@@ -60,10 +60,3 @@ class UserProfileResponse(BaseModel):
     """Response for GET/PATCH /user/profile."""
 
     profile: UserProfile
-
-
-class UserProfileUpdateRequest(BaseModel):
-    """Request body for PATCH /user/profile."""
-
-    display_name: str | None = Field(default=None, max_length=120)
-    avatar_url: str | None = Field(default=None, max_length=500)
