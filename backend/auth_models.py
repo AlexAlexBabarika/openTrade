@@ -57,6 +57,6 @@ class UserProfile(BaseModel):
 
 
 class UserProfileResponse(BaseModel):
-    """Response for GET/PATCH /user/profile."""
+    """Response for GET /user/profile."""
 
     profile: UserProfile
