@@ -76,11 +76,15 @@ def optional_current_user(
 ) -> AuthUserInfo | None:
     """
     FastAPI dependency: return the user if a valid token is present, else None.
-    Does not raise on missing or invalid tokens.
+    Does not raise on missing credentials or 401/403 auth failures.
+    Re-raises 5xx (e.g. 503 when Supabase is not configured) so misconfigurations
+    are not silently downgraded to anonymous.
     """
     if not credentials:
         return None
     try:
         return _user_from_token(credentials.credentials)
-    except HTTPException:
-        return None
+    except HTTPException as exc:
+        if exc.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN):
+            return None
+        raise
