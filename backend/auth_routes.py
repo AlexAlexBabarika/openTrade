@@ -53,8 +53,12 @@ def signup(body: AuthSignupRequest):
         response = supabase.auth.sign_up(
             {"email": body.email, "password": body.password}
         )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as exc:
+        logger.error("Supabase sign_up failed: %s", exc)
+        raise HTTPException(
+            status_code=400,
+            detail="Signup failed",
+        )
     if response.session and response.user:
         return _auth_response_from_supabase(response)
     # Signup succeeded but no session (e.g. email confirmation required)
