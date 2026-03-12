@@ -21,7 +21,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.auth_models import AuthUserInfo
-from backend.supabase_client import get_supabase_client, is_supabase_configured
+from backend.supabase_client import get_supabase_client
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -31,11 +31,6 @@ def _user_from_token(token: str) -> AuthUserInfo:
     Verify a Supabase JWT and return the user.
     Raises HTTPException 401 on any failure.
     """
-    if not is_supabase_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Auth is not configured on this server",
-        )
     supabase = get_supabase_client()
     if supabase is None:
         raise HTTPException(
