@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
@@ -16,6 +17,54 @@
   let loading = $state(false);
   let error = $state<string | null>(null);
   let info = $state<string | null>(null);
+
+  let dialogEl: HTMLDivElement | undefined = $state();
+
+  const FOCUSABLE =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function getFocusableElements(container: HTMLElement): HTMLElement[] {
+    return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE));
+  }
+
+  function trapFocus(e: KeyboardEvent) {
+    if (e.key !== 'Tab' || !dialogEl) return;
+    const target = e.target as Node;
+    if (!dialogEl.contains(target)) return;
+    const focusable = getFocusableElements(dialogEl);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
+  function handleEscape(e: KeyboardEvent) {
+    if (e.key === 'Escape') close();
+  }
+
+  $effect(() => {
+    if (!open) return;
+    const onKeydown = (e: KeyboardEvent) => {
+      handleEscape(e);
+      trapFocus(e);
+    };
+    window.addEventListener('keydown', onKeydown);
+    tick().then(() => {
+      const first = dialogEl && getFocusableElements(dialogEl)[0];
+      first?.focus();
+    });
+    return () => window.removeEventListener('keydown', onKeydown);
+  });
 
   function reset() {
     email = '';
@@ -68,20 +117,23 @@
   function handleBackdropClick(e: MouseEvent) {
     if (e.target === e.currentTarget) close();
   }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape') close();
-  }
 </script>
 
 {#if open}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+    role="presentation"
     onclick={handleBackdropClick}
-    onkeydown={handleKeydown}
+    onkeydown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        close();
+      }
+    }}
   >
     <div
+      bind:this={dialogEl}
       class="relative w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg"
       role="dialog"
       aria-modal="true"
