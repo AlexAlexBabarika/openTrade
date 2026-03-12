@@ -83,9 +83,9 @@ def _build_session_response(sb_response) -> AuthSessionResponse:
 )
 def signup(body: AuthSignupRequest, response: Response):
     """
-    Create a new user account. Returns access_token on success (refresh_token
-    is set as an HttpOnly cookie).
-    If email confirmation is required, returns 202 with a message.
+    Create a new user account. On success without email confirmation:
+    returns 200 with access_token (refresh_token set as HttpOnly cookie).
+    If email confirmation is required: returns 202 Accepted with a message.
     """
     supabase = require_supabase_client()
     try:
