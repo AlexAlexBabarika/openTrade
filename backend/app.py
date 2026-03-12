@@ -22,6 +22,7 @@ from backend.indicators import sma
 from backend.models import OHLCVCandle, OHLCVCandleList
 from backend.websocket import stream_candles
 from backend.supabase_client import get_supabase_client, is_supabase_configured
+from backend.auth_routes import router as auth_router
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
 
 
 @app.get("/health")
