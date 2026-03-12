@@ -5,9 +5,5 @@ services:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql://user:password@db:5432/opentrade
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-
-volumes:
-  postgres_data:
