@@ -1,11 +1,13 @@
 <script lang="ts">
   import StatusDot from './StatusDot.svelte';
+  import AuthDialog from './AuthDialog.svelte';
   import type { ConnectionStatus } from '../lib/ws';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Checkbox } from '$lib/components/ui/checkbox';
   import { Label } from '$lib/components/ui/label';
   import * as Select from '$lib/components/ui/select';
+  import { authState, logout, type AuthUser } from '$lib/auth';
 
   type DataSource = 'yfinance' | 'csv';
 
@@ -30,6 +32,17 @@
     onstream: () => void;
     oncsvupload: (file: File) => void;
   } = $props();
+
+  let authDialogOpen = $state(false);
+  let currentUser: AuthUser | null = $state(null);
+
+  authState.subscribe(s => {
+    currentUser = s.user;
+  });
+
+  async function handleLogout() {
+    await logout();
+  }
 
   let fileInput: HTMLInputElement | undefined = $state();
   let fileName = $state('Choose CSV');
@@ -121,4 +134,21 @@
   </div>
 
   <StatusDot status={connectionStatus} />
+
+  <div class="ml-auto flex items-center gap-2">
+    {#if currentUser}
+      <span class="text-sm text-muted-foreground truncate max-w-[160px]">
+        {currentUser.email}
+      </span>
+      <Button variant="ghost" size="sm" onclick={handleLogout}>
+        Sign out
+      </Button>
+    {:else}
+      <Button variant="outline" size="sm" onclick={() => (authDialogOpen = true)}>
+        Sign in
+      </Button>
+    {/if}
+  </div>
 </div>
+
+<AuthDialog bind:open={authDialogOpen} />
