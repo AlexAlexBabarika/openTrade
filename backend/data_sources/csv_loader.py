@@ -39,6 +39,17 @@ def load_csv(
         raise ValueError(
             "CSV must have a date/time column (Date, Datetime, time, timestamp, dt, t)"
         )
+    # Validate timestamps before normalization: polars/try_parse_dates coerces
+    # unparseable values to null, which would fail later with a confusing error.
+    null_mask = df[time_col].is_null()
+    if null_mask.any():
+        bad_rows = [i for i, v in enumerate(null_mask.to_list()) if v]
+        sample = bad_rows[:5]
+        raise ValueError(
+            f"CSV has unparseable timestamps in {time_col} at row(s) {sample}{'...' if len(bad_rows) > 5 else ''}. "
+            f"Total invalid rows: {len(bad_rows)}. "
+            "Check date format (e.g. YYYY-MM-DD, DD/MM/YYYY) or ensure no empty/invalid cells."
+        )
     rows: list[dict[str, Any]] = df.to_dicts()
     return normalize_rows(rows, symbol)
 
