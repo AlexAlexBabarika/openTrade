@@ -32,7 +32,7 @@
 
   let currentKeyInfo = $derived(
     selectedProvider
-      ? existingKeys.find((k) => k.provider === selectedProvider) ?? null
+      ? (existingKeys.find(k => k.provider === selectedProvider) ?? null)
       : null,
   );
   let hasExistingKey = $derived(currentKeyInfo !== null);
@@ -155,7 +155,7 @@
   }
 
   function providerLabel(value: string): string {
-    return API_KEY_PROVIDERS.find((p) => p.value === value)?.label ?? value;
+    return API_KEY_PROVIDERS.find(p => p.value === value)?.label ?? value;
   }
 </script>
 
@@ -165,7 +165,7 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
     role="presentation"
     onclick={handleBackdropClick}
-    onkeydown={(e) => {
+    onkeydown={e => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         close();
@@ -195,14 +195,8 @@
       <div class="flex flex-col gap-4">
         <!-- Provider select -->
         <div class="flex flex-col gap-1.5">
-          <Select.Root
-            type="single"
-            bind:value={selectedProvider}
-          >
-            <Select.Trigger
-              class="w-full"
-              aria-label="Select API provider"
-            >
+          <Select.Root type="single" bind:value={selectedProvider}>
+            <Select.Trigger class="w-full" aria-label="Select API provider">
               {#if selectedProvider}
                 {providerLabel(selectedProvider)}
               {:else}
@@ -214,8 +208,10 @@
                 <Select.Item value={provider.value}>
                   <div class="flex items-center justify-between w-full gap-2">
                     <span>{provider.label}</span>
-                    {#if existingKeys.find((k) => k.provider === provider.value)}
-                      <span class="text-xs text-muted-foreground ml-2">configured</span>
+                    {#if existingKeys.find(k => k.provider === provider.value)}
+                      <span class="text-xs text-muted-foreground ml-2"
+                        >configured</span
+                      >
                     {/if}
                   </div>
                 </Select.Item>
@@ -295,14 +291,18 @@
 
           {#if hasExistingKey && currentKeyInfo?.key_prefix}
             <p class="text-xs text-muted-foreground">
-              Current key: <span class="font-mono">{currentKeyInfo.key_prefix}</span>
+              Current key: <span class="font-mono"
+                >{currentKeyInfo.key_prefix}</span
+              >
             </p>
           {/if}
         </div>
 
         <!-- Error / success messages -->
         {#if error}
-          <div class="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <div
+            class="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
             {error}
           </div>
         {/if}
@@ -310,11 +310,15 @@
         <!-- Existing keys summary -->
         {#if existingKeys.length > 0}
           <div class="border-t border-border pt-3 mt-1">
-            <p class="text-xs text-muted-foreground mb-2 font-medium">Configured keys</p>
+            <p class="text-xs text-muted-foreground mb-2 font-medium">
+              Configured keys
+            </p>
             <div class="flex flex-col gap-1">
               {#each existingKeys as key}
                 <div class="flex items-center justify-between text-sm">
-                  <span class="text-card-foreground">{providerLabel(key.provider)}</span>
+                  <span class="text-card-foreground"
+                    >{providerLabel(key.provider)}</span
+                  >
                   <span class="font-mono text-xs text-muted-foreground">
                     {key.key_prefix ?? '•••'}
                   </span>
