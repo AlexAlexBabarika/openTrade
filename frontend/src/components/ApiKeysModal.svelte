@@ -97,10 +97,12 @@
 
   async function loadExistingKeys() {
     fetchingKeys = true;
+    error = null;
     try {
       existingKeys = await listApiKeys();
-    } catch {
+    } catch (err) {
       existingKeys = [];
+      error = err instanceof Error ? err.message : 'Failed to load API keys';
     } finally {
       fetchingKeys = false;
     }
