@@ -1,6 +1,7 @@
 <script lang="ts">
   import StatusDot from './StatusDot.svelte';
   import AuthDialog from './AuthDialog.svelte';
+  import ApiKeysModal from './ApiKeysModal.svelte';
   import type { ConnectionStatus } from '../lib/ws';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -34,6 +35,7 @@
   } = $props();
 
   let authDialogOpen = $state(false);
+  let apiKeysModalOpen = $state(false);
   let currentUser = $derived($authState.user);
 
   async function handleLogout() {
@@ -133,6 +135,9 @@
 
   <div class="ml-auto flex items-center gap-2">
     {#if currentUser}
+      <Button variant="outline" size="sm" onclick={() => (apiKeysModalOpen = true)}>
+        API Keys
+      </Button>
       <span class="text-sm text-muted-foreground truncate max-w-[160px]">
         {currentUser.email}
       </span>
@@ -148,3 +153,4 @@
 </div>
 
 <AuthDialog bind:open={authDialogOpen} />
+<ApiKeysModal bind:open={apiKeysModalOpen} />
