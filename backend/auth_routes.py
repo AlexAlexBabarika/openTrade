@@ -1,0 +1,125 @@
+"""
+Auth endpoints: signup, login, logout, session.
+All auth is proxied through the backend to Supabase.
+"""
+
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from backend.auth_deps import get_current_user
+from backend.auth_models import (
+    AuthLoginRequest,
+    AuthSessionResponse,
+    AuthSessionUserResponse,
+    AuthSignupPendingResponse,
+    AuthSignupRequest,
+    AuthUserInfo,
+)
+from backend.supabase_client import get_supabase_client, require_supabase_client
+
+logger = logging.getLogger(__name__)
+
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _auth_response_from_supabase(response) -> AuthSessionResponse:
+    """Build AuthSessionResponse from Supabase AuthResponse."""
+    session = response.session
+    user = response.user
+    if not session or not user:
+        raise HTTPException(
+            status_code=500, detail="Invalid auth response from Supabase"
+        )
+    return AuthSessionResponse(
+        access_token=session.access_token,
+        refresh_token=session.refresh_token,
+        expires_at=getattr(session, "expires_at", None),
+        user=AuthUserInfo(id=str(user.id), email=getattr(user, "email", None)),
+    )
+
+
+@router.post(
+    "/signup",
+    response_model=AuthSessionResponse,
+    responses={
+        202: {
+            "model": AuthSignupPendingResponse,
+            "description": "Email confirmation required. Check your email to confirm your account, then log in.",
+        },
+    },
+)
+def signup(body: AuthSignupRequest):
+    """
+    Create a new user account. Returns access_token and refresh_token on success.
+    If email confirmation is required, returns 202 with a message to check email.
+    """
+    supabase = require_supabase_client()
+    try:
+        response = supabase.auth.sign_up(
+            {"email": body.email, "password": body.password}
+        )
+    except Exception as exc:
+        logger.error("Supabase sign_up failed: %s", exc)
+        raise HTTPException(
+            status_code=400,
+            detail="Signup failed",
+        )
+    if response.session and response.user:
+        return _auth_response_from_supabase(response)
+    # Signup succeeded but no session (e.g. email confirmation required)
+    if response.user:
+        pending = AuthSignupPendingResponse(
+            message="Check your email to confirm your account, then log in."
+        )
+        return JSONResponse(status_code=202, content=pending.model_dump())
+    raise HTTPException(status_code=400, detail="Signup failed")
+
+
+@router.post("/login", response_model=AuthSessionResponse)
+def login(body: AuthLoginRequest):
+    """
+    Sign in with email and password. Returns access_token and refresh_token.
+    """
+    supabase = require_supabase_client()
+    try:
+        response = supabase.auth.sign_in_with_password(
+            {"email": body.email, "password": body.password}
+        )
+    except Exception as exc:
+        logger.warning("Supabase sign_in_with_password failed: %s", exc)
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not response.session or not response.user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return _auth_response_from_supabase(response)
+
+
+@router.post("/logout")
+def logout(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+):
+    """
+    Revoke the current session in Supabase and instruct the client to discard tokens.
+    Requires Authorization: Bearer <access_token>.
+    """
+    if credentials:
+        supabase = get_supabase_client()
+        if supabase:
+            try:
+                supabase.auth.admin.sign_out(credentials.credentials)
+            except Exception as exc:
+                logger.warning("Supabase sign-out failed: %s", exc)
+    return {"message": "Logged out"}
+
+
+@router.get("/session", response_model=AuthSessionUserResponse)
+def get_session(user: AuthUserInfo = Depends(get_current_user)):
+    """
+    Return the current user if the Bearer token is valid.
+    Requires Authorization: Bearer <access_token>.
+    """
+    return AuthSessionUserResponse(user=user)

@@ -1,16 +1,16 @@
 """
-CSV loader using polars. Auto-detects column names and normalizes to unified schema.
+CSV loader using pandas. Auto-detects column names and normalizes to unified schema.
 """
 
 from pathlib import Path
 from typing import Any
 
-import polars as pl
+import pandas as pd
 from backend.models import OHLCVCandle
 from backend.normalizer import normalize_rows
 
 
-def _detect_time_column(df: pl.DataFrame) -> str | None:
+def _detect_time_column(df: pd.DataFrame) -> str | None:
     """Return first column that normalizes to 'timestamp'."""
     from backend.normalizer import _normalize_column_name
 
@@ -25,14 +25,14 @@ def load_csv(
     symbol: str,
 ) -> list[OHLCVCandle]:
     """
-    Load OHLCV from CSV using polars.
+    Load OHLCV from CSV using pandas.
     Column names are auto-detected (Date, Open, o, etc.) and normalized.
     """
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(str(path))
-    df = pl.read_csv(path, try_parse_dates=True)
-    if df.is_empty():
+    df = pd.read_csv(path, parse_dates=True)
+    if df.empty:
         return []
     time_col = _detect_time_column(df)
     if time_col is None:
@@ -64,7 +64,7 @@ def csv_preview(
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(str(path))
-    df = pl.read_csv(path, try_parse_dates=True, n_rows=max_rows + 10)
+    df = pd.read_csv(path, parse_dates=True, nrows=max_rows + 10)
     columns = list(df.columns)
-    rows = df.head(max_rows).to_dicts()
+    rows = df.head(max_rows).to_dict(orient="records")
     return columns, rows

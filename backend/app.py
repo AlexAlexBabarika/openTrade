@@ -7,6 +7,7 @@ files by mounting it on "/" — see the startup event below.
 """
 
 import logging
+import os
 import tempfile
 from pathlib import Path
 
@@ -20,7 +21,8 @@ from backend.data_sources import load_csv, load_yfinance
 from backend.indicators import sma
 from backend.models import OHLCVCandle, OHLCVCandleList
 from backend.websocket import stream_candles
-from backend.database import create_db_and_tables
+from backend.supabase_client import get_supabase_client, is_supabase_configured
+from backend.auth_routes import router as auth_router
 
 logger = logging.getLogger(__name__)
 
@@ -29,16 +31,23 @@ FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    try:
-        create_db_and_tables()
-        logger.info("Database tables initialized successfully.")
-    except Exception as e:
+    if is_supabase_configured():
+        client = get_supabase_client()
+        if client:
+            logger.info("Supabase client initialized successfully.")
+        else:
+            logger.warning("Supabase credentials set but client creation failed.")
+    else:
+        if os.environ.get("SUPABASE_REQUIRED") == "1":
+            raise RuntimeError(
+                "SUPABASE_REQUIRED=1 but Supabase is not configured. "
+                "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+            )
         logger.warning(
-            "Could not connect to the database: %s. "
-            "The app will start, but DB-backed features will be unavailable. "
-            "Make sure Postgres is running (e.g. `docker compose up db -d`).",
-            e,
+            "Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY "
+            "for auth and user data. Auth features will be unavailable."
         )
+
     yield
 
 
@@ -52,10 +61,12 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
 
 
 @app.get("/health")
