@@ -64,7 +64,7 @@ def create_api_key(
         .select("id")
         .eq("user_id", user.id)
         .eq("provider", body.provider.value)
-        .maybe_single()
+        .limit(1)
         .execute()
     )
     if existing.data:
@@ -110,7 +110,7 @@ def update_api_key(
         .select("id")
         .eq("user_id", user.id)
         .eq("provider", provider.value)
-        .maybe_single()
+        .limit(1)
         .execute()
     )
     if not existing.data:
@@ -155,7 +155,7 @@ def delete_api_key(
         .select("id")
         .eq("user_id", user.id)
         .eq("provider", provider.value)
-        .maybe_single()
+        .limit(1)
         .execute()
     )
     if not existing.data:
