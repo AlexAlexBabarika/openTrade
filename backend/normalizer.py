@@ -40,6 +40,7 @@ def _is_null_timestamp(value: Any) -> bool:
         return True
     try:
         import pandas as pd
+
         if pd.isna(value):
             return True
     except ImportError:
