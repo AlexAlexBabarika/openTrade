@@ -45,6 +45,11 @@ create policy "api_key_audit_select_own"
 revoke all on public.api_keys from anon;
 revoke all on public.api_key_audit_log from anon;
 
+-- service_role (used by the backend with SUPABASE_SERVICE_ROLE_KEY) needs full access.
+-- It bypasses RLS but still requires table-level grants.
+grant all on public.api_keys to service_role;
+grant all on public.api_key_audit_log to service_role;
+
 -- Column-level grants: authenticated users cannot SELECT encrypted_key directly.
 -- They must use get_api_key_for_use() which audits each retrieval.
 revoke all on public.api_keys from authenticated;
@@ -147,7 +152,9 @@ $$;
 revoke all on function public.get_api_key_for_use(api_key_provider) from anon;
 grant execute on function public.get_api_key_for_use(api_key_provider) to authenticated;
 
--- Enforce user_id on insert (defense in depth; RLS also checks).
+-- Enforce user_id on insert when called from a user JWT session (authenticated role).
+-- When the backend inserts via service_role, auth.uid() is NULL (no sub claim in
+-- service_role JWTs), so we trust the user_id the backend already provided.
 create or replace function public.api_keys_enforce_user_id()
 returns trigger
 language plpgsql
@@ -155,7 +162,9 @@ security definer
 set search_path = public
 as $$
 begin
-  new.user_id := auth.uid();
+  if auth.uid() is not null then
+    new.user_id := auth.uid();
+  end if;
   return new;
 end;
 $$;
