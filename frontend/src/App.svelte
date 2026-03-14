@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import Header from './components/Header.svelte';
   import ErrorMessage from './components/ErrorMessage.svelte';
   import Chart from './components/Chart.svelte';
@@ -7,6 +7,7 @@
   import { WSClient } from './lib/ws';
   import type { ConnectionStatus } from './lib/ws';
   import type { OHLCVCandle } from './lib/types';
+  import { fetchSession } from './lib/auth';
 
   type DataSource = 'yfinance' | 'csv';
 
@@ -112,6 +113,12 @@
   onDestroy(() => {
     if (refreshIntervalId) clearInterval(refreshIntervalId);
     if (wsClient) wsClient.disconnect();
+  });
+
+  onMount(() => {
+    fetchSession().catch((err) => {
+      console.warn('Session fetch failed:', err);
+    });
   });
 
   // Initial load

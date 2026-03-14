@@ -12,9 +12,9 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials
 
-from backend.auth_deps import get_current_user
+from backend.auth_deps import _bearer_scheme, get_current_user
 from backend.auth_models import (
     AuthLoginRequest,
     AuthSessionResponse,
@@ -26,8 +26,6 @@ from backend.auth_models import (
 from backend.supabase_client import get_supabase_client, require_supabase_client
 
 logger = logging.getLogger(__name__)
-
-_bearer_scheme = HTTPBearer(auto_error=False)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -85,9 +83,9 @@ def _build_session_response(sb_response) -> AuthSessionResponse:
 )
 def signup(body: AuthSignupRequest, response: Response):
     """
-    Create a new user account. Returns access_token on success (refresh_token
-    is set as an HttpOnly cookie).
-    If email confirmation is required, returns 202 with a message.
+    Create a new user account. On success without email confirmation:
+    returns 200 with access_token (refresh_token set as HttpOnly cookie).
+    If email confirmation is required: returns 202 Accepted with a message.
     """
     supabase = require_supabase_client()
     try:

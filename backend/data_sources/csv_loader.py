@@ -31,7 +31,7 @@ def load_csv(
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(str(path))
-    df = pd.read_csv(path, parse_dates=True)
+    df = pd.read_csv(path)
     if df.empty:
         return []
     time_col = _detect_time_column(df)
@@ -39,18 +39,19 @@ def load_csv(
         raise ValueError(
             "CSV must have a date/time column (Date, Datetime, time, timestamp, dt, t)"
         )
-    # Validate timestamps before normalization: polars/try_parse_dates coerces
-    # unparseable values to null, which would fail later with a confusing error.
-    null_mask = df[time_col].is_null()
+    df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
+    # Validate timestamps before normalization: pd.to_datetime(..., errors="coerce")
+    # converts unparseable values to NaT, which would fail later with a confusing error.
+    null_mask = df[time_col].isnull()
     if null_mask.any():
-        bad_rows = [i for i, v in enumerate(null_mask.to_list()) if v]
+        bad_rows = [i for i, v in enumerate(null_mask.tolist()) if v]
         sample = bad_rows[:5]
         raise ValueError(
             f"CSV has unparseable timestamps in {time_col} at row(s) {sample}{'...' if len(bad_rows) > 5 else ''}. "
             f"Total invalid rows: {len(bad_rows)}. "
             "Check date format (e.g. YYYY-MM-DD, DD/MM/YYYY) or ensure no empty/invalid cells."
         )
-    rows: list[dict[str, Any]] = df.to_dicts()
+    rows: list[dict[str, Any]] = df.to_dict(orient="records")
     return normalize_rows(rows, symbol)
 
 
@@ -64,7 +65,10 @@ def csv_preview(
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(str(path))
-    df = pd.read_csv(path, parse_dates=True, nrows=max_rows + 10)
+    df = pd.read_csv(path, nrows=max_rows + 10)
+    time_col = _detect_time_column(df)
+    if time_col is not None:
+        df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
     columns = list(df.columns)
     rows = df.head(max_rows).to_dict(orient="records")
     return columns, rows
