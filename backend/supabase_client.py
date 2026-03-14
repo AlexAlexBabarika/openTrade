@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from fastapi import HTTPException, status
 
 if TYPE_CHECKING:
+    from postgrest import SyncPostgrestClient
     from supabase import Client
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
 
 _client: "Client | None" = None
+_service_postgrest: "SyncPostgrestClient | None" = None
 
 
 def get_supabase_client() -> "Client | None":
@@ -52,6 +54,31 @@ def require_supabase_client() -> "Client":
             detail="Auth is not configured on this server. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
         )
     return client
+
+
+def get_service_postgrest() -> "SyncPostgrestClient":
+    """Return a PostgREST client that always authenticates as service_role.
+
+    The shared Supabase client's .table() method is unsafe for data operations
+    because auth events (login, signup, token refresh) overwrite its Authorization
+    header with the user's JWT.  This dedicated client is immune to that.
+    """
+    global _service_postgrest
+    if _service_postgrest is not None:
+        return _service_postgrest
+
+    client = require_supabase_client()
+
+    from postgrest import SyncPostgrestClient
+
+    _service_postgrest = SyncPostgrestClient(
+        str(client.rest_url),
+        headers={
+            "apiKey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        },
+    )
+    return _service_postgrest
 
 
 def is_supabase_configured() -> bool:
