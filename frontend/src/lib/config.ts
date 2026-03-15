@@ -9,8 +9,7 @@ declare global {
  * or fall back to same-origin /api when served by FastAPI, or localhost for dev.
  */
 export const API_BASE =
-  typeof window !== 'undefined' &&
-    window.__API_BASE__
+  typeof window !== 'undefined' && window.__API_BASE__
     ? window.__API_BASE__
     : '';
 
