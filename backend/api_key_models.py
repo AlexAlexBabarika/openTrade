@@ -25,9 +25,9 @@ class ApiKeyUpdateRequest(BaseModel):
 class ApiKeyInfo(BaseModel):
     id: str
     provider: ApiKeyProvider
-    key_prefix: str | None = None
-    created_at: str | None = None
-    updated_at: str | None = None
+    key_prefix: str
+    created_at: str
+    updated_at: str
 
 
 class ApiKeyListResponse(BaseModel):
@@ -36,9 +36,9 @@ class ApiKeyListResponse(BaseModel):
 
 class ApiKeyAuditEntry(BaseModel):
     id: str
-    provider: str | None = None
+    provider: str
     action: str
-    created_at: str | None = None
+    created_at: str
 
 
 class ApiKeyAuditResponse(BaseModel):
