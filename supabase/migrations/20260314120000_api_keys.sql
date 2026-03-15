@@ -55,7 +55,7 @@ grant all on public.api_key_audit_log to service_role;
 revoke all on public.api_keys from authenticated;
 grant select (id, user_id, provider, key_prefix, created_at, updated_at)
     on public.api_keys to authenticated;
-grant insert (user_id, provider, encrypted_key, key_prefix)
+grant insert (provider, encrypted_key, key_prefix)
     on public.api_keys to authenticated;
 grant update (encrypted_key, key_prefix)
     on public.api_keys to authenticated;
