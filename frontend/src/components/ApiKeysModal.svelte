@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, onDestroy } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
@@ -124,6 +124,15 @@
     reset();
   }
 
+  let successTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  onDestroy(() => {
+    if (successTimeout !== null) {
+      clearTimeout(successTimeout);
+      successTimeout = null;
+    }
+  });
+
   function handleBackdropClick(e: MouseEvent) {
     if (e.target === e.currentTarget) close();
   }
@@ -144,8 +153,13 @@
       apiKeyInput = '';
       showKey = false;
       await loadExistingKeys();
-      setTimeout(() => {
+      if (successTimeout !== null) {
+        clearTimeout(successTimeout);
+        successTimeout = null;
+      }
+      successTimeout = setTimeout(() => {
         success = null;
+        successTimeout = null;
       }, 2000);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to save';
@@ -166,6 +180,8 @@
     role="presentation"
     onclick={handleBackdropClick}
     onkeydown={e => {
+      // Only close when the backdrop itself has focus, not when events bubble from children
+      if (e.target !== e.currentTarget) return;
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         close();
@@ -242,7 +258,6 @@
                   class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors text-xs select-none"
                   onclick={() => (showKey = !showKey)}
                   aria-label={showKey ? 'Hide API key' : 'Show API key'}
-                  tabindex={-1}
                 >
                   {showKey ? 'Hide' : 'Show'}
                 </button>
