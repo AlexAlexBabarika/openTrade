@@ -141,14 +141,10 @@ def refresh(request: Request, response: Response):
     except Exception as exc:
         logger.warning("Supabase refresh_session failed: %s", exc)
         _clear_refresh_cookie(response)
-        raise HTTPException(
-            status_code=401, detail="Invalid or expired refresh token"
-        )
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
     if not sb_response.session or not sb_response.user:
         _clear_refresh_cookie(response)
-        raise HTTPException(
-            status_code=401, detail="Invalid or expired refresh token"
-        )
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
     _set_refresh_cookie(response, sb_response.session.refresh_token)
     return _build_session_response(sb_response)
 
