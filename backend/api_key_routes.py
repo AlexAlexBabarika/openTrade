@@ -169,7 +169,7 @@ def delete_api_key(
     ).execute()
 
 
-@router.get("/audit", response_model=ApiKeyAuditResponse)
+@router.get("/audit/logs", response_model=ApiKeyAuditResponse)
 def list_audit_log(
     limit: int = 50,
     user: AuthUserInfo = Depends(get_current_user),
