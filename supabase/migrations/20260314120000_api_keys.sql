@@ -1,5 +1,3 @@
-create extension if not exists pgcrypto with schema extensions;
-
 create type public.api_key_provider as enum (
     'twelvedata',
     'alphavantage',
@@ -11,26 +9,24 @@ create table public.api_keys (
     user_id uuid not null references auth.users(id) on delete cascade,
     provider api_key_provider not null,
     encrypted_key bytea not null,
-    key_prefix text,
+    key_prefix text not null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     constraint api_keys_user_provider_unique unique (user_id, provider)
 );
 
--- Index for fast lookups by user.
-create index api_keys_user_id_idx on public.api_keys(user_id);
-
 -- Audit log for key access and mutations (compliance / intrusion detection).
 create table public.api_key_audit_log (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references auth.users(id) on delete cascade,
-    provider api_key_provider,
+    provider api_key_provider not null,
     action text not null check (action in ('insert', 'update', 'delete', 'retrieve')),
     created_at timestamptz not null default now()
 );
 
-create index api_key_audit_log_user_id_idx on public.api_key_audit_log(user_id);
-create index api_key_audit_log_created_at_idx on public.api_key_audit_log(created_at);
+-- Composite index for "user's audit entries ordered by time" queries.
+create index api_key_audit_log_user_created_idx
+    on public.api_key_audit_log(user_id, created_at desc);
 
 alter table public.api_key_audit_log enable row level security;
 
@@ -52,6 +48,7 @@ grant all on public.api_key_audit_log to service_role;
 
 -- Column-level grants: authenticated users cannot SELECT encrypted_key directly.
 -- They must use get_api_key_for_use() which audits each retrieval.
+-- user_id is intentionally excluded from INSERT: api_keys_enforce_user_id trigger sets it from auth.uid().
 revoke all on public.api_keys from authenticated;
 grant select (id, user_id, provider, key_prefix, created_at, updated_at)
     on public.api_keys to authenticated;
@@ -149,7 +146,7 @@ begin
 end;
 $$;
 
-revoke all on function public.get_api_key_for_use(api_key_provider) from anon;
+revoke all on function public.get_api_key_for_use(api_key_provider) from public;
 grant execute on function public.get_api_key_for_use(api_key_provider) to authenticated;
 
 -- Enforce user_id on insert when called from a user JWT session (authenticated role).
