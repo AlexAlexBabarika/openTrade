@@ -9,6 +9,7 @@
   import { Label } from '$lib/components/ui/label';
   import * as Select from '$lib/components/ui/select';
   import { authState, logout } from '$lib/auth';
+  import { LoaderCircle } from 'lucide-svelte';
 
   type DataSource = 'yfinance' | 'csv';
 
@@ -19,6 +20,7 @@
     source = $bindable('yfinance' as DataSource),
     autoRefresh = $bindable(false),
     connectionStatus = 'disconnected' as ConnectionStatus,
+    isLoading = false,
     onload = () => {},
     onstream = () => {},
     oncsvupload = (_file: File) => {},
@@ -29,6 +31,7 @@
     source: DataSource;
     autoRefresh: boolean;
     connectionStatus: ConnectionStatus;
+    isLoading: boolean;
     onload: () => void;
     onstream: () => void;
     oncsvupload: (file: File) => void;
@@ -118,7 +121,12 @@
     </div>
   {/if}
 
-  <Button onclick={handleLoad}>Load</Button>
+  <Button onclick={handleLoad} disabled={isLoading}>
+    {#if isLoading}
+      <LoaderCircle class="mr-1 h-4 w-4 animate-spin" />
+    {/if}
+    {isLoading ? 'Loading…' : 'Load'}
+  </Button>
   <Button variant="secondary" onclick={onstream}>Stream WS</Button>
 
   <div class="flex items-center space-x-2">

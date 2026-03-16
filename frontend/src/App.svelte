@@ -20,6 +20,7 @@
   let errorMessage = $state<string | null>(null);
   let connectionStatus = $state<ConnectionStatus>('disconnected');
   let candles = $state<OHLCVCandle[]>([]);
+  let isLoading = $state(false);
   let wsClient: WSClient | null = null;
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -30,6 +31,7 @@
       return;
     }
     errorMessage = null;
+    isLoading = true;
     try {
       const res = await fetch(yfinanceUrl(sym, period, interval));
       if (!res.ok) throw new Error(await res.text());
@@ -37,6 +39,8 @@
       candles = data.candles ?? [];
     } catch (e) {
       errorMessage = e instanceof Error ? e.message : 'Failed to load';
+    } finally {
+      isLoading = false;
     }
   }
 
@@ -67,6 +71,7 @@
   async function handleCsvUpload(file: File): Promise<void> {
     const sym = symbol.trim() || 'CSV';
     errorMessage = null;
+    isLoading = true;
     const form = new FormData();
     form.append('file', file);
     try {
@@ -92,6 +97,8 @@
       wsClient.connect();
     } catch (e) {
       errorMessage = e instanceof Error ? e.message : 'Upload failed';
+    } finally {
+      isLoading = false;
     }
   }
 
@@ -133,6 +140,7 @@
     bind:source
     bind:autoRefresh
     {connectionStatus}
+    {isLoading}
     onload={loadYfinance}
     onstream={startStream}
     oncsvupload={handleCsvUpload}
