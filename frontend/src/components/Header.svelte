@@ -1,12 +1,9 @@
 <script lang="ts">
-  import StatusDot from './StatusDot.svelte';
   import AuthDialog from './AuthDialog.svelte';
   import ApiKeysModal from './ApiKeysModal.svelte';
   import type { ConnectionStatus } from '../lib/ws';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
-  import { Checkbox } from '$lib/components/ui/checkbox';
-  import { Label } from '$lib/components/ui/label';
   import * as Select from '$lib/components/ui/select';
   import { authState, logout } from '$lib/auth';
   import { LoaderCircle } from 'lucide-svelte';
@@ -19,7 +16,6 @@
     interval = $bindable('1d'),
     source = $bindable('yfinance' as DataSource),
     autoRefresh = $bindable(false),
-    connectionStatus = 'disconnected' as ConnectionStatus,
     isLoading = false,
     onload = () => {},
     oncsvupload = (_file: File) => {},
