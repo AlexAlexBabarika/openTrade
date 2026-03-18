@@ -4,13 +4,13 @@ User profile endpoints backed by Supabase public.profiles.
 
 from fastapi import APIRouter, Depends
 
-from backend.auth_deps import get_current_user
-from backend.auth_models import (
+from backend.core.auth_deps import get_current_user
+from backend.models.auth_models import (
     AuthUserInfo,
     UserProfile,
     UserProfileResponse,
 )
-from backend.supabase_client import require_supabase_client
+from backend.core.supabase_client import require_supabase_client
 
 router = APIRouter(prefix="/user", tags=["user"])
 

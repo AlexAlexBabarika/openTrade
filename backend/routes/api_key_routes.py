@@ -11,7 +11,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from postgrest.exceptions import APIError
 
-from backend.api_key_models import (
+from backend.models.api_key_models import (
     ApiKeyAuditEntry,
     ApiKeyAuditResponse,
     ApiKeyCreateRequest,
@@ -20,10 +20,10 @@ from backend.api_key_models import (
     ApiKeyProvider,
     ApiKeyUpdateRequest,
 )
-from backend.auth_deps import get_current_user
-from backend.auth_models import AuthUserInfo
-from backend.encryption import encrypt_api_key, make_key_prefix
-from backend.supabase_client import get_service_postgrest
+from backend.core.auth_deps import get_current_user
+from backend.models.auth_models import AuthUserInfo
+from backend.core.encryption import encrypt_api_key, make_key_prefix
+from backend.core.supabase_client import get_service_postgrest
 
 logger = logging.getLogger(__name__)
 

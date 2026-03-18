@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 import yfinance as yf
-from backend.models import OHLCVCandle
-from backend.normalizer import normalize_rows
+from backend.market.models import OHLCVCandle
+from backend.market.normalizer import normalize_rows
 
 
 def load_yfinance(

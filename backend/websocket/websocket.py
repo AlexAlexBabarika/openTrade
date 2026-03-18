@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import WebSocket
 
-from backend.models import OHLCVCandle
+from backend.market.models import OHLCVCandle
 
 
 def candle_to_json(c: OHLCVCandle) -> dict[str, Any]:

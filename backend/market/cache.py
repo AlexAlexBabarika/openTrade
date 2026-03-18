@@ -4,7 +4,7 @@ In-memory cache for loaded OHLCV data (keyed by symbol and optional source id).
 
 from typing import Any
 
-from backend.models import OHLCVCandle
+from backend.market.models import OHLCVCandle
 
 # symbol -> list of candles (for REST/WS)
 _data_cache: dict[str, list[OHLCVCandle]] = {}
