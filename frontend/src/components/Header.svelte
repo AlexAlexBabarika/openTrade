@@ -45,7 +45,7 @@
   }
 
   let fileInput: HTMLInputElement | undefined = $state();
-  let fileName = $state('Choose CSV');
+  let fileName = $state('Choose file');
 
   function handleLoad() {
     if (source === 'csv') {
@@ -105,26 +105,18 @@
     </Select.Content>
   </Select.Root>
 
-  {#if source === 'csv'}
-    <div class="relative">
-      <input
-        type="file"
-        accept=".csv"
-        bind:this={fileInput}
-        onchange={handleFileChange}
-        class="absolute opacity-0 w-full h-full cursor-pointer z-10"
-      />
-      <Button variant="outline" class="pointer-events-none">
-        {fileName}
-      </Button>
-    </div>
-  {/if}
-
+  <input
+    type="file"
+    accept=".csv,text/csv"
+    class="hidden"
+    bind:this={fileInput}
+    onchange={handleFileChange}
+  />
   <Button onclick={handleLoad} disabled={isLoading}>
     {#if isLoading}
       <LoaderCircle class="mr-1 h-4 w-4 animate-spin" />
     {/if}
-    {isLoading ? 'Loading…' : 'Load'}
+    {isLoading ? 'Loading…' : source === 'csv' ? fileName : 'Load'}
   </Button>
 
   <div class="ml-auto flex items-center gap-2">
