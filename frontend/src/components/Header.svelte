@@ -22,7 +22,6 @@
     connectionStatus = 'disconnected' as ConnectionStatus,
     isLoading = false,
     onload = () => {},
-    onstream = () => {},
     oncsvupload = (_file: File) => {},
   }: {
     symbol: string;
@@ -46,7 +45,7 @@
   }
 
   let fileInput: HTMLInputElement | undefined = $state();
-  let fileName = $state('Choose CSV');
+  let fileName = $state('Choose file');
 
   function handleLoad() {
     if (source === 'csv') {
@@ -106,40 +105,19 @@
     </Select.Content>
   </Select.Root>
 
-  {#if source === 'csv'}
-    <div class="relative">
-      <input
-        type="file"
-        accept=".csv"
-        bind:this={fileInput}
-        onchange={handleFileChange}
-        class="absolute opacity-0 w-full h-full cursor-pointer z-10"
-      />
-      <Button variant="outline" class="pointer-events-none">
-        {fileName}
-      </Button>
-    </div>
-  {/if}
-
+  <input
+    type="file"
+    accept=".csv,text/csv"
+    class="hidden"
+    bind:this={fileInput}
+    onchange={handleFileChange}
+  />
   <Button onclick={handleLoad} disabled={isLoading}>
     {#if isLoading}
       <LoaderCircle class="mr-1 h-4 w-4 animate-spin" />
     {/if}
-    {isLoading ? 'Loading…' : 'Load'}
+    {isLoading ? 'Loading…' : source === 'csv' ? fileName : 'Load'}
   </Button>
-  <Button variant="secondary" onclick={onstream}>Stream WS</Button>
-
-  <div class="flex items-center space-x-2">
-    <Checkbox id="auto-refresh" bind:checked={autoRefresh} />
-    <Label
-      for="auto-refresh"
-      class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-    >
-      Auto-refresh 60s
-    </Label>
-  </div>
-
-  <StatusDot status={connectionStatus} />
 
   <div class="ml-auto flex items-center gap-2">
     {#if currentUser}
