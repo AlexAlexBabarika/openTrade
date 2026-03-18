@@ -8,7 +8,7 @@ import math
 from datetime import datetime, timezone
 from typing import Any
 
-from backend.models import OHLCVCandle
+from backend.market.models import OHLCVCandle
 
 # Column name mappings: Date, Datetime, time, timestamp → timestamp; Open, o → open; etc.
 COLUMN_ALIASES = {

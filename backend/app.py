@@ -16,15 +16,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
-from backend import cache
-from backend.data_sources import load_csv, load_yfinance
-from backend.indicators import sma
-from backend.models import OHLCVCandle, OHLCVCandleList
+from backend.market import cache
+from backend.market.data_sources import load_csv, load_yfinance
+from backend.market.models import OHLCVCandle, OHLCVCandleList
 from backend.websocket import stream_candles
-from backend.supabase_client import get_supabase_client, is_supabase_configured
-from backend.auth_routes import router as auth_router
-from backend.user_routes import router as user_router
-from backend.api_key_routes import router as api_key_router
+from backend.core.supabase_client import get_supabase_client, is_supabase_configured
+from backend.routes.auth_routes import router as auth_router
+from backend.routes.user_routes import router as user_router
+from backend.routes.api_key_routes import router as api_key_router
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +126,7 @@ async def csv_preview_endpoint(
     Preview CSV: returns column names and first max_rows.
     Request body: multipart form with 'file' and optional 'max_rows'.
     """
-    from backend.data_sources.csv_loader import csv_preview
+    from backend.market.data_sources.csv_loader import csv_preview
 
     content = await file.read()
     suffix = Path(file.filename or "data.csv").suffix or ".csv"
@@ -145,33 +144,6 @@ async def csv_preview_endpoint(
         return {"columns": columns, "preview": out_rows}
     finally:
         Path(tmp_path).unlink(missing_ok=True)
-
-
-@app.get("/data/indicators/sma")
-async def get_sma(symbol: str, period: int = 20) -> dict:
-    """
-    Return cached candles for symbol plus SMA(period) of close.
-    """
-    candles = cache.get_cached(symbol)
-    if not candles:
-        candles = load_yfinance(symbol=symbol)
-        cache.set_cached(symbol, candles)
-    if not candles:
-        return {"symbol": symbol, "candles": [], "sma": []}
-    sma_values = sma(candles, period)
-    candle_list = [
-        {
-            "symbol": c.symbol,
-            "timestamp": c.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "open": c.open,
-            "high": c.high,
-            "low": c.low,
-            "close": c.close,
-            "volume": c.volume,
-        }
-        for c in candles
-    ]
-    return {"symbol": symbol, "candles": candle_list, "sma": sma_values}
 
 
 @app.websocket("/ws/stream/{symbol}")

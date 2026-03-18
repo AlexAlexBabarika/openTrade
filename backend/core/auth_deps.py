@@ -1,27 +1,12 @@
 """
 FastAPI dependency for JWT verification via Supabase.
-
-Usage in protected routes:
-
-    from backend.auth_deps import get_current_user, optional_current_user
-    from backend.auth_models import AuthUserInfo
-
-    @app.get("/protected")
-    def protected(user: AuthUserInfo = Depends(get_current_user)):
-        return {"hello": user.email}
-
-    @app.get("/optional")
-    def maybe_authed(user: AuthUserInfo | None = Depends(optional_current_user)):
-        if user:
-            return {"hello": user.email}
-        return {"hello": "anonymous"}
 """
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from backend.auth_models import AuthUserInfo
-from backend.supabase_client import get_supabase_client
+from backend.models.auth_models import AuthUserInfo
+from backend.core.supabase_client import get_supabase_client
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 

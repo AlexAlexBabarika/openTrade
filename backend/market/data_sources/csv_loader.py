@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from backend.models import OHLCVCandle
-from backend.normalizer import normalize_rows
+from backend.market.models import OHLCVCandle
+from backend.market.normalizer import normalize_rows
 
 
 def _detect_time_column(df: pd.DataFrame) -> str | None:
     """Return first column that normalizes to 'timestamp'."""
-    from backend.normalizer import _normalize_column_name
+    from backend.market.normalizer import _normalize_column_name
 
     for c in df.columns:
         if _normalize_column_name(c) == "timestamp":

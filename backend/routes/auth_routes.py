@@ -14,8 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials
 
-from backend.auth_deps import _bearer_scheme, get_current_user
-from backend.auth_models import (
+from backend.core.auth_deps import _bearer_scheme, get_current_user
+from backend.models.auth_models import (
     AuthLoginRequest,
     AuthSessionResponse,
     AuthSessionUserResponse,
@@ -23,7 +23,7 @@ from backend.auth_models import (
     AuthSignupRequest,
     AuthUserInfo,
 )
-from backend.supabase_client import get_supabase_client, require_supabase_client
+from backend.core.supabase_client import get_supabase_client, require_supabase_client
 
 logger = logging.getLogger(__name__)
 
