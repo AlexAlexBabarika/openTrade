@@ -22,7 +22,6 @@
     connectionStatus = 'disconnected' as ConnectionStatus,
     isLoading = false,
     onload = () => {},
-    onstream = () => {},
     oncsvupload = (_file: File) => {},
   }: {
     symbol: string;
@@ -127,19 +126,6 @@
     {/if}
     {isLoading ? 'Loading…' : 'Load'}
   </Button>
-  <Button variant="secondary" onclick={onstream}>Stream WS</Button>
-
-  <div class="flex items-center space-x-2">
-    <Checkbox id="auto-refresh" bind:checked={autoRefresh} />
-    <Label
-      for="auto-refresh"
-      class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-    >
-      Auto-refresh 60s
-    </Label>
-  </div>
-
-  <StatusDot status={connectionStatus} />
 
   <div class="ml-auto flex items-center gap-2">
     {#if currentUser}

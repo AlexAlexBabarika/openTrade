@@ -76,11 +76,15 @@ export async function readErrorMessage(response: Response): Promise<string> {
           .filter((m): m is string => typeof m === 'string');
         return msgs.length > 0 ? msgs.join('; ') : 'Validation error';
       }
-      if (typeof data?.detail === 'object' && data.detail?.message) {
-        return data.detail.message as string;
+      if (
+        typeof data?.detail === 'object' &&
+        'message' in data.detail &&
+        typeof data.detail.message === 'string'
+      ) {
+        return (data.detail as { message?: string }).message ?? '';
       }
-      if (typeof data?.message === 'string') return data.message;
-      if (typeof data?.error === 'string') return data.error;
+      if (typeof data?.message === 'string') return data.message ?? '';
+      if (typeof data?.error === 'string') return data.error ?? '';
     }
     const text = await response.text();
     return text || `${response.status} ${response.statusText}`;
