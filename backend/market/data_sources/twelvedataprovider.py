@@ -30,12 +30,13 @@ class TwelveDataProvider(MarketDataProvider):
     def get_ohlcv(
         self, symbol: str, period: str = "1mo", interval: str = "1day"
     ) -> list[OHLCVCandle]:
-        api_key = fetch_api_key(self._user_id, "twelvedata")
+        api_key = fetch_api_key(self._user_id, "twelvedata").strip()
         start_date = period_to_startdate(period)
+        # Twelve Data expects query param "apikey" (all lowercase)
         resp = requests.get(
             _BASE_URL,
             params={
-                "symbol": symbol,
+                "symbol": symbol.strip(),
                 "interval": interval,
                 "start_date": start_date,
                 "apikey": api_key,
