@@ -8,7 +8,8 @@ from binance.client import Client
 from backend.market.data_sources.marketdataprovider import MarketDataProvider
 from backend.market.models import OHLCVCandle
 from backend.market.time_utils import period_to_startdate
-from backend.core.api_key_store import fetch_api_key
+
+# from backend.core.api_key_store import fetch_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,9 @@ def _parse_kline(kline: list, symbol: str) -> OHLCVCandle:
     open_time_ms = int(kline[0])
     return OHLCVCandle(
         symbol=symbol,
-        timestamp=datetime.fromtimestamp(open_time_ms / 1000, tz=timezone.utc).replace(tzinfo=None),
+        timestamp=datetime.fromtimestamp(open_time_ms / 1000, tz=timezone.utc).replace(
+            tzinfo=None
+        ),
         open=float(kline[1]),
         high=float(kline[2]),
         low=float(kline[3]),
@@ -61,6 +64,22 @@ class BinanceProvider(MarketDataProvider):
     def requires_api_key(self) -> bool:
         return False
 
+    # def _make_client(self) -> Client:
+    #     if self._user_id:
+    #         try:
+    #             raw = fetch_api_key(self._user_id, "binance")
+    #             if ":" in raw:
+    #                 api_key, api_secret = raw.split(":", 1)
+    #             else:
+    #                 api_key, api_secret = raw, ""
+    #             return Client(api_key, api_secret)
+    #         except ValueError:
+    #             logger.debug(
+    #                 "No Binance API key for user %s, using public access",
+    #                 self._user_id,
+    #             )
+    #     return Client()
+
     def get_ohlcv(
         self, symbol: str, period: str = "1mo", interval: str = "1d"
     ) -> list[OHLCVCandle]:
@@ -71,6 +90,7 @@ class BinanceProvider(MarketDataProvider):
                 f"Supported: {', '.join(sorted(INTERVAL_MAP))}"
             )
         start_date = period_to_startdate(period)
+        # client = self._make_client()
         client = Client()
         klines = client.get_historical_klines(
             symbol.upper(),

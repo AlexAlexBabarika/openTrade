@@ -16,10 +16,11 @@ PERIOD_TO_DELTA = {
 }
 
 
-def period_to_startdate(period: str) -> datetime:
-    """Convert period to start date."""
-    delta = PERIOD_TO_DELTA[period]
+def period_to_startdate(period: str) -> str:
+    """Convert period label to ISO start date (UTC) for provider APIs."""
+    delta = PERIOD_TO_DELTA.get(period)
     if delta is None:
-        raise ValueError(f"Invalid period: {period}")
+        allowed = ", ".join(sorted(PERIOD_TO_DELTA))
+        raise ValueError(f"Invalid period '{period}'. Use one of: {allowed}")
     start = datetime.now(timezone.utc) - delta
     return start.strftime("%Y-%m-%d")
