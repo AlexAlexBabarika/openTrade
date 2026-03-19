@@ -6,15 +6,17 @@
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
   import { authState, logout } from '$lib/auth';
+  import {
+    MARKET_DATA_PROVIDERS,
+    type MarketDataProviderValue,
+  } from '$lib/marketDataProviders';
   import { LoaderCircle } from 'lucide-svelte';
-
-  type DataSource = 'yfinance' | 'csv';
 
   let {
     symbol = $bindable('AAPL'),
     period = $bindable('1mo'),
     interval = $bindable('1d'),
-    source = $bindable('yfinance' as DataSource),
+    source = $bindable('yfinance' as MarketDataProviderValue),
     autoRefresh = $bindable(false),
     isLoading = false,
     onload = () => {},
@@ -23,7 +25,7 @@
     symbol: string;
     period: string;
     interval: string;
-    source: DataSource;
+    source: MarketDataProviderValue;
     autoRefresh: boolean;
     connectionStatus: ConnectionStatus;
     isLoading: boolean;
@@ -92,12 +94,13 @@
   </Select.Root>
 
   <Select.Root type="single" bind:value={source}>
-    <Select.Trigger class="w-32">
-      {source}
+    <Select.Trigger class="w-36">
+      {MARKET_DATA_PROVIDERS.find(p => p.value === source)?.label ?? source}
     </Select.Trigger>
     <Select.Content>
-      <Select.Item value="yfinance">yfinance</Select.Item>
-      <Select.Item value="csv">CSV</Select.Item>
+      {#each MARKET_DATA_PROVIDERS as p (p.value)}
+        <Select.Item value={p.value}>{p.label}</Select.Item>
+      {/each}
     </Select.Content>
   </Select.Root>
 
