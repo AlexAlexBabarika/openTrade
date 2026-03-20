@@ -11,10 +11,12 @@
   import type { OHLCVCandle } from './lib/types';
   import { fetchSession } from './lib/auth';
   import type { MarketDataProviderValue } from './lib/marketDataProviders';
+  import { DEFAULT_MARKET_INTERVAL } from './lib/marketIntervals';
+  import { DEFAULT_MARKET_PERIOD } from './lib/marketPeriods';
 
   let symbol = $state('AAPL');
-  let period = $state('1mo');
-  let interval = $state('1d');
+  let period = $state(DEFAULT_MARKET_PERIOD);
+  let interval = $state(DEFAULT_MARKET_INTERVAL);
   let source = $state<MarketDataProviderValue>('yfinance');
   let autoRefresh = $state(false);
 
@@ -52,6 +54,7 @@
     if (wsClient) wsClient.disconnect();
     const streamCandles: OHLCVCandle[] = [];
     wsClient = new WSClient({
+      provider: source,
       symbol: sym,
       onCandle: c => {
         streamCandles.push(c);
@@ -83,6 +86,7 @@
       if (wsClient) wsClient.disconnect();
       const streamCandles: OHLCVCandle[] = [];
       wsClient = new WSClient({
+        provider: 'csv',
         symbol: sym,
         onCandle: c => {
           streamCandles.push(c);
