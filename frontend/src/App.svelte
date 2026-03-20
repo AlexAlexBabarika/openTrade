@@ -123,7 +123,7 @@
   });
 
   onMount(() => {
-    fetchSession().catch((err) => {
+    fetchSession().catch(err => {
       console.warn('Session fetch failed:', err);
     });
   });
