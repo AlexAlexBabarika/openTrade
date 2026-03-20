@@ -147,6 +147,6 @@
     onstream={startStream}
     oncsvupload={handleCsvUpload}
   />
-  <ErrorMessage message={errorMessage} />
+  <ErrorMessage bind:message={errorMessage} />
   <Chart {candles} {symbol} />
 </div>
