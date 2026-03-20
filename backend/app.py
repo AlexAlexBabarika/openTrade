@@ -11,24 +11,41 @@ import os
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from starlette.concurrency import run_in_threadpool
+from starlette.responses import JSONResponse
 
 from backend.market import cache
 from backend.market.data_sources import load_csv, load_yfinance
-from backend.market.models import OHLCVCandle, OHLCVCandleList
+from backend.market.data_sources.csv_loader import csv_preview
+from backend.market.models import OHLCVCandleList
+from backend.market.ohlcv_limits import cap_candles
+from backend.market.shared_config import validate_interval, validate_period
 from backend.websocket import stream_candles
 from backend.core.supabase_client import get_supabase_client, is_supabase_configured
 from backend.routes.auth_routes import router as auth_router
 from backend.routes.user_routes import router as user_router
 from backend.routes.api_key_routes import router as api_key_router
 from backend.routes.market_routes import router as market_router
+from backend.core.rate_limit import allow, client_key, retry_after_seconds
 
 logger = logging.getLogger(__name__)
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+_WS_PROVIDERS = frozenset({"yfinance", "binance", "twelvedata", "csv"})
 
 
 @asynccontextmanager
@@ -79,19 +96,46 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/data/yfinance/{symbol}", response_model=OHLCVCandleList)
+@app.get("/data/yfinance/{symbol}", response_model=OHLCVCandleList, deprecated=True)
 async def get_yfinance(
+    request: Request,
     symbol: str,
     period: str = "1mo",
     interval: str = "1d",
 ) -> OHLCVCandleList:
     """
-    Load OHLCV for symbol from yfinance and return unified candles.
-    Cached in memory for subsequent WebSocket streaming.
+    **Deprecated** — use ``GET /data/market`` with ``provider=yfinance``.
+
+    Same validation and cache key as the unified market route (``yfinance:symbol``).
+
+    Response includes ``Deprecation: true`` and a ``Link`` successor hint header;
+    OpenAPI marks this operation deprecated; generated clients may not surface headers.
     """
-    candles = load_yfinance(symbol=symbol, period=period, interval=interval)
-    cache.set_cached(symbol, candles)
-    return OHLCVCandleList(symbol=symbol, candles=candles)
+    if not allow(client_key(request.client.host if request.client else None)):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many market data requests. Try again shortly.",
+            headers={"Retry-After": str(retry_after_seconds())},
+        )
+    validate_period(period)
+    validate_interval(interval)
+    sym = symbol.strip()
+    candles = await run_in_threadpool(
+        load_yfinance,
+        sym,
+        period,
+        interval,
+    )
+    candles = cap_candles(candles)
+    cache.set_cached("yfinance", sym, candles)
+    body = OHLCVCandleList(symbol=sym, candles=candles)
+    return JSONResponse(
+        content=body.model_dump(mode="json"),
+        headers={
+            "Deprecation": "true",
+            "Link": '</data/market?provider=yfinance>; rel="successor-version"',
+        },
+    )
 
 
 @app.post("/data/csv", response_model=dict)
@@ -108,7 +152,7 @@ async def post_csv(
         tmp.write(content)
         tmp_path = tmp.name
     try:
-        candles = load_csv(tmp_path, symbol=symbol)
+        candles = await run_in_threadpool(load_csv, tmp_path, symbol)
         cache.set_cached_csv(symbol, candles)
         return {
             "symbol": symbol,
@@ -128,15 +172,15 @@ async def csv_preview_endpoint(
     Preview CSV: returns column names and first max_rows.
     Request body: multipart form with 'file' and optional 'max_rows'.
     """
-    from backend.market.data_sources.csv_loader import csv_preview
-
     content = await file.read()
     suffix = Path(file.filename or "data.csv").suffix or ".csv"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
     try:
-        columns, rows = csv_preview(tmp_path, max_rows=max_rows)
+        columns, rows = await run_in_threadpool(
+            csv_preview, tmp_path, max_rows=max_rows
+        )
         # Serialize rows for JSON (datetime -> str)
         out_rows = []
         for r in rows:
@@ -148,20 +192,36 @@ async def csv_preview_endpoint(
         Path(tmp_path).unlink(missing_ok=True)
 
 
-@app.websocket("/ws/stream/{symbol}")
-async def ws_stream(websocket: WebSocket, symbol: str) -> None:
-    """
-    Stream OHLCV candles for symbol. Uses cached data if available,
-    otherwise fetches from yfinance and caches.
-    """
+async def _ws_stream_impl(websocket: WebSocket, provider: str, symbol: str) -> None:
     await websocket.accept()
+    sym = symbol.strip()
+    p = provider.strip().lower()
+    if p not in _WS_PROVIDERS:
+        await websocket.send_json(
+            {"error": f"unknown provider '{provider}'", "symbol": sym}
+        )
+        return
     try:
-        candles = cache.get_cached(symbol)
+        candles = cache.get_cached(p, sym)
         if not candles:
-            candles = load_yfinance(symbol=symbol)
-            cache.set_cached(symbol, candles)
+            if p == "yfinance":
+                candles = await run_in_threadpool(load_yfinance, sym)
+                candles = cap_candles(candles)
+                cache.set_cached("yfinance", sym, candles)
+            else:
+                await websocket.send_json(
+                    {
+                        "error": (
+                            "no cached data for this provider; "
+                            "load the chart first (GET /data/market or POST /data/csv)"
+                        ),
+                        "symbol": sym,
+                        "provider": p,
+                    }
+                )
+                return
         if not candles:
-            await websocket.send_json({"error": "no data", "symbol": symbol})
+            await websocket.send_json({"error": "no data", "symbol": sym})
             return
         await stream_candles(websocket, candles, delay_seconds=0.02)
     except WebSocketDisconnect:
@@ -171,6 +231,22 @@ async def ws_stream(websocket: WebSocket, symbol: str) -> None:
             await websocket.send_json({"error": str(e)})
         except Exception:
             pass
+
+
+@app.websocket("/ws/stream/{provider}/{symbol}")
+async def ws_stream(websocket: WebSocket, provider: str, symbol: str) -> None:
+    """
+    Replay cached OHLCV as a stream. Use the same **provider** as the data source
+    (``yfinance``, ``binance``, ``twelvedata``, ``csv``). Load data via REST first
+    except for **yfinance**, which can cold-fetch.
+    """
+    await _ws_stream_impl(websocket, provider, symbol)
+
+
+@app.websocket("/ws/stream/{symbol}")
+async def ws_stream_legacy(websocket: WebSocket, symbol: str) -> None:
+    """Legacy URL: same as ``/ws/stream/yfinance/{symbol}``."""
+    await _ws_stream_impl(websocket, "yfinance", symbol)
 
 
 # Mount static files (must be at the end of the file to capture all remaining routes)
