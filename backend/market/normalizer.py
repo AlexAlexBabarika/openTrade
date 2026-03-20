@@ -8,10 +8,11 @@ import math
 from datetime import datetime, timezone
 from typing import Any
 
+import pandas as pd
+
 from backend.market.models import OHLCVCandle
 
-# Column name mappings: Date, Datetime, time, timestamp → timestamp; Open, o → open; etc.
-COLUMN_ALIASES = {
+COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
     "timestamp": ("date", "datetime", "time", "timestamp", "dt", "t"),
     "open": ("open", "o"),
     "high": ("high", "h"),
@@ -20,9 +21,22 @@ COLUMN_ALIASES = {
     "volume": ("volume", "v", "vol"),
 }
 
+_TIMESTAMP_FORMATS = (
+    "%Y-%m-%dT%H:%M:%SZ",
+    "%Y-%m-%dT%H:%M:%S.%fZ",
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d",
+    "%Y/%m/%d %H:%M:%S",
+    "%Y/%m/%d",
+    "%d-%m-%Y %H:%M:%S",
+    "%d-%m-%Y",
+    "%m/%d/%Y %H:%M:%S",
+    "%m/%d/%Y",
+)
 
-def _normalize_column_name(name: str) -> str | None:
-    """Map a column name to canonical key, or None if not OHLCV-related."""
+
+def normalize_column_name(name: str) -> str | None:
+    """Map a column name to its canonical key, or None if not OHLCV-related."""
     if not name or not isinstance(name, str):
         return None
     key = name.strip().lower()
@@ -32,51 +46,29 @@ def _normalize_column_name(name: str) -> str | None:
     return None
 
 
-def _is_null_timestamp(value: Any) -> bool:
-    """Return True if value represents a null/unparseable timestamp."""
+def _is_null(value: Any) -> bool:
     if value is None:
         return True
     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
         return True
-    try:
-        import pandas as pd
-
-        if pd.isna(value):
-            return True
-    except ImportError:
-        pass
-    return False
+    return bool(pd.isna(value))
 
 
-def _parse_timestamp(value: Any) -> datetime:
-    """Parse value to UTC datetime. Returns naive UTC."""
-    if _is_null_timestamp(value):
+def parse_timestamp(value: Any) -> datetime:
+    """Parse an arbitrary value to a naive-UTC datetime."""
+    if _is_null(value):
         raise ValueError(
-            "Invalid timestamp: null/NaT/unparseable value. "
-            "The CSV contains dates that could not be parsed. "
-            "Check date format (e.g. YYYY-MM-DD, DD/MM/YYYY) or ensure no empty/invalid cells in the date column."
+            "Invalid timestamp: null/NaT. "
+            "Check date format (e.g. YYYY-MM-DD) or ensure no empty cells in the date column."
         )
     if isinstance(value, datetime):
         dt = value
     elif isinstance(value, (int, float)):
-        # Unix timestamp (seconds or ms)
         if value > 1e12:
             value = value / 1000.0
         dt = datetime.fromtimestamp(value, tz=timezone.utc)
     elif isinstance(value, str):
-        # Try ISO format first
-        for fmt in (
-            "%Y-%m-%dT%H:%M:%SZ",
-            "%Y-%m-%dT%H:%M:%S.%fZ",
-            "%Y-%m-%d %H:%M:%S",
-            "%Y-%m-%d",
-            "%Y/%m/%d %H:%M:%S",
-            "%Y/%m/%d",
-            "%d-%m-%Y %H:%M:%S",
-            "%d-%m-%Y",
-            "%m/%d/%Y %H:%M:%S",
-            "%m/%d/%Y",
-        ):
+        for fmt in _TIMESTAMP_FORMATS:
             try:
                 dt = datetime.strptime(value.strip(), fmt)
                 break
@@ -88,47 +80,47 @@ def _parse_timestamp(value: Any) -> datetime:
             dt = date_parser.parse(value)
     else:
         raise ValueError(f"Cannot parse timestamp: {value!r}")
+
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).replace(tzinfo=None)  # naive UTC for JSON
+    return dt.astimezone(timezone.utc).replace(tzinfo=None)
 
 
-def _to_float(value: Any) -> float:
-    """Coerce to float for OHLCV numeric fields. NaN/inf from pandas/polars become 0.0."""
+def to_float(value: Any) -> float:
+    """Coerce to float. NaN/inf/empty become 0.0."""
     if value is None or (isinstance(value, str) and value.strip() == ""):
         return 0.0
     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
         return 0.0
     if isinstance(value, (int, float)):
         return float(value)
-    s = str(value).strip().replace(",", "")
-    return float(s)
+    return float(str(value).strip().replace(",", ""))
 
 
 def normalize_row(row: dict[str, Any], symbol: str) -> OHLCVCandle:
     """Convert a single row (dict with arbitrary keys) to OHLCVCandle."""
     mapped: dict[str, Any] = {}
     for raw_key, raw_value in row.items():
-        canon = _normalize_column_name(raw_key)
+        canon = normalize_column_name(raw_key)
         if canon is None:
             continue
-        if canon == "timestamp":
-            mapped[canon] = _parse_timestamp(raw_value)
-        elif canon == "volume":
-            mapped[canon] = _to_float(raw_value)
-        else:
-            mapped[canon] = _to_float(raw_value)
+        mapped[canon] = (
+            parse_timestamp(raw_value) if canon == "timestamp" else to_float(raw_value)
+        )
+
     if "timestamp" not in mapped:
         raise ValueError("Row missing timestamp")
+
     for key in ("open", "high", "low", "close", "volume"):
         mapped.setdefault(key, 0.0)
-    # Avoid validation error: open/close must be > 0
-    if mapped.get("open", 0) <= 0 and mapped.get("close", 0) > 0:
+
+    if mapped["open"] <= 0 and mapped["close"] > 0:
         mapped["open"] = mapped["close"]
-    elif mapped.get("close", 0) <= 0 and mapped.get("open", 0) > 0:
+    elif mapped["close"] <= 0 and mapped["open"] > 0:
         mapped["close"] = mapped["open"]
-    elif mapped.get("open", 0) <= 0 and mapped.get("close", 0) <= 0:
+    elif mapped["open"] <= 0 and mapped["close"] <= 0:
         mapped["open"] = mapped["close"] = 0.01
+
     mapped["symbol"] = symbol
     return OHLCVCandle(**mapped)
 
