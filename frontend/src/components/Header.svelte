@@ -6,24 +6,36 @@
   import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
   import { authState, logout } from '$lib/auth';
+  import {
+    MARKET_DATA_PROVIDERS,
+    type MarketDataProviderValue,
+  } from '$lib/marketDataProviders';
+  import {
+    DEFAULT_MARKET_INTERVAL,
+    MARKET_INTERVAL_OPTIONS,
+  } from '$lib/marketIntervals';
+  import {
+    DEFAULT_MARKET_PERIOD,
+    MARKET_PERIOD_OPTIONS,
+  } from '$lib/marketPeriods';
   import { LoaderCircle } from 'lucide-svelte';
-
-  type DataSource = 'yfinance' | 'csv';
 
   let {
     symbol = $bindable('AAPL'),
-    period = $bindable('1mo'),
-    interval = $bindable('1d'),
-    source = $bindable('yfinance' as DataSource),
+    period = $bindable(DEFAULT_MARKET_PERIOD),
+    interval = $bindable(DEFAULT_MARKET_INTERVAL),
+    source = $bindable('yfinance' as MarketDataProviderValue),
     autoRefresh = $bindable(false),
+    connectionStatus = 'disconnected' as ConnectionStatus,
     isLoading = false,
     onload = () => {},
+    onstream = () => {},
     oncsvupload = (_file: File) => {},
   }: {
     symbol: string;
     period: string;
     interval: string;
-    source: DataSource;
+    source: MarketDataProviderValue;
     autoRefresh: boolean;
     connectionStatus: ConnectionStatus;
     isLoading: boolean;
@@ -68,36 +80,34 @@
 
   <Select.Root type="single" bind:value={period}>
     <Select.Trigger class="w-24">
-      {period}
+      {MARKET_PERIOD_OPTIONS.find(p => p.value === period)?.label ?? period}
     </Select.Trigger>
     <Select.Content>
-      <Select.Item value="1d">1D</Select.Item>
-      <Select.Item value="5d">5D</Select.Item>
-      <Select.Item value="1mo">1M</Select.Item>
-      <Select.Item value="3mo">3M</Select.Item>
-      <Select.Item value="6mo">6M</Select.Item>
-      <Select.Item value="1y">1Y</Select.Item>
+      {#each MARKET_PERIOD_OPTIONS as p (p.value)}
+        <Select.Item value={p.value}>{p.label}</Select.Item>
+      {/each}
     </Select.Content>
   </Select.Root>
 
   <Select.Root type="single" bind:value={interval}>
     <Select.Trigger class="w-20">
-      {interval}
+      {MARKET_INTERVAL_OPTIONS.find(i => i.value === interval)?.label ?? interval}
     </Select.Trigger>
     <Select.Content>
-      <Select.Item value="1d">1d</Select.Item>
-      <Select.Item value="1h">1h</Select.Item>
-      <Select.Item value="5m">5m</Select.Item>
+      {#each MARKET_INTERVAL_OPTIONS as i (i.value)}
+        <Select.Item value={i.value}>{i.label}</Select.Item>
+      {/each}
     </Select.Content>
   </Select.Root>
 
   <Select.Root type="single" bind:value={source}>
-    <Select.Trigger class="w-32">
-      {source}
+    <Select.Trigger class="w-36">
+      {MARKET_DATA_PROVIDERS.find(p => p.value === source)?.label ?? source}
     </Select.Trigger>
     <Select.Content>
-      <Select.Item value="yfinance">yfinance</Select.Item>
-      <Select.Item value="csv">CSV</Select.Item>
+      {#each MARKET_DATA_PROVIDERS as p (p.value)}
+        <Select.Item value={p.value}>{p.label}</Select.Item>
+      {/each}
     </Select.Content>
   </Select.Root>
 
@@ -113,6 +123,23 @@
       <LoaderCircle class="mr-1 h-4 w-4 animate-spin" />
     {/if}
     {isLoading ? 'Loading…' : source === 'csv' ? fileName : 'Load'}
+  </Button>
+
+  <Button
+    variant="secondary"
+    size="sm"
+    onclick={onstream}
+    disabled={source === 'csv' ? false : !symbol.trim()}
+    title="Replay cached OHLCV over WebSocket (load data first unless using yfinance)"
+  >
+    Stream
+    {#if connectionStatus === 'connecting'}
+      <span class="ml-1 text-xs text-muted-foreground">…</span>
+    {:else if connectionStatus === 'connected'}
+      <span class="ml-1 h-2 w-2 rounded-full bg-green-500 inline-block" title="Connected"></span>
+    {:else if connectionStatus === 'error'}
+      <span class="ml-1 text-xs text-destructive">!</span>
+    {/if}
   </Button>
 
   <div class="ml-auto flex items-center gap-2">

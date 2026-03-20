@@ -3,18 +3,21 @@
   import Header from './components/Header.svelte';
   import ErrorMessage from './components/ErrorMessage.svelte';
   import Chart from './components/Chart.svelte';
-  import { API_BASE, yfinanceUrl } from './lib/config';
+  import { API_BASE } from './lib/config';
+  import { fetchMarketOHLCV } from './lib/marketData';
+  import { readErrorMessage } from './lib/api';
   import { WSClient } from './lib/ws';
   import type { ConnectionStatus } from './lib/ws';
   import type { OHLCVCandle } from './lib/types';
   import { fetchSession } from './lib/auth';
-
-  type DataSource = 'yfinance' | 'csv';
+  import type { MarketDataProviderValue } from './lib/marketDataProviders';
+  import { DEFAULT_MARKET_INTERVAL } from './lib/marketIntervals';
+  import { DEFAULT_MARKET_PERIOD } from './lib/marketPeriods';
 
   let symbol = $state('AAPL');
-  let period = $state('1mo');
-  let interval = $state('1d');
-  let source = $state<DataSource>('yfinance');
+  let period = $state(DEFAULT_MARKET_PERIOD);
+  let interval = $state(DEFAULT_MARKET_INTERVAL);
+  let source = $state<MarketDataProviderValue>('yfinance');
   let autoRefresh = $state(false);
 
   let errorMessage = $state<string | null>(null);
@@ -24,18 +27,15 @@
   let wsClient: WSClient | null = null;
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
-  async function loadYfinance(): Promise<void> {
-    const sym = symbol.trim();
-    if (!sym) {
-      errorMessage = 'Enter a symbol';
+  async function loadMarketData(): Promise<void> {
+    if (source === 'csv') {
+      errorMessage = 'Choose a CSV file with the Load button, or pick another data source.';
       return;
     }
     errorMessage = null;
     isLoading = true;
     try {
-      const res = await fetch(yfinanceUrl(sym, period, interval));
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await fetchMarketOHLCV(symbol, source, period, interval);
       candles = data.candles ?? [];
     } catch (e) {
       errorMessage = e instanceof Error ? e.message : 'Failed to load';
@@ -54,6 +54,7 @@
     if (wsClient) wsClient.disconnect();
     const streamCandles: OHLCVCandle[] = [];
     wsClient = new WSClient({
+      provider: source,
       symbol: sym,
       onCandle: c => {
         streamCandles.push(c);
@@ -79,12 +80,13 @@
         `${API_BASE}/data/csv?symbol=${encodeURIComponent(sym)}`,
         { method: 'POST', body: form },
       );
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await readErrorMessage(res));
       await res.json();
       candles = [];
       if (wsClient) wsClient.disconnect();
       const streamCandles: OHLCVCandle[] = [];
       wsClient = new WSClient({
+        provider: 'csv',
         symbol: sym,
         onCandle: c => {
           streamCandles.push(c);
@@ -110,8 +112,8 @@
     }
     if (autoRefresh) {
       refreshIntervalId = setInterval(() => {
-        if (source === 'yfinance') {
-          loadYfinance().catch(() => {});
+        if (source !== 'csv') {
+          loadMarketData().catch(() => {});
         }
       }, 60_000);
     }
@@ -128,8 +130,8 @@
     });
   });
 
-  // Initial load
-  loadYfinance().catch(() => {});
+  // Initial load (default source: yfinance)
+  loadMarketData().catch(() => {});
 </script>
 
 <div class="flex flex-col h-screen bg-background">
@@ -141,7 +143,7 @@
     bind:autoRefresh
     {connectionStatus}
     {isLoading}
-    onload={loadYfinance}
+    onload={loadMarketData}
     onstream={startStream}
     oncsvupload={handleCsvUpload}
   />

@@ -1,0 +1,40 @@
+{
+  "description": "Bar intervals for market data UI. Canonical value is sent to the API; twelvedata map converts to Twelve Data API strings.",
+  "options": [
+    { "value": "1m", "label": "1m" },
+    { "value": "5m", "label": "5m" },
+    { "value": "15m", "label": "15m" },
+    { "value": "30m", "label": "30m" },
+    { "value": "1h", "label": "1h" },
+    { "value": "4h", "label": "4h" },
+    { "value": "1d", "label": "1d" },
+    { "value": "1w", "label": "1w" },
+    { "value": "1mo", "label": "1mo" }
+  ],
+  "twelvedata": {
+    "1m": "1min",
+    "5m": "5min",
+    "15m": "15min",
+    "30m": "30min",
+    "1h": "1h",
+    "4h": "4h",
+    "1d": "1day",
+    "1w": "1week",
+    "1mo": "1month"
+  },
+  "twelvedataNative": [
+    "1min",
+    "5min",
+    "15min",
+    "30min",
+    "45min",
+    "1h",
+    "2h",
+    "4h",
+    "5h",
+    "8h",
+    "1day",
+    "1week",
+    "1month"
+  ]
+}

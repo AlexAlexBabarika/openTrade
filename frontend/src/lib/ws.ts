@@ -8,6 +8,8 @@ export type ConnectionStatus =
   | 'error';
 
 export interface WSClientOptions {
+  /** Data source id: yfinance, binance, twelvedata, csv (must match REST cache). */
+  provider: string;
   symbol: string;
   onCandle: (c: OHLCVCandle) => void;
   onStatus?: (status: ConnectionStatus) => void;
@@ -17,6 +19,7 @@ export interface WSClientOptions {
 
 export class WSClient {
   private ws: WebSocket | null = null;
+  private provider: string;
   private symbol: string;
   private onCandle: (c: OHLCVCandle) => void;
   private onStatus?: (status: ConnectionStatus) => void;
@@ -27,6 +30,7 @@ export class WSClient {
   private intentionalClose = false;
 
   constructor(options: WSClientOptions) {
+    this.provider = options.provider;
     this.symbol = options.symbol;
     this.onCandle = options.onCandle;
     this.onStatus = options.onStatus;
@@ -42,7 +46,7 @@ export class WSClient {
 
   private doConnect(): void {
     this.onStatus?.('connecting');
-    const url = wsStreamUrl(this.symbol);
+    const url = wsStreamUrl(this.provider, this.symbol);
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {

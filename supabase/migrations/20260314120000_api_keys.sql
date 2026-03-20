@@ -1,7 +1,8 @@
 create type public.api_key_provider as enum (
     'twelvedata',
     'alphavantage',
-    'massive'
+    'massive',
+    'binance'
 );
 
 create table public.api_keys (

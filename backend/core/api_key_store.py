@@ -2,8 +2,22 @@
 
 import string
 
+from postgrest.exceptions import APIError
+
 from backend.core.encryption import decrypt_api_key
 from backend.core.supabase_client import get_service_postgrest
+
+
+def _api_error_code_message(exc: APIError) -> tuple[str | None, str]:
+    """Best-effort extract PostgREST / Postgres error code and message."""
+    code = getattr(exc, "code", None)
+    message = getattr(exc, "message", None) or ""
+    if (code is None or not message) and exc.args:
+        first = exc.args[0]
+        if isinstance(first, dict):
+            code = code or first.get("code")
+            message = message or str(first.get("message", ""))
+    return code, message or str(exc)
 
 
 def _bytea_to_bytes(value) -> bytes:
@@ -55,16 +69,28 @@ def fetch_api_key(user_id: str, provider: str) -> str:
     """Fetch and decrypt a user's API key for the given provider.
 
     Raises ValueError if no key is found or decryption yields an empty string.
+    If the database enum does not include ``provider`` (Postgres 22P02), raises
+    ValueError so callers like Binance can fall back to unauthenticated access.
     """
     db = get_service_postgrest()
-    resp = (
-        db.from_("api_keys")
-        .select("encrypted_key")
-        .eq("user_id", user_id)
-        .eq("provider", provider)
-        .limit(1)
-        .execute()
-    )
+    try:
+        resp = (
+            db.from_("api_keys")
+            .select("encrypted_key")
+            .eq("user_id", user_id)
+            .eq("provider", provider)
+            .limit(1)
+            .execute()
+        )
+    except APIError as e:
+        code, msg = _api_error_code_message(e)
+        msg_l = msg.lower()
+        if code == "22P02" or "invalid input value for enum" in msg_l:
+            raise ValueError(
+                f"No {provider} API key: add value '{provider}' to api_key_provider "
+                "enum (run Supabase migrations), or omit keys for public access."
+            ) from e
+        raise
     if not resp.data:
         raise ValueError(
             f"No {provider} API key configured. Add one in API Keys settings."

@@ -13,7 +13,7 @@ export const API_BASE =
     ? window.__API_BASE__
     : '';
 
-export function wsStreamUrl(symbol: string): string {
+export function wsStreamUrl(provider: string, symbol: string): string {
   let base = API_BASE;
   if (!base && typeof window !== 'undefined') {
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -21,7 +21,9 @@ export function wsStreamUrl(symbol: string): string {
   } else if (base) {
     base = base.replace(/^http/, 'ws');
   }
-  return `${base}/ws/stream/${encodeURIComponent(symbol)}`;
+  const p = encodeURIComponent(provider);
+  const s = encodeURIComponent(symbol);
+  return `${base}/ws/stream/${p}/${s}`;
 }
 
 export function yfinanceUrl(
