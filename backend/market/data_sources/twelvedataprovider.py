@@ -7,6 +7,7 @@ import requests
 from backend.market.data_sources.marketdataprovider import MarketDataProvider
 from backend.market.models import OHLCVCandle
 from backend.market.normalizer import normalize_rows
+from backend.market.shared_config import resolve_twelvedata_interval
 from backend.market.time_utils import period_to_startdate
 from backend.core.api_key_store import fetch_api_key
 
@@ -32,12 +33,12 @@ class TwelveDataProvider(MarketDataProvider):
     ) -> list[OHLCVCandle]:
         api_key = fetch_api_key(self._user_id, "twelvedata").strip()
         start_date = period_to_startdate(period)
-        # Twelve Data expects query param "apikey" (all lowercase)
+        td_interval = resolve_twelvedata_interval(interval)
         resp = requests.get(
             _BASE_URL,
             params={
                 "symbol": symbol.strip(),
-                "interval": interval,
+                "interval": td_interval,
                 "start_date": start_date,
                 "apikey": api_key,
                 "timezone": "UTC",
