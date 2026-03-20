@@ -1,0 +1,16 @@
+{
+  "description": "Lookback periods for market data UI and backend validation. Shared by frontend and Python.",
+  "options": [
+    { "value": "1d", "label": "1D", "delta": { "kind": "days", "n": 1 } },
+    { "value": "5d", "label": "5D", "delta": { "kind": "days", "n": 5 } },
+    { "value": "1w", "label": "1W", "delta": { "kind": "weeks", "n": 1 } },
+    { "value": "1mo", "label": "1M", "delta": { "kind": "months", "n": 1 } },
+    { "value": "3mo", "label": "3M", "delta": { "kind": "months", "n": 3 } },
+    { "value": "6mo", "label": "6M", "delta": { "kind": "months", "n": 6 } },
+    { "value": "1y", "label": "1Y", "delta": { "kind": "years", "n": 1 } },
+    { "value": "2y", "label": "2Y", "delta": { "kind": "years", "n": 2 } },
+    { "value": "5y", "label": "5Y", "delta": { "kind": "years", "n": 5 } },
+    { "value": "10y", "label": "10Y", "delta": { "kind": "years", "n": 10 } },
+    { "value": "max", "label": "Max", "delta": { "kind": "days", "n": 3650 } }
+  ]
+}

@@ -18,7 +18,9 @@
     "types": ["svelte", "node"],
     "paths": {
       "$lib": ["./src/lib"],
-      "$lib/*": ["./src/lib/*"]
+      "$lib/*": ["./src/lib/*"],
+      "@shared": ["../shared"],
+      "@shared/*": ["../shared/*"]
     }
   },
   "include": ["src"]
