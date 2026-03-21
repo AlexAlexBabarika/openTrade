@@ -3,7 +3,6 @@ WebSocket broadcaster: streams OHLCV candles to clients progressively.
 """
 
 import asyncio
-import json
 from typing import Any
 
 from fastapi import WebSocket
