@@ -57,6 +57,15 @@
     });
     return () => window.removeEventListener('keydown', onKeydown);
   });
+
+  $effect(() => {
+    if (!message) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  });
 </script>
 
 {#if message}
