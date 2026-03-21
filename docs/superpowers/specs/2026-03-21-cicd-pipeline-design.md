@@ -21,12 +21,12 @@ Replaces current `main.yml`. Three parallel jobs, all using Node 20 with `npm ci
 | Job | Command | Purpose |
 |-----|---------|---------|
 | check | `npm run check` | Svelte/TypeScript type checking |
-| format | `npx prettier --check "src/**"` | Verify formatting of source files only |
+| format | `npx prettier --check .` | Verify formatting (with `.prettierignore`) |
 | build | `npm run build` | Ensure production build succeeds |
 
 Working directory: `frontend/`
 
-The format job targets `"src/**"` specifically to avoid checking `node_modules/`, `dist/`, and other generated files (no `.prettierignore` exists in the project).
+A `.prettierignore` will be created in `frontend/` (listing `node_modules`, `dist`, `build`, `package-lock.json`) so that `--check .` matches the existing `--write .` dev script. Note: `.prettierrc.json` lives at the repo root and Prettier will find it by walking up.
 
 Path filter: only runs when `frontend/**` or `shared/**` files change.
 
@@ -74,7 +74,11 @@ Two parallel jobs for dependency vulnerability scanning.
 | npm-audit | `npm audit --omit=dev --audit-level=high` | Flag high/critical production JS dependency vulnerabilities |
 | pip-audit | `pip-audit -r backend/requirements.txt` | Flag known Python dependency vulnerabilities |
 
+Setup steps for npm-audit job: `actions/checkout@v4`, `actions/setup-node@v4` with Node 20, `npm ci` in `frontend/` (required for `--omit=dev` to resolve the dependency tree), then `npm audit`.
+
 `npm audit` uses `--omit=dev` to skip devDependency vulnerabilities (common false positives in build tooling like Vite/Rollup transitive deps). `pip-audit` is installed in CI only (`pip install pip-audit`), run from repo root.
+
+Path filter: only runs when `frontend/package.json`, `frontend/package-lock.json`, `backend/requirements.txt`, or `backend/requirements-dev.txt` change.
 
 ## Files to Create/Modify
 
@@ -86,6 +90,7 @@ Two parallel jobs for dependency vulnerability scanning.
 - **Modify**: `backend/requirements-dev.txt` (add `ruff>=0.9.0`, `mypy>=1.14.0`)
 - **Create**: `mypy.ini` (repo root, basic config with `ignore_missing_imports`)
 - **Create**: `ruff.toml` (repo root, limited rule set to start)
+- **Create**: `frontend/.prettierignore` (exclude `node_modules`, `dist`, `build`, `package-lock.json`)
 
 ## Out of Scope
 
