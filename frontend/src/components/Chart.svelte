@@ -27,8 +27,13 @@
     candles = [] as OHLCVCandle[],
     symbol = '',
     chartType = 'candlestick' as ChartType,
-  }: { candles: OHLCVCandle[]; symbol: string; chartType?: ChartType } =
-    $props();
+    showArea = true,
+  }: {
+    candles: OHLCVCandle[];
+    symbol: string;
+    chartType?: ChartType;
+    showArea?: boolean;
+  } = $props();
 
   let containerEl: HTMLDivElement;
   let chart: IChartApi | null = null;
@@ -131,11 +136,22 @@
 
     chart = createChartContainer(containerEl);
     volumeSeries = addVolumeSeries(chart);
-    areaSeries = addAreaSeries(chart);
+    applyArea(showArea);
     applySeries(chartType);
 
     chart.subscribeCrosshairMove(updateLegend);
     updateLegend(undefined);
+  }
+
+  function applyArea(enabled: boolean): void {
+    if (!chart) return;
+
+    if (enabled && !areaSeries) {
+      areaSeries = addAreaSeries(chart);
+    } else if (!enabled && areaSeries) {
+      chart.removeSeries(areaSeries);
+      areaSeries = null;
+    }
   }
 
   function applySeries(type: ChartType): void {
@@ -162,9 +178,8 @@
   function updateChartData(data: OHLCVCandle[]): void {
     if (!chart || !volumeSeries) return;
 
-    // Area series only shown with candlestick chart and enough data
     if (areaSeries) {
-      if (chartType === 'candlestick' && data.length >= 20) {
+      if (data.length >= 20) {
         areaSeries.setData(data.map(candleOHLCVtoAreaData));
       } else {
         areaSeries.setData([]);
@@ -231,9 +246,17 @@
 
   $effect(() => {
     if (!chart) return;
-    // Re-read chartType to track it as a dependency
     const type = chartType;
     applySeries(type);
+    if (candles.length > 0) {
+      updateChartData(candles);
+    }
+  });
+
+  $effect(() => {
+    if (!chart) return;
+    const enabled = showArea;
+    applyArea(enabled);
     if (candles.length > 0) {
       updateChartData(candles);
     }

@@ -1,12 +1,14 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { Button } from '$lib/components/ui/button';
-  import { CandlestickChart, LineChart } from 'lucide-svelte';
+  import { CandlestickChart, LineChart, AreaChart } from 'lucide-svelte';
 
   export type ChartType = 'candlestick' | 'line';
 
-  let { chartType = $bindable('candlestick') }: { chartType: ChartType } =
-    $props();
+  let {
+    chartType = $bindable('candlestick'),
+    showArea = $bindable(true),
+  }: { chartType: ChartType; showArea: boolean } = $props();
 
   let open = $state(false);
   let dialogEl: HTMLDivElement | undefined = $state();
@@ -105,35 +107,53 @@
       </h2>
 
       <div class="flex flex-col gap-4">
-        <fieldset>
-          <legend class="text-sm font-medium text-card-foreground mb-2"
-            >Chart Type</legend
-          >
-          <div class="flex gap-2">
+        <div class="flex items-end justify-between gap-4">
+          <fieldset>
+            <legend class="text-sm font-medium text-card-foreground mb-2"
+              >Chart Type</legend
+            >
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {chartType ===
+                'candlestick'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground'}"
+                onclick={() => (chartType = 'candlestick')}
+              >
+                <CandlestickChart class="size-4" />
+                Candlestick
+              </button>
+              <button
+                type="button"
+                class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {chartType ===
+                'line'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground'}"
+                onclick={() => (chartType = 'line')}
+              >
+                <LineChart class="size-4" />
+                Line
+              </button>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend class="text-sm font-medium text-card-foreground mb-2"
+              >Overlay</legend
+            >
             <button
               type="button"
-              class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {chartType ===
-              'candlestick'
+              class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {showArea
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground'}"
-              onclick={() => (chartType = 'candlestick')}
+              onclick={() => (showArea = !showArea)}
             >
-              <CandlestickChart class="size-4" />
-              Candlestick
+              <AreaChart class="size-4" />
+              Area
             </button>
-            <button
-              type="button"
-              class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {chartType ===
-              'line'
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground hover:text-foreground'}"
-              onclick={() => (chartType = 'line')}
-            >
-              <LineChart class="size-4" />
-              Line
-            </button>
-          </div>
-        </fieldset>
+          </fieldset>
+        </div>
       </div>
     </div>
   </div>

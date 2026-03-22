@@ -26,6 +26,7 @@
   let connectionStatus = $state<ConnectionStatus>('disconnected');
   let candles = $state<OHLCVCandle[]>([]);
   let chartType = $state<ChartType>('candlestick');
+  let showArea = $state(true);
   let isLoading = $state(false);
   let wsClient: WSClient | null = null;
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -151,6 +152,6 @@
     oncsvupload={handleCsvUpload}
   />
   <ErrorMessage bind:message={errorMessage} />
-  <Chart {candles} {symbol} {chartType} />
-  <ChartOptionsMenu bind:chartType />
+  <Chart {candles} {symbol} {chartType} {showArea} />
+  <ChartOptionsMenu bind:chartType bind:showArea />
 </div>
