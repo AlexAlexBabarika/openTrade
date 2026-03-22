@@ -163,6 +163,7 @@ export function syncChartTheme(
   chart: IChartApi,
   candleSeries?: ISeriesApi<'Candlestick'> | null,
   areaSeries?: ISeriesApi<'Area'> | null,
+  lineSeries?: ISeriesApi<'Line'> | null,
 ) {
   const bgColor = getCssVarColor('--background', '#141414');
   const textColor = getCssVarColor('--foreground', '#d1d4dc');
@@ -219,6 +220,12 @@ export function syncChartTheme(
     areaSeries.applyOptions({
       topColor: topColor,
       bottomColor: bottomColor,
+    });
+  }
+
+  if (lineSeries) {
+    lineSeries.applyOptions({
+      color: textColor,
     });
   }
 }

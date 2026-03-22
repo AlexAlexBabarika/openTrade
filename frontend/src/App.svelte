@@ -4,6 +4,7 @@
   import ErrorMessage from './components/ErrorMessage.svelte';
   import Chart from './components/Chart.svelte';
   import ChartOptionsMenu from './components/ChartOptionsMenu.svelte';
+  import type { ChartType } from './components/ChartOptionsMenu.svelte';
   import { API_BASE } from './lib/config';
   import { fetchMarketOHLCV } from './lib/marketData';
   import { readErrorMessage } from './lib/api';
@@ -24,6 +25,7 @@
   let errorMessage = $state<string | null>(null);
   let connectionStatus = $state<ConnectionStatus>('disconnected');
   let candles = $state<OHLCVCandle[]>([]);
+  let chartType = $state<ChartType>('candlestick');
   let isLoading = $state(false);
   let wsClient: WSClient | null = null;
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -149,6 +151,6 @@
     oncsvupload={handleCsvUpload}
   />
   <ErrorMessage bind:message={errorMessage} />
-  <Chart {candles} {symbol} />
-  <ChartOptionsMenu />
+  <Chart {candles} {symbol} {chartType} />
+  <ChartOptionsMenu bind:chartType />
 </div>
