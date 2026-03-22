@@ -28,11 +28,13 @@
     symbol = '',
     chartType = 'candlestick' as ChartType,
     showArea = true,
+    showVolume = true,
   }: {
     candles: OHLCVCandle[];
     symbol: string;
     chartType?: ChartType;
     showArea?: boolean;
+    showVolume?: boolean;
   } = $props();
 
   let containerEl: HTMLDivElement;
@@ -135,12 +137,23 @@
     if (!containerEl) return;
 
     chart = createChartContainer(containerEl);
-    volumeSeries = addVolumeSeries(chart);
+    applyVolume(showVolume);
     applyArea(showArea);
     applySeries(chartType);
 
     chart.subscribeCrosshairMove(updateLegend);
     updateLegend(undefined);
+  }
+
+  function applyVolume(enabled: boolean): void {
+    if (!chart) return;
+
+    if (enabled && !volumeSeries) {
+      volumeSeries = addVolumeSeries(chart);
+    } else if (!enabled && volumeSeries) {
+      chart.removeSeries(volumeSeries);
+      volumeSeries = null;
+    }
   }
 
   function applyArea(enabled: boolean): void {
@@ -176,7 +189,7 @@
   }
 
   function updateChartData(data: OHLCVCandle[]): void {
-    if (!chart || !volumeSeries) return;
+    if (!chart) return;
 
     if (areaSeries) {
       if (data.length >= 20) {
@@ -193,7 +206,9 @@
       lineSeries.setData(data.map(candleOHLCVtoAreaData));
     }
 
-    volumeSeries.setData(data.map(candleOHLCVtoVolumeData));
+    if (volumeSeries) {
+      volumeSeries.setData(data.map(candleOHLCVtoVolumeData));
+    }
     chart.timeScale().fitContent();
     updateLegend(undefined);
   }
@@ -257,6 +272,15 @@
     if (!chart) return;
     const enabled = showArea;
     applyArea(enabled);
+    if (candles.length > 0) {
+      updateChartData(candles);
+    }
+  });
+
+  $effect(() => {
+    if (!chart) return;
+    const enabled = showVolume;
+    applyVolume(enabled);
     if (candles.length > 0) {
       updateChartData(candles);
     }

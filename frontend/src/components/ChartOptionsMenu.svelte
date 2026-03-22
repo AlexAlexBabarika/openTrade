@@ -1,14 +1,21 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { Button } from '$lib/components/ui/button';
-  import { CandlestickChart, LineChart, AreaChart } from 'lucide-svelte';
+  import {
+    CandlestickChart,
+    LineChart,
+    AreaChart,
+    BarChart3,
+  } from 'lucide-svelte';
 
   export type ChartType = 'candlestick' | 'line';
 
   let {
     chartType = $bindable('candlestick'),
     showArea = $bindable(true),
-  }: { chartType: ChartType; showArea: boolean } = $props();
+    showVolume = $bindable(true),
+  }: { chartType: ChartType; showArea: boolean; showVolume: boolean } =
+    $props();
 
   let open = $state(false);
   let dialogEl: HTMLDivElement | undefined = $state();
@@ -142,16 +149,28 @@
             <legend class="text-sm font-medium text-card-foreground mb-2"
               >Overlay</legend
             >
-            <button
-              type="button"
-              class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {showArea
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground hover:text-foreground'}"
-              onclick={() => (showArea = !showArea)}
-            >
-              <AreaChart class="size-4" />
-              Area
-            </button>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {showArea
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground'}"
+                onclick={() => (showArea = !showArea)}
+              >
+                <AreaChart class="size-4" />
+                Area
+              </button>
+              <button
+                type="button"
+                class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {showVolume
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground'}"
+                onclick={() => (showVolume = !showVolume)}
+              >
+                <BarChart3 class="size-4" />
+                Volume
+              </button>
+            </div>
           </fieldset>
         </div>
       </div>
