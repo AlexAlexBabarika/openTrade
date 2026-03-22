@@ -20,6 +20,8 @@
   import type { MarketDataProviderValue } from './lib/marketDataProviders';
   import { DEFAULT_MARKET_INTERVAL } from './lib/marketIntervals';
   import { DEFAULT_MARKET_PERIOD } from './lib/marketPeriods';
+  import type { ChartColours } from './lib/chartColours';
+  import { defaultChartColours } from './lib/chartColours';
 
   let symbol = $state('AAPL');
   let period = $state(DEFAULT_MARKET_PERIOD);
@@ -45,6 +47,7 @@
   });
   let smaPoints = $state<IndicatorPoint[]>([]);
   let emaPoints = $state<IndicatorPoint[]>([]);
+  let colours = $state<ChartColours>(defaultChartColours());
   let isLoading = $state(false);
   let wsClient: WSClient | null = null;
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -202,22 +205,24 @@
     oncsvupload={handleCsvUpload}
   />
   <ErrorMessage bind:message={errorMessage} />
-  <Chart {candles} {symbol} {chartType} {showArea} {showVolume} />
-  <ChartOptionsMenu bind:chartType bind:showArea bind:showVolume />
   <Chart
     {candles}
     {symbol}
     {chartType}
     {showArea}
+    {showVolume}
     {smaPoints}
     {emaPoints}
     smaLineWidth={smaConfig.lineWidth}
     emaLineWidth={emaConfig.lineWidth}
+    {colours}
   />
   <ChartOptionsMenu
     bind:chartType
     bind:showArea
+    bind:showVolume
     bind:smaConfig
     bind:emaConfig
+    bind:colours
   />
 </div>

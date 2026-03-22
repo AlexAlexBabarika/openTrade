@@ -2,6 +2,7 @@ import { createChart, CrosshairMode, ColorType } from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, LineData } from 'lightweight-charts';
 import { isoToChartTime } from './chartAdapters';
 import { formatRgb, parse } from 'culori';
+import type { ChartColours } from './chartColours';
 
 export function getCssVarColor(
   variableName: string,
@@ -127,34 +128,37 @@ export function addVolumeSeries(chart: IChartApi): ISeriesApi<'Histogram'> {
 
 export function addCandlestickSeries(
   chart: IChartApi,
+  colours?: ChartColours,
 ): ISeriesApi<'Candlestick'> {
-  const upColor = getCssVarColor('--up-color', '#5ea500');
-  const downColor = getCssVarColor('--down-color', '#e7000b');
+  const upColor = colours?.candleUpBody ?? getCssVarColor('--up-color', '#5ea500');
+  const downColor = colours?.candleDownBody ?? getCssVarColor('--down-color', '#e7000b');
+  const wickUpColor = colours?.candleUpWick ?? upColor;
+  const wickDownColor = colours?.candleDownWick ?? downColor;
 
   const series = chart.addCandlestickSeries({
-    upColor: upColor,
-    downColor: downColor,
+    upColor,
+    downColor,
     borderDownColor: downColor,
     borderUpColor: upColor,
-    wickDownColor: downColor,
-    wickUpColor: upColor,
+    wickDownColor,
+    wickUpColor,
   });
   return series;
 }
 
-export function addAreaSeries(chart: IChartApi): ISeriesApi<'Area'> {
-  const topColor = getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
-  const bottomColor = getCssVarColor(
-    '--area-bottom-color',
-    'rgba(56, 33, 110, 0.05)',
-  );
+export function addAreaSeries(
+  chart: IChartApi,
+  colours?: ChartColours,
+): ISeriesApi<'Area'> {
+  const topColor = colours?.areaTop ?? getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
+  const bottomColor = colours?.areaBottom ?? getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)');
 
   const series = chart.addAreaSeries({
     lastValueVisible: false,
     crosshairMarkerVisible: false,
     lineColor: 'transparent',
-    topColor: topColor,
-    bottomColor: bottomColor,
+    topColor,
+    bottomColor,
   });
   return series;
 }
@@ -164,6 +168,7 @@ export function syncChartTheme(
   candleSeries?: ISeriesApi<'Candlestick'> | null,
   areaSeries?: ISeriesApi<'Area'> | null,
   lineSeries?: ISeriesApi<'Line'> | null,
+  colours?: ChartColours,
 ) {
   const bgColor = getCssVarColor('--background', '#141414');
   const textColor = getCssVarColor('--foreground', '#d1d4dc');
@@ -196,37 +201,29 @@ export function syncChartTheme(
   });
 
   if (candleSeries) {
-    const upColor = getCssVarColor('--up-color', '#5ea500');
-    const downColor = getCssVarColor('--down-color', '#e7000b');
+    const upColor = colours?.candleUpBody ?? getCssVarColor('--up-color', '#5ea500');
+    const downColor = colours?.candleDownBody ?? getCssVarColor('--down-color', '#e7000b');
+    const wickUpColor = colours?.candleUpWick ?? upColor;
+    const wickDownColor = colours?.candleDownWick ?? downColor;
     candleSeries.applyOptions({
-      upColor: upColor,
-      downColor: downColor,
+      upColor,
+      downColor,
       borderDownColor: downColor,
       borderUpColor: upColor,
-      wickDownColor: downColor,
-      wickUpColor: upColor,
+      wickDownColor,
+      wickUpColor,
     });
   }
 
   if (areaSeries) {
-    const topColor = getCssVarColor(
-      '--area-top-color',
-      'rgba(56, 33, 110, 0.5)',
-    );
-    const bottomColor = getCssVarColor(
-      '--area-bottom-color',
-      'rgba(56, 33, 110, 0.05)',
-    );
-    areaSeries.applyOptions({
-      topColor: topColor,
-      bottomColor: bottomColor,
-    });
+    const topColor = colours?.areaTop ?? getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
+    const bottomColor = colours?.areaBottom ?? getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)');
+    areaSeries.applyOptions({ topColor, bottomColor });
   }
 
   if (lineSeries) {
-    lineSeries.applyOptions({
-      color: textColor,
-    });
+    const lineColor = colours?.lineColour ?? textColor;
+    lineSeries.applyOptions({ color: lineColor });
   }
 }
 

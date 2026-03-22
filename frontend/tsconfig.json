@@ -15,6 +15,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": true,
+    "allowArbitraryExtensions": true,
     "types": ["svelte", "node"],
     "paths": {
       "$lib": ["./src/lib"],
