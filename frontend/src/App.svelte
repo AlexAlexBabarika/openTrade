@@ -4,7 +4,12 @@
   import ErrorMessage from './components/ErrorMessage.svelte';
   import Chart from './components/Chart.svelte';
   import ChartOptionsMenu from './components/ChartOptionsMenu.svelte';
-  import type { ChartType } from './components/ChartOptionsMenu.svelte';
+  import type {
+    ChartType,
+    MovingAverageConfig,
+  } from './components/ChartOptionsMenu.svelte';
+  import { fetchSMA, fetchEMA } from './lib/indicators';
+  import type { IndicatorPoint } from './lib/types';
   import { API_BASE } from './lib/config';
   import { fetchMarketOHLCV } from './lib/marketData';
   import { readErrorMessage } from './lib/api';
@@ -28,6 +33,18 @@
   let chartType = $state<ChartType>('candlestick');
   let showArea = $state(true);
   let showVolume = $state(true);
+  let smaConfig = $state<MovingAverageConfig>({
+    enabled: false,
+    period: 20,
+    lineWidth: 2,
+  });
+  let emaConfig = $state<MovingAverageConfig>({
+    enabled: false,
+    period: 20,
+    lineWidth: 2,
+  });
+  let smaPoints = $state<IndicatorPoint[]>([]);
+  let emaPoints = $state<IndicatorPoint[]>([]);
   let isLoading = $state(false);
   let wsClient: WSClient | null = null;
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -124,6 +141,34 @@
     }
   });
 
+  // Fetch SMA when enabled or config changes
+  $effect(() => {
+    const cfg = smaConfig;
+    const sym = symbol;
+    const c = candles;
+    if (!cfg.enabled || c.length === 0) {
+      smaPoints = [];
+      return;
+    }
+    fetchSMA(sym, cfg.period)
+      .then(res => (smaPoints = res.points))
+      .catch(() => (smaPoints = []));
+  });
+
+  // Fetch EMA when enabled or config changes
+  $effect(() => {
+    const cfg = emaConfig;
+    const sym = symbol;
+    const c = candles;
+    if (!cfg.enabled || c.length === 0) {
+      emaPoints = [];
+      return;
+    }
+    fetchEMA(sym, cfg.period)
+      .then(res => (emaPoints = res.points))
+      .catch(() => (emaPoints = []));
+  });
+
   onDestroy(() => {
     if (refreshIntervalId) clearInterval(refreshIntervalId);
     if (wsClient) wsClient.disconnect();
@@ -155,4 +200,20 @@
   <ErrorMessage bind:message={errorMessage} />
   <Chart {candles} {symbol} {chartType} {showArea} {showVolume} />
   <ChartOptionsMenu bind:chartType bind:showArea bind:showVolume />
+  <Chart
+    {candles}
+    {symbol}
+    {chartType}
+    {showArea}
+    {smaPoints}
+    {emaPoints}
+    smaLineWidth={smaConfig.lineWidth}
+    emaLineWidth={emaConfig.lineWidth}
+  />
+  <ChartOptionsMenu
+    bind:chartType
+    bind:showArea
+    bind:smaConfig
+    bind:emaConfig
+  />
 </div>

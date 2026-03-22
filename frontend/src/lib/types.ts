@@ -10,3 +10,15 @@ export interface OHLCVCandle {
   close: number;
   volume: number;
 }
+
+export interface IndicatorPoint {
+  timestamp: string;
+  value: number;
+}
+
+export interface IndicatorResponse {
+  symbol: string;
+  indicator: string;
+  period: number;
+  points: IndicatorPoint[];
+}

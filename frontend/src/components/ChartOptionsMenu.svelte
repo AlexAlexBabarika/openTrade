@@ -6,9 +6,16 @@
     LineChart,
     AreaChart,
     BarChart3,
+    TrendingUp,
   } from 'lucide-svelte';
 
   export type ChartType = 'candlestick' | 'line';
+
+  export interface MovingAverageConfig {
+    enabled: boolean;
+    period: number;
+    lineWidth: number;
+  }
 
   let {
     chartType = $bindable('candlestick'),
@@ -16,6 +23,14 @@
     showVolume = $bindable(true),
   }: { chartType: ChartType; showArea: boolean; showVolume: boolean } =
     $props();
+    smaConfig = $bindable({ enabled: false, period: 20, lineWidth: 2 }),
+    emaConfig = $bindable({ enabled: false, period: 20, lineWidth: 2 }),
+  }: {
+    chartType: ChartType;
+    showArea: boolean;
+    smaConfig: MovingAverageConfig;
+    emaConfig: MovingAverageConfig;
+  } = $props();
 
   let open = $state(false);
   let dialogEl: HTMLDivElement | undefined = $state();
@@ -95,7 +110,7 @@
   >
     <div
       bind:this={dialogEl}
-      class="relative w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg"
+      class="relative w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg"
       role="dialog"
       aria-modal="true"
       aria-label="Chart Options"
@@ -114,6 +129,7 @@
       </h2>
 
       <div class="flex flex-col gap-4">
+        <!-- Row 1: Chart Type + Overlay -->
         <div class="flex items-end justify-between gap-4">
           <fieldset>
             <legend class="text-sm font-medium text-card-foreground mb-2"
@@ -173,6 +189,150 @@
             </div>
           </fieldset>
         </div>
+
+        <!-- Row 2: Moving Averages -->
+        <fieldset>
+          <legend class="text-sm font-medium text-card-foreground mb-2"
+            >Moving Averages</legend
+          >
+          <div
+            class="rounded-md bg-muted/50 border border-border p-3 flex flex-col gap-3"
+          >
+            <!-- SMA -->
+            <div>
+              <div class="text-xs font-medium text-muted-foreground mb-1.5">
+                Simple Moving Average
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {smaConfig.enabled
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:text-foreground'}"
+                  onclick={() =>
+                    (smaConfig = {
+                      ...smaConfig,
+                      enabled: !smaConfig.enabled,
+                    })}
+                >
+                  <TrendingUp class="size-4" />
+                  SMA
+                </button>
+                {#if smaConfig.enabled}
+                  <label
+                    class="flex items-center gap-1.5 text-sm text-muted-foreground"
+                  >
+                    Width
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={smaConfig.lineWidth}
+                      oninput={e =>
+                        (smaConfig = {
+                          ...smaConfig,
+                          lineWidth:
+                            parseInt(
+                              (e.target as HTMLInputElement).value,
+                              10,
+                            ) || 2,
+                        })}
+                      class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                    />
+                  </label>
+                  <label
+                    class="flex items-center gap-1.5 text-sm text-muted-foreground"
+                  >
+                    Period
+                    <input
+                      type="number"
+                      min="1"
+                      max="500"
+                      value={smaConfig.period}
+                      oninput={e =>
+                        (smaConfig = {
+                          ...smaConfig,
+                          period:
+                            parseInt(
+                              (e.target as HTMLInputElement).value,
+                              10,
+                            ) || 20,
+                        })}
+                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                    />
+                  </label>
+                {/if}
+              </div>
+            </div>
+
+            <!-- EMA -->
+            <div>
+              <div class="text-xs font-medium text-muted-foreground mb-1.5">
+                Exponential Moving Average
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {emaConfig.enabled
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:text-foreground'}"
+                  onclick={() =>
+                    (emaConfig = {
+                      ...emaConfig,
+                      enabled: !emaConfig.enabled,
+                    })}
+                >
+                  <TrendingUp class="size-4" />
+                  EMA
+                </button>
+                {#if emaConfig.enabled}
+                  <label
+                    class="flex items-center gap-1.5 text-sm text-muted-foreground"
+                  >
+                    Width
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={emaConfig.lineWidth}
+                      oninput={e =>
+                        (emaConfig = {
+                          ...emaConfig,
+                          lineWidth:
+                            parseInt(
+                              (e.target as HTMLInputElement).value,
+                              10,
+                            ) || 2,
+                        })}
+                      class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                    />
+                  </label>
+                  <label
+                    class="flex items-center gap-1.5 text-sm text-muted-foreground"
+                  >
+                    Period
+                    <input
+                      type="number"
+                      min="1"
+                      max="500"
+                      value={emaConfig.period}
+                      oninput={e =>
+                        (emaConfig = {
+                          ...emaConfig,
+                          period:
+                            parseInt(
+                              (e.target as HTMLInputElement).value,
+                              10,
+                            ) || 20,
+                        })}
+                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                    />
+                  </label>
+                {/if}
+              </div>
+            </div>
+          </div>
+        </fieldset>
       </div>
     </div>
   </div>
