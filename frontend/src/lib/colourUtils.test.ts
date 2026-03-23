@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  cssColourToHsva,
-  hsvaToHex,
-  hsvaToRgba,
-} from './colourUtils';
+import { cssColourToHsva, hsvaToHex, hsvaToRgba } from './colourUtils';
 
 describe('cssColourToHsva', () => {
   it('parses #RRGGBB', () => {
@@ -73,7 +69,15 @@ describe('hsvaToRgba', () => {
 });
 
 describe('round-trip: hex → HSVA → hex', () => {
-  const cases = ['#ff0000', '#00ff00', '#0000ff', '#ffffff', '#000000', '#2962FF', '#FF6D00'];
+  const cases = [
+    '#ff0000',
+    '#00ff00',
+    '#0000ff',
+    '#ffffff',
+    '#000000',
+    '#2962FF',
+    '#FF6D00',
+  ];
   for (const hex of cases) {
     it(`round-trips ${hex}`, () => {
       const hsva = cssColourToHsva(hex);

@@ -47,7 +47,11 @@ export function cssColourToHsva(colour: string): HSVA {
   return { ...rgbToHsv(r, g, b), a };
 }
 
-function rgbToHsv(r: number, g: number, b: number): { h: number; s: number; v: number } {
+function rgbToHsv(
+  r: number,
+  g: number,
+  b: number,
+): { h: number; s: number; v: number } {
   r /= 255;
   g /= 255;
   b /= 255;
@@ -84,17 +88,23 @@ function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
     b = 0;
 
   if (h < 60) {
-    r = c; g = x;
+    r = c;
+    g = x;
   } else if (h < 120) {
-    r = x; g = c;
+    r = x;
+    g = c;
   } else if (h < 180) {
-    g = c; b = x;
+    g = c;
+    b = x;
   } else if (h < 240) {
-    g = x; b = c;
+    g = x;
+    b = c;
   } else if (h < 300) {
-    r = x; b = c;
+    r = x;
+    b = c;
   } else {
-    r = c; b = x;
+    r = c;
+    b = x;
   }
 
   return [
@@ -107,7 +117,8 @@ function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
 /** Convert HSVA to hex string. #RRGGBB when alpha=1, #RRGGBBAA otherwise. */
 export function hsvaToHex(hsva: HSVA): string {
   const [r, g, b] = hsvToRgb(hsva.h, hsva.s, hsva.v);
-  const hex = '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('');
+  const hex =
+    '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
 
   if (hsva.a >= 1) return hex;
 
