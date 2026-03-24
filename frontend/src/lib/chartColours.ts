@@ -1,6 +1,13 @@
 // frontend/src/lib/chartColours.ts
 import { getCssVarColor } from './chart';
 
+export interface ChartTemplate {
+  name: string;
+  colours: ChartColours;
+  smaLineWidth: number;
+  emaLineWidth: number;
+}
+
 export interface ChartColours {
   candleUpBody: string;
   candleDownBody: string;
@@ -63,6 +70,43 @@ export function persistChartColours(colours: ChartColours): void {
   } catch (e) {
     console.warn('[opentrade] Failed to persist chart colours', e);
   }
+}
+
+const TEMPLATES_KEY = 'opentrade:chartTemplates';
+
+export function loadTemplates(): ChartTemplate[] {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(TEMPLATES_KEY);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    if (!Array.isArray(data)) return [];
+    return data.filter(
+      (t: unknown): t is ChartTemplate =>
+        !!t &&
+        typeof t === 'object' &&
+        typeof (t as ChartTemplate).name === 'string' &&
+        typeof (t as ChartTemplate).colours === 'object',
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function saveTemplate(template: ChartTemplate): void {
+  const templates = loadTemplates();
+  const idx = templates.findIndex((t) => t.name === template.name);
+  if (idx >= 0) {
+    templates[idx] = template;
+  } else {
+    templates.push(template);
+  }
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+}
+
+export function deleteTemplate(name: string): void {
+  const templates = loadTemplates().filter((t) => t.name !== name);
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
 }
 
 export function defaultChartColours(): ChartColours {

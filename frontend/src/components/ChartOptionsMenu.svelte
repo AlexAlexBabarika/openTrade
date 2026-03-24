@@ -9,7 +9,13 @@
     TrendingUp,
   } from 'lucide-svelte';
   import ColourSwatch from './ColourSwatch.svelte';
-  import type { ChartColours } from '../lib/chartColours';
+  import type { ChartColours, ChartTemplate } from '../lib/chartColours';
+  import {
+    defaultChartColours,
+    loadTemplates,
+    saveTemplate,
+    deleteTemplate,
+  } from '../lib/chartColours';
 
   export type ChartType = 'candlestick' | 'line';
 
@@ -37,6 +43,45 @@
 
   let open = $state(false);
   let dialogEl: HTMLDivElement | undefined = $state();
+
+  let templates = $state<ChartTemplate[]>(loadTemplates());
+  let selectedTemplateName = $state('');
+
+  function applyTemplate(name: string) {
+    const tpl = templates.find((t) => t.name === name);
+    if (!tpl) return;
+    colours = { ...tpl.colours };
+    smaConfig = { ...smaConfig, lineWidth: tpl.smaLineWidth };
+    emaConfig = { ...emaConfig, lineWidth: tpl.emaLineWidth };
+  }
+
+  function handleSave() {
+    const name = prompt('Template name:',  selectedTemplateName || '');
+    if (!name?.trim()) return;
+    const tpl: ChartTemplate = {
+      name: name.trim(),
+      colours: { ...colours },
+      smaLineWidth: smaConfig.lineWidth,
+      emaLineWidth: emaConfig.lineWidth,
+    };
+    saveTemplate(tpl);
+    templates = loadTemplates();
+    selectedTemplateName = tpl.name;
+  }
+
+  function handleDelete() {
+    if (!selectedTemplateName) return;
+    deleteTemplate(selectedTemplateName);
+    templates = loadTemplates();
+    selectedTemplateName = '';
+  }
+
+  function handleReset() {
+    colours = defaultChartColours();
+    smaConfig = { ...smaConfig, lineWidth: 2 };
+    emaConfig = { ...emaConfig, lineWidth: 2 };
+    selectedTemplateName = '';
+  }
 
   const FOCUSABLE =
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -369,6 +414,54 @@
                 {/if}
               </div>
             </div>
+          </div>
+        </fieldset>
+
+        <!-- Templates -->
+        <fieldset>
+          <legend class="text-sm font-medium text-card-foreground mb-2"
+            >Templates</legend
+          >
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-2 flex-wrap">
+              <select
+                class="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors cursor-pointer appearance-none min-w-[140px]"
+                value={selectedTemplateName}
+                onchange={(e) => {
+                  const name = (e.target as HTMLSelectElement).value;
+                  selectedTemplateName = name;
+                  if (name) applyTemplate(name);
+                }}
+              >
+                <option value="">— select template —</option>
+                {#each templates as tpl}
+                  <option value={tpl.name}>{tpl.name}</option>
+                {/each}
+              </select>
+              <button
+                type="button"
+                class="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+                onclick={handleSave}
+              >
+                Save
+              </button>
+              {#if selectedTemplateName}
+                <button
+                  type="button"
+                  class="rounded-md border border-border px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:border-red-400 transition-colors"
+                  onclick={handleDelete}
+                >
+                  Delete
+                </button>
+              {/if}
+            </div>
+            <button
+              type="button"
+              class="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+              onclick={handleReset}
+            >
+              Reset to Default
+            </button>
           </div>
         </fieldset>
       </div>
