@@ -194,7 +194,8 @@
         </div>
 
         {#if chartType === 'candlestick'}
-          <div class="flex flex-wrap gap-3">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-card-foreground min-w-[50px]">Chart:</span>
             <ColourSwatch bind:colour={colours.candleUpBody} label="Up body" />
             <ColourSwatch bind:colour={colours.candleDownBody} label="Down body" />
             <ColourSwatch bind:colour={colours.candleUpWick} label="Up wick" />
@@ -203,22 +204,27 @@
         {/if}
 
         {#if chartType === 'line'}
-          <div class="flex flex-wrap gap-3">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-card-foreground min-w-[50px]">Chart:</span>
             <ColourSwatch bind:colour={colours.lineColour} label="Line" />
           </div>
         {/if}
 
         {#if showArea}
-          <div class="flex flex-wrap gap-3">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-card-foreground min-w-[50px]">Area:</span>
             <ColourSwatch bind:colour={colours.areaTop} label="Area top" />
             <ColourSwatch bind:colour={colours.areaBottom} label="Area bottom" />
           </div>
         {/if}
 
-        <div class="flex flex-wrap gap-3">
-          <ColourSwatch bind:colour={colours.volumeUp} label="Up volume" />
-          <ColourSwatch bind:colour={colours.volumeDown} label="Down volume" />
-        </div>
+        {#if showVolume}
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-card-foreground min-w-[50px]">Volume:</span>
+            <ColourSwatch bind:colour={colours.volumeUp} label="Up volume" />
+            <ColourSwatch bind:colour={colours.volumeDown} label="Down volume" />
+          </div>
+        {/if}
 
         <!-- Row 2: Moving Averages -->
         <fieldset>

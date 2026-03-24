@@ -25,7 +25,10 @@ export function defaultChartColours(): ChartColours {
     candleDownWick: down,
     lineColour: getCssVarColor('--foreground', '#d1d4dc'),
     areaTop: getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)'),
-    areaBottom: getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)'),
+    areaBottom: getCssVarColor(
+      '--area-bottom-color',
+      'rgba(56, 33, 110, 0.05)',
+    ),
     volumeUp: '#26a63130',
     volumeDown: '#c21a2a30',
     smaLine: '#2962FF',

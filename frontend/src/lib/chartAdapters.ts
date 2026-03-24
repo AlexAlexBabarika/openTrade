@@ -35,8 +35,9 @@ export function candleOHLCVtoVolumeData(
   return {
     time: isoToChartTime(c.timestamp),
     value: c.volume,
-    color: c.close > c.open
-      ? (volumeUpColor ?? '#26a63130')
-      : (volumeDownColor ?? '#c21a2a30'),
+    color:
+      c.close > c.open
+        ? (volumeUpColor ?? '#26a63130')
+        : (volumeDownColor ?? '#c21a2a30'),
   };
 }

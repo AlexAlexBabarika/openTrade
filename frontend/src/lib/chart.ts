@@ -130,8 +130,10 @@ export function addCandlestickSeries(
   chart: IChartApi,
   colours?: ChartColours,
 ): ISeriesApi<'Candlestick'> {
-  const upColor = colours?.candleUpBody ?? getCssVarColor('--up-color', '#5ea500');
-  const downColor = colours?.candleDownBody ?? getCssVarColor('--down-color', '#e7000b');
+  const upColor =
+    colours?.candleUpBody ?? getCssVarColor('--up-color', '#5ea500');
+  const downColor =
+    colours?.candleDownBody ?? getCssVarColor('--down-color', '#e7000b');
   const wickUpColor = colours?.candleUpWick ?? upColor;
   const wickDownColor = colours?.candleDownWick ?? downColor;
 
@@ -150,8 +152,12 @@ export function addAreaSeries(
   chart: IChartApi,
   colours?: ChartColours,
 ): ISeriesApi<'Area'> {
-  const topColor = colours?.areaTop ?? getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
-  const bottomColor = colours?.areaBottom ?? getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)');
+  const topColor =
+    colours?.areaTop ??
+    getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
+  const bottomColor =
+    colours?.areaBottom ??
+    getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)');
 
   const series = chart.addAreaSeries({
     lastValueVisible: false,
@@ -201,8 +207,10 @@ export function syncChartTheme(
   });
 
   if (candleSeries) {
-    const upColor = colours?.candleUpBody ?? getCssVarColor('--up-color', '#5ea500');
-    const downColor = colours?.candleDownBody ?? getCssVarColor('--down-color', '#e7000b');
+    const upColor =
+      colours?.candleUpBody ?? getCssVarColor('--up-color', '#5ea500');
+    const downColor =
+      colours?.candleDownBody ?? getCssVarColor('--down-color', '#e7000b');
     const wickUpColor = colours?.candleUpWick ?? upColor;
     const wickDownColor = colours?.candleDownWick ?? downColor;
     candleSeries.applyOptions({
@@ -216,8 +224,12 @@ export function syncChartTheme(
   }
 
   if (areaSeries) {
-    const topColor = colours?.areaTop ?? getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
-    const bottomColor = colours?.areaBottom ?? getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)');
+    const topColor =
+      colours?.areaTop ??
+      getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
+    const bottomColor =
+      colours?.areaBottom ??
+      getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)');
     areaSeries.applyOptions({ topColor, bottomColor });
   }
 
