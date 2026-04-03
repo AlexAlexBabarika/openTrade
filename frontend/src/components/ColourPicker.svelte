@@ -24,7 +24,7 @@
   const STRIP_H = 14;
 
   let hsva: HSVA = $state(cssColourToHsva(colour));
-  let hexInput: string = $state(colour.startsWith('#') ? colour : hsvaToHex(hsva));
+  let hexInput: string = $state(colour.startsWith('#') ? colour : hsvaToHex(cssColourToHsva(colour)));
   let popoverEl: HTMLDivElement | undefined = $state();
 
   // Position calculation
@@ -184,6 +184,7 @@
   <div
     class="relative rounded-md overflow-hidden cursor-crosshair touch-none"
     style="width: {GRAD_W}px; height: {GRAD_H}px; background: {hueColour};"
+    role="presentation"
     onpointerdown={gradDown}
     onpointermove={gradMove}
     onpointerup={gradUp}
@@ -200,6 +201,12 @@
   <div
     class="relative mt-3 rounded cursor-pointer touch-none"
     style="width: {GRAD_W}px; height: {STRIP_H}px; background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);"
+    role="slider"
+    tabindex="0"
+    aria-label="Hue"
+    aria-valuenow={Math.round(hsva.h)}
+    aria-valuemin={0}
+    aria-valuemax={360}
     onpointerdown={hueDown}
     onpointermove={hueMove}
     onpointerup={hueUp}
@@ -214,6 +221,12 @@
   <div
     class="relative mt-2 rounded cursor-pointer touch-none"
     style="width: {GRAD_W}px; height: {STRIP_H}px;"
+    role="slider"
+    tabindex="0"
+    aria-label="Alpha"
+    aria-valuenow={Math.round(hsva.a * 100)}
+    aria-valuemin={0}
+    aria-valuemax={100}
     onpointerdown={alphaDown}
     onpointermove={alphaMove}
     onpointerup={alphaUp}
