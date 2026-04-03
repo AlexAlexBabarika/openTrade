@@ -1,4 +1,6 @@
 # Python
+.ruff_cache
+.mypy_cache
 .venv/
 venv/
 env/
@@ -53,3 +55,8 @@ npm-debug.log*
 
 # Coverage
 coverage/
+
+# Slop
+.claude
+.cursor
+
