@@ -1,6 +1,9 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import * as Select from '$lib/components/ui/select';
   import {
     CandlestickChart,
     LineChart,
@@ -47,6 +50,9 @@
   let templates = $state<ChartTemplate[]>(loadTemplates());
   let selectedTemplateName = $state('');
 
+  let saveDialogOpen = $state(false);
+  let templateNameInput = $state('');
+
   function applyTemplate(name: string) {
     const tpl = templates.find((t) => t.name === name);
     if (!tpl) return;
@@ -55,11 +61,15 @@
     emaConfig = { ...emaConfig, lineWidth: tpl.emaLineWidth };
   }
 
-  function handleSave() {
-    const name = prompt('Template name:',  selectedTemplateName || '');
-    if (!name?.trim()) return;
+  function openSaveDialog() {
+    templateNameInput = selectedTemplateName || '';
+    saveDialogOpen = true;
+  }
+
+  function confirmSave() {
+    if (!templateNameInput.trim()) return;
     const tpl: ChartTemplate = {
-      name: name.trim(),
+      name: templateNameInput.trim(),
       colours: { ...colours },
       smaLineWidth: smaConfig.lineWidth,
       emaLineWidth: emaConfig.lineWidth,
@@ -67,6 +77,7 @@
     saveTemplate(tpl);
     templates = loadTemplates();
     selectedTemplateName = tpl.name;
+    saveDialogOpen = false;
   }
 
   function handleDelete() {
@@ -424,47 +435,65 @@
           >
           <div class="flex items-center justify-between gap-2 flex-wrap">
             <div class="flex items-center gap-2 flex-wrap">
-              <select
-                class="rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors cursor-pointer appearance-none min-w-[140px]"
-                value={selectedTemplateName}
-                onchange={(e) => {
-                  const name = (e.target as HTMLSelectElement).value;
-                  selectedTemplateName = name;
+              <Select.Root
+                type="single"
+                bind:value={selectedTemplateName}
+                onValueChange={(name) => {
                   if (name) applyTemplate(name);
                 }}
               >
-                <option value="">— select template —</option>
-                {#each templates as tpl}
-                  <option value={tpl.name}>{tpl.name}</option>
-                {/each}
-              </select>
-              <button
-                type="button"
-                class="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
-                onclick={handleSave}
-              >
+                <Select.Trigger class="min-w-[160px]">
+                  {selectedTemplateName || 'Select template'}
+                </Select.Trigger>
+                <Select.Content>
+                  {#each templates as tpl (tpl.name)}
+                    <Select.Item value={tpl.name}>{tpl.name}</Select.Item>
+                  {/each}
+                </Select.Content>
+              </Select.Root>
+              <Button variant="outline" size="sm" onclick={openSaveDialog}>
                 Save
-              </button>
+              </Button>
               {#if selectedTemplateName}
-                <button
-                  type="button"
-                  class="rounded-md border border-border px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:border-red-400 transition-colors"
-                  onclick={handleDelete}
-                >
+                <Button variant="outline" size="sm" class="text-red-400 hover:text-red-300 border-red-400/50 hover:border-red-400" onclick={handleDelete}>
                   Delete
-                </button>
+                </Button>
               {/if}
             </div>
-            <button
-              type="button"
-              class="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
-              onclick={handleReset}
-            >
+            <Button variant="outline" size="sm" onclick={handleReset}>
               Reset to Default
-            </button>
+            </Button>
           </div>
         </fieldset>
       </div>
     </div>
   </div>
 {/if}
+
+<Dialog.Root bind:open={saveDialogOpen}>
+  <Dialog.Content class="sm:max-w-md">
+    <Dialog.Header>
+      <Dialog.Title>Save Template</Dialog.Title>
+      <Dialog.Description>Enter a name for your colour template.</Dialog.Description>
+    </Dialog.Header>
+    <form
+      onsubmit={(e) => {
+        e.preventDefault();
+        confirmSave();
+      }}
+    >
+      <Input
+        bind:value={templateNameInput}
+        placeholder="Template name"
+        class="mt-2"
+        autofocus
+      />
+      <Dialog.Footer class="mt-4">
+        <Button variant="outline" type="button" onclick={() => (saveDialogOpen = false)}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={!templateNameInput.trim()}>Save</Button>
+      </Dialog.Footer>
+    </form>
+  </Dialog.Content>
+</Dialog.Root>

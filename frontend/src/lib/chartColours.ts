@@ -95,7 +95,7 @@ export function loadTemplates(): ChartTemplate[] {
 
 export function saveTemplate(template: ChartTemplate): void {
   const templates = loadTemplates();
-  const idx = templates.findIndex((t) => t.name === template.name);
+  const idx = templates.findIndex(t => t.name === template.name);
   if (idx >= 0) {
     templates[idx] = template;
   } else {
@@ -105,7 +105,7 @@ export function saveTemplate(template: ChartTemplate): void {
 }
 
 export function deleteTemplate(name: string): void {
-  const templates = loadTemplates().filter((t) => t.name !== name);
+  const templates = loadTemplates().filter(t => t.name !== name);
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
 }
 
