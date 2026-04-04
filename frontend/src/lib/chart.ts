@@ -77,10 +77,25 @@ export function getCssVarColor(
   return fallback;
 }
 
-export function createChartContainer(parent: HTMLElement): IChartApi {
-  const bgColor = getCssVarColor('--background', '#141414');
-  const textColor = getCssVarColor('--foreground', '#d1d4dc');
+export function computeGridLineColor(borderColor: string): string {
+  const parsed = parse(borderColor);
+  if (parsed) {
+    const formatted = formatRgb({ ...parsed, alpha: 0.125 });
+    if (formatted) return formatted;
+  }
+  return borderColor;
+}
+
+export function createChartContainer(
+  parent: HTMLElement,
+  colours?: ChartColours,
+): IChartApi {
+  const bgColor =
+    colours?.chartBackground ?? getCssVarColor('--background', '#141414');
+  const textColor =
+    colours?.textColour ?? getCssVarColor('--foreground', '#d1d4dc');
   const borderColor = getCssVarColor('--border', '#404040');
+  const gridLineColor = colours?.gridLines ?? computeGridLineColor(borderColor);
 
   const chart = createChart(parent, {
     width: parent.clientWidth,
@@ -90,8 +105,8 @@ export function createChartContainer(parent: HTMLElement): IChartApi {
       textColor: textColor,
     },
     grid: {
-      vertLines: { color: borderColor }, // adding transparency
-      horzLines: { color: borderColor },
+      vertLines: { color: gridLineColor },
+      horzLines: { color: gridLineColor },
     },
     rightPriceScale: {
       borderColor: borderColor,
@@ -176,18 +191,12 @@ export function syncChartTheme(
   lineSeries?: ISeriesApi<'Line'> | null,
   colours?: ChartColours,
 ) {
-  const bgColor = getCssVarColor('--background', '#141414');
-  const textColor = getCssVarColor('--foreground', '#d1d4dc');
+  const bgColor =
+    colours?.chartBackground ?? getCssVarColor('--background', '#141414');
+  const textColor =
+    colours?.textColour ?? getCssVarColor('--foreground', '#d1d4dc');
   const borderColor = getCssVarColor('--border', '#404040');
-
-  const parsedBorderColor = parse(borderColor);
-  let gridLineColor = borderColor;
-  if (parsedBorderColor) {
-    const formatted = formatRgb({ ...parsedBorderColor, alpha: 0.125 });
-    if (formatted) {
-      gridLineColor = formatted;
-    }
-  }
+  const gridLineColor = colours?.gridLines ?? computeGridLineColor(borderColor);
 
   chart.applyOptions({
     layout: {

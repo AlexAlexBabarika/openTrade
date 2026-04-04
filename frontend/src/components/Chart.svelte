@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { ColorType } from 'lightweight-charts';
   import type {
     IChartApi,
     ISeriesApi,
@@ -151,7 +152,7 @@
   function initChart(): void {
     if (!containerEl) return;
 
-    chart = createChartContainer(containerEl);
+    chart = createChartContainer(containerEl, colours);
     applyVolume(showVolume);
     applyArea(showArea);
     applySeries(chartType);
@@ -347,6 +348,17 @@
     if (!chart || !colours) return;
     const c = colours;
 
+    chart.applyOptions({
+      layout: {
+        background: { type: ColorType.Solid, color: c.chartBackground },
+        textColor: c.textColour,
+      },
+      grid: {
+        vertLines: { color: c.gridLines },
+        horzLines: { color: c.gridLines },
+      },
+    });
+
     if (candleSeries) {
       candleSeries.applyOptions({
         upColor: c.candleUpBody,
@@ -390,12 +402,13 @@
   <div class="flex-1 min-h-[400px] relative w-full" bind:this={containerEl}>
     {#if showLegend}
       <div
-        class="absolute left-4 top-4 z-10 text-sm font-light text-foreground pointer-events-none font-sans leading-[18px]"
+        class="absolute left-4 top-4 z-10 text-sm font-light pointer-events-none font-sans leading-[18px]"
+        style:color={colours?.textColour}
       >
         <div class="text-2xl my-1 font-medium">{legendName}</div>
         <div class="text-[22px] my-1 font-semibold">{legendPrice}</div>
-        <div class="text-muted-foreground">{legendDate}</div>
-        <div class="text-muted-foreground">Volume: {legendVolume}</div>
+        <div style:opacity="0.7">{legendDate}</div>
+        <div style:opacity="0.7">Volume: {legendVolume}</div>
       </div>
     {/if}
   </div>
