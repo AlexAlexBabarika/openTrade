@@ -59,6 +59,11 @@
     colours = { ...tpl.colours };
     smaConfig = { ...smaConfig, lineWidth: tpl.smaLineWidth };
     emaConfig = { ...emaConfig, lineWidth: tpl.emaLineWidth };
+    if (tpl.chartType !== undefined) chartType = tpl.chartType;
+    if (tpl.showArea !== undefined) showArea = tpl.showArea;
+    if (tpl.showVolume !== undefined) showVolume = tpl.showVolume;
+    if (tpl.smaEnabled !== undefined) smaConfig = { ...smaConfig, enabled: tpl.smaEnabled };
+    if (tpl.emaEnabled !== undefined) emaConfig = { ...emaConfig, enabled: tpl.emaEnabled };
   }
 
   function openSaveDialog() {
@@ -73,6 +78,11 @@
       colours: { ...colours },
       smaLineWidth: smaConfig.lineWidth,
       emaLineWidth: emaConfig.lineWidth,
+      chartType,
+      showArea,
+      showVolume,
+      smaEnabled: smaConfig.enabled,
+      emaEnabled: emaConfig.enabled,
     };
     saveTemplate(tpl);
     templates = loadTemplates();
@@ -89,8 +99,11 @@
 
   function handleReset() {
     colours = defaultChartColours();
-    smaConfig = { ...smaConfig, lineWidth: 2 };
-    emaConfig = { ...emaConfig, lineWidth: 2 };
+    chartType = 'candlestick';
+    showArea = true;
+    showVolume = true;
+    smaConfig = { enabled: false, period: 20, lineWidth: 2 };
+    emaConfig = { enabled: false, period: 20, lineWidth: 2 };
     selectedTemplateName = '';
   }
 
@@ -474,7 +487,7 @@
   <Dialog.Content class="sm:max-w-md">
     <Dialog.Header>
       <Dialog.Title>Save Template</Dialog.Title>
-      <Dialog.Description>Enter a name for your colour template.</Dialog.Description>
+      <Dialog.Description>Enter a name for your chart template.</Dialog.Description>
     </Dialog.Header>
     <form
       onsubmit={(e) => {

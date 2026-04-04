@@ -6,6 +6,19 @@ export interface ChartTemplate {
   colours: ChartColours;
   smaLineWidth: number;
   emaLineWidth: number;
+  chartType?: 'candlestick' | 'line';
+  showArea?: boolean;
+  showVolume?: boolean;
+  smaEnabled?: boolean;
+  emaEnabled?: boolean;
+}
+
+export interface ChartSettings {
+  chartType: 'candlestick' | 'line';
+  showArea: boolean;
+  showVolume: boolean;
+  smaEnabled: boolean;
+  emaEnabled: boolean;
 }
 
 export interface ChartColours {
@@ -69,6 +82,37 @@ export function persistChartColours(colours: ChartColours): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(colours));
   } catch (e) {
     console.warn('[opentrade] Failed to persist chart colours', e);
+  }
+}
+
+const SETTINGS_KEY = 'opentrade:chartSettings';
+
+export function loadChartSettingsFromStorage(): ChartSettings | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as unknown;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const rec = data as Record<string, unknown>;
+    return {
+      chartType: rec.chartType === 'line' ? 'line' : 'candlestick',
+      showArea: typeof rec.showArea === 'boolean' ? rec.showArea : true,
+      showVolume: typeof rec.showVolume === 'boolean' ? rec.showVolume : true,
+      smaEnabled: typeof rec.smaEnabled === 'boolean' ? rec.smaEnabled : false,
+      emaEnabled: typeof rec.emaEnabled === 'boolean' ? rec.emaEnabled : false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function persistChartSettings(settings: ChartSettings): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.warn('[opentrade] Failed to persist chart settings', e);
   }
 }
 

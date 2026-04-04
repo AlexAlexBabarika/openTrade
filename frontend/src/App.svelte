@@ -26,6 +26,8 @@
     loadChartColoursFromStorage,
     persistChartColours,
     snapshotChartColours,
+    loadChartSettingsFromStorage,
+    persistChartSettings,
   } from './lib/chartColours';
 
   let symbol = $state('AAPL');
@@ -37,16 +39,17 @@
   let errorMessage = $state<string | null>(null);
   let connectionStatus = $state<ConnectionStatus>('disconnected');
   let candles = $state<OHLCVCandle[]>([]);
-  let chartType = $state<ChartType>('candlestick');
-  let showArea = $state(true);
-  let showVolume = $state(true);
+  const savedSettings = loadChartSettingsFromStorage();
+  let chartType = $state<ChartType>(savedSettings?.chartType ?? 'candlestick');
+  let showArea = $state(savedSettings?.showArea ?? true);
+  let showVolume = $state(savedSettings?.showVolume ?? true);
   let smaConfig = $state<MovingAverageConfig>({
-    enabled: false,
+    enabled: savedSettings?.smaEnabled ?? false,
     period: 20,
     lineWidth: 2,
   });
   let emaConfig = $state<MovingAverageConfig>({
-    enabled: false,
+    enabled: savedSettings?.emaEnabled ?? false,
     period: 20,
     lineWidth: 2,
   });
@@ -186,6 +189,17 @@
   // Persist chart colours (ChartOptionsMenu) across sessions
   $effect(() => {
     persistChartColours(snapshotChartColours(colours));
+  });
+
+  // Persist chart settings (type, toggles) across sessions
+  $effect(() => {
+    persistChartSettings({
+      chartType,
+      showArea,
+      showVolume,
+      smaEnabled: smaConfig.enabled,
+      emaEnabled: emaConfig.enabled,
+    });
   });
 
   onDestroy(() => {
