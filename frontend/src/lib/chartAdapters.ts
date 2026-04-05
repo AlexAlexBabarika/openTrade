@@ -27,10 +27,17 @@ export function candleOHLCVtoCandlestickData(c: OHLCVCandle): CandlestickData {
   };
 }
 
-export function candleOHLCVtoVolumeData(c: OHLCVCandle): HistogramData {
+export function candleOHLCVtoVolumeData(
+  c: OHLCVCandle,
+  volumeUpColor?: string,
+  volumeDownColor?: string,
+): HistogramData {
   return {
     time: isoToChartTime(c.timestamp),
     value: c.volume,
-    color: c.close > c.open ? '#26a63130' : '#c21a2a30',
+    color:
+      c.close > c.open
+        ? (volumeUpColor ?? '#26a63130')
+        : (volumeDownColor ?? '#c21a2a30'),
   };
 }

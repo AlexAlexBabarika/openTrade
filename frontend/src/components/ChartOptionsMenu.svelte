@@ -8,6 +8,8 @@
     BarChart3,
     TrendingUp,
   } from 'lucide-svelte';
+  import ColourSwatch from './ColourSwatch.svelte';
+  import type { ChartColours } from '../lib/chartColours';
 
   export type ChartType = 'candlestick' | 'line';
 
@@ -21,15 +23,16 @@
     chartType = $bindable('candlestick'),
     showArea = $bindable(true),
     showVolume = $bindable(true),
-  }: { chartType: ChartType; showArea: boolean; showVolume: boolean } =
-    $props();
     smaConfig = $bindable({ enabled: false, period: 20, lineWidth: 2 }),
     emaConfig = $bindable({ enabled: false, period: 20, lineWidth: 2 }),
+    colours = $bindable({} as ChartColours),
   }: {
     chartType: ChartType;
     showArea: boolean;
+    showVolume: boolean;
     smaConfig: MovingAverageConfig;
     emaConfig: MovingAverageConfig;
+    colours: ChartColours;
   } = $props();
 
   let open = $state(false);
@@ -190,6 +193,39 @@
           </fieldset>
         </div>
 
+        {#if chartType === 'candlestick'}
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-card-foreground min-w-[50px]">Chart:</span>
+            <ColourSwatch bind:colour={colours.candleUpBody} label="Up body" />
+            <ColourSwatch bind:colour={colours.candleDownBody} label="Down body" />
+            <ColourSwatch bind:colour={colours.candleUpWick} label="Up wick" />
+            <ColourSwatch bind:colour={colours.candleDownWick} label="Down wick" />
+          </div>
+        {/if}
+
+        {#if chartType === 'line'}
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-card-foreground min-w-[50px]">Chart:</span>
+            <ColourSwatch bind:colour={colours.lineColour} label="Line" />
+          </div>
+        {/if}
+
+        {#if showArea}
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-card-foreground min-w-[50px]">Area:</span>
+            <ColourSwatch bind:colour={colours.areaTop} label="Area top" />
+            <ColourSwatch bind:colour={colours.areaBottom} label="Area bottom" />
+          </div>
+        {/if}
+
+        {#if showVolume}
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-card-foreground min-w-[50px]">Volume:</span>
+            <ColourSwatch bind:colour={colours.volumeUp} label="Up volume" />
+            <ColourSwatch bind:colour={colours.volumeDown} label="Down volume" />
+          </div>
+        {/if}
+
         <!-- Row 2: Moving Averages -->
         <fieldset>
           <legend class="text-sm font-medium text-card-foreground mb-2"
@@ -261,6 +297,7 @@
                       class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                     />
                   </label>
+                  <ColourSwatch bind:colour={colours.smaLine} label="Line" />
                 {/if}
               </div>
             </div>
@@ -328,6 +365,7 @@
                       class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                     />
                   </label>
+                  <ColourSwatch bind:colour={colours.emaLine} label="Line" />
                 {/if}
               </div>
             </div>

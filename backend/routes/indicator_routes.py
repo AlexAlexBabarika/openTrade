@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from backend.market import cache
-from backend.indicators import calculate_sma, calculate_ema
+from backend.market.indicators import calculate_sma, calculate_ema
 
 logger = logging.getLogger(__name__)
 
