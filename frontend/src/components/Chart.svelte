@@ -16,18 +16,24 @@
     addCandlestickSeries,
     addVolumeSeries,
     addAreaSeries,
+    addLineSeries,
     syncChartTheme,
+    getCssVarColor,
   } from '../lib/chart';
   import type { OHLCVCandle } from '../lib/types';
+  import type { ChartType } from './ChartOptionsMenu.svelte';
 
   let {
     candles = [] as OHLCVCandle[],
     symbol = '',
-  }: { candles: OHLCVCandle[]; symbol: string } = $props();
+    chartType = 'candlestick' as ChartType,
+  }: { candles: OHLCVCandle[]; symbol: string; chartType?: ChartType } =
+    $props();
 
   let containerEl: HTMLDivElement;
   let chart: IChartApi | null = null;
   let candleSeries: ISeriesApi<'Candlestick'> | null = null;
+  let lineSeries: ISeriesApi<'Line'> | null = null;
   let areaSeries: ISeriesApi<'Area'> | null = null;
   let volumeSeries: ISeriesApi<'Histogram'> | null = null;
   let themeObserver: MutationObserver | null = null;
@@ -73,7 +79,8 @@
   }
 
   function updateLegend(param: MouseEventParams | undefined): void {
-    if (!candleSeries) return;
+    const priceSeries = candleSeries ?? lineSeries;
+    if (!priceSeries) return;
 
     const validCrosshairPoint = !(
       param === undefined ||
@@ -84,8 +91,8 @@
     );
 
     const bar = validCrosshairPoint
-      ? param.seriesData.get(candleSeries)
-      : candleSeries.dataByIndex(Number.MAX_SAFE_INTEGER, -1);
+      ? param.seriesData.get(priceSeries)
+      : priceSeries.dataByIndex(Number.MAX_SAFE_INTEGER, -1);
 
     const volumeBar = volumeSeries
       ? validCrosshairPoint
@@ -125,22 +132,52 @@
     chart = createChartContainer(containerEl);
     volumeSeries = addVolumeSeries(chart);
     areaSeries = addAreaSeries(chart);
-    candleSeries = addCandlestickSeries(chart);
+    applySeries(chartType);
 
     chart.subscribeCrosshairMove(updateLegend);
     updateLegend(undefined);
   }
 
-  function updateChartData(data: OHLCVCandle[]): void {
-    if (!chart || !candleSeries || !areaSeries || !volumeSeries) return;
+  function applySeries(type: ChartType): void {
+    if (!chart) return;
 
-    if (data.length >= 20) {
-      areaSeries.setData(data.map(candleOHLCVtoAreaData));
-    } else {
-      areaSeries.setData([]);
+    // Remove existing price series
+    if (candleSeries) {
+      chart.removeSeries(candleSeries);
+      candleSeries = null;
+    }
+    if (lineSeries) {
+      chart.removeSeries(lineSeries);
+      lineSeries = null;
     }
 
-    candleSeries.setData(data.map(candleOHLCVtoCandlestickData));
+    if (type === 'candlestick') {
+      candleSeries = addCandlestickSeries(chart);
+    } else {
+      const lineColor = getCssVarColor('--foreground', '#d1d4dc');
+      lineSeries = addLineSeries(chart, lineColor);
+    }
+  }
+
+  function updateChartData(data: OHLCVCandle[]): void {
+    if (!chart || !volumeSeries) return;
+
+    // Area series only shown with candlestick chart and enough data
+    if (areaSeries) {
+      if (chartType === 'candlestick' && data.length >= 20) {
+        areaSeries.setData(data.map(candleOHLCVtoAreaData));
+      } else {
+        areaSeries.setData([]);
+      }
+    }
+
+    if (candleSeries) {
+      candleSeries.setData(data.map(candleOHLCVtoCandlestickData));
+    }
+    if (lineSeries) {
+      lineSeries.setData(data.map(candleOHLCVtoAreaData));
+    }
+
     volumeSeries.setData(data.map(candleOHLCVtoVolumeData));
     chart.timeScale().fitContent();
     updateLegend(undefined);
@@ -165,7 +202,7 @@
     // Watch for theme changes on the html element
     themeObserver = new MutationObserver(() => {
       if (chart) {
-        syncChartTheme(chart, candleSeries, areaSeries);
+        syncChartTheme(chart, candleSeries, areaSeries, lineSeries);
       }
     });
 
@@ -188,6 +225,16 @@
 
   $effect(() => {
     if (chart && candles) {
+      updateChartData(candles);
+    }
+  });
+
+  $effect(() => {
+    if (!chart) return;
+    // Re-read chartType to track it as a dependency
+    const type = chartType;
+    applySeries(type);
+    if (candles.length > 0) {
       updateChartData(candles);
     }
   });
