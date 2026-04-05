@@ -3,6 +3,7 @@
   import type {
     IChartApi,
     ISeriesApi,
+    LineWidth,
     MouseEventParams,
     Time,
   } from 'lightweight-charts';
@@ -20,8 +21,9 @@
     syncChartTheme,
     getCssVarColor,
   } from '../lib/chart';
-  import type { OHLCVCandle } from '../lib/types';
+  import type { OHLCVCandle, IndicatorPoint } from '../lib/types';
   import type { ChartType } from './ChartOptionsMenu.svelte';
+  import { linePoint } from '../lib/chart';
 
   let {
     candles = [] as OHLCVCandle[],
@@ -29,12 +31,20 @@
     chartType = 'candlestick' as ChartType,
     showArea = true,
     showVolume = true,
+    smaPoints = [] as IndicatorPoint[],
+    emaPoints = [] as IndicatorPoint[],
+    smaLineWidth = 2,
+    emaLineWidth = 2,
   }: {
     candles: OHLCVCandle[];
     symbol: string;
     chartType?: ChartType;
     showArea?: boolean;
     showVolume?: boolean;
+    smaPoints?: IndicatorPoint[];
+    emaPoints?: IndicatorPoint[];
+    smaLineWidth?: number;
+    emaLineWidth?: number;
   } = $props();
 
   let containerEl: HTMLDivElement;
@@ -43,6 +53,8 @@
   let lineSeries: ISeriesApi<'Line'> | null = null;
   let areaSeries: ISeriesApi<'Area'> | null = null;
   let volumeSeries: ISeriesApi<'Histogram'> | null = null;
+  let smaSeries: ISeriesApi<'Line'> | null = null;
+  let emaSeries: ISeriesApi<'Line'> | null = null;
   let themeObserver: MutationObserver | null = null;
 
   // Legend state
@@ -283,6 +295,43 @@
     applyVolume(enabled);
     if (candles.length > 0) {
       updateChartData(candles);
+  // SMA series
+  $effect(() => {
+    if (!chart) return;
+    const points = smaPoints;
+    const width = smaLineWidth;
+
+    if (points.length > 0) {
+      if (!smaSeries) {
+        smaSeries = addLineSeries(chart, '#2962FF');
+      }
+      smaSeries.applyOptions({ lineWidth: width as LineWidth });
+      smaSeries.setData(points.map(p => linePoint(p.timestamp, p.value)));
+    } else {
+      if (smaSeries) {
+        chart.removeSeries(smaSeries);
+        smaSeries = null;
+      }
+    }
+  });
+
+  // EMA series
+  $effect(() => {
+    if (!chart) return;
+    const points = emaPoints;
+    const width = emaLineWidth;
+
+    if (points.length > 0) {
+      if (!emaSeries) {
+        emaSeries = addLineSeries(chart, '#FF6D00');
+      }
+      emaSeries.applyOptions({ lineWidth: width as LineWidth });
+      emaSeries.setData(points.map(p => linePoint(p.timestamp, p.value)));
+    } else {
+      if (emaSeries) {
+        chart.removeSeries(emaSeries);
+        emaSeries = null;
+      }
     }
   });
 </script>

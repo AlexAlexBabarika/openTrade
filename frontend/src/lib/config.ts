@@ -35,6 +35,10 @@ export function yfinanceUrl(
   return `${API_BASE}/data/yfinance/${encodeURIComponent(symbol)}?${params}`;
 }
 
-export function smaUrl(symbol: string, period = '20'): string {
+export function smaUrl(symbol: string, period: number = 20): string {
   return `${API_BASE}/data/indicators/sma?symbol=${encodeURIComponent(symbol)}&period=${period}`;
+}
+
+export function emaUrl(symbol: string, period: number = 20): string {
+  return `${API_BASE}/data/indicators/ema?symbol=${encodeURIComponent(symbol)}&period=${period}`;
 }
