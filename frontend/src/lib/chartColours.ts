@@ -1,5 +1,5 @@
 // frontend/src/lib/chartColours.ts
-import { getCssVarColor } from './chart';
+import { getCssVarColor, computeGridLineColor } from './chart';
 
 export interface ChartTemplate {
   name: string;
@@ -33,6 +33,9 @@ export interface ChartColours {
   volumeDown: string;
   smaLine: string;
   emaLine: string;
+  chartBackground: string;
+  gridLines: string;
+  textColour: string;
 }
 
 const STORAGE_KEY = 'opentrade:chartColours';
@@ -49,6 +52,9 @@ const CHART_COLOUR_KEYS: (keyof ChartColours)[] = [
   'volumeDown',
   'smaLine',
   'emaLine',
+  'chartBackground',
+  'gridLines',
+  'textColour',
 ];
 
 /** Shallow copy; reading each field helps Svelte effects track nested `$state` updates. */
@@ -171,5 +177,8 @@ export function defaultChartColours(): ChartColours {
     volumeDown: '#c21a2a30',
     smaLine: '#2962FF',
     emaLine: '#FF6D00',
+    chartBackground: getCssVarColor('--background', '#141414'),
+    gridLines: computeGridLineColor(getCssVarColor('--border', '#404040')),
+    textColour: getCssVarColor('--foreground', '#d1d4dc'),
   };
 }

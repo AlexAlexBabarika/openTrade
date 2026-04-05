@@ -186,13 +186,10 @@
       });
   });
 
-  // Persist chart colours (ChartOptionsMenu) across sessions
-  $effect(() => {
+  // Persist chart colours and settings to localStorage only when the page unloads,
+  // avoiding excessive writes during drag operations in colour pickers.
+  function persistOnUnload() {
     persistChartColours(snapshotChartColours(colours));
-  });
-
-  // Persist chart settings (type, toggles) across sessions
-  $effect(() => {
     persistChartSettings({
       chartType,
       showArea,
@@ -200,17 +197,20 @@
       smaEnabled: smaConfig.enabled,
       emaEnabled: emaConfig.enabled,
     });
-  });
-
-  onDestroy(() => {
-    if (refreshIntervalId) clearInterval(refreshIntervalId);
-    if (wsClient) wsClient.disconnect();
-  });
+  }
 
   onMount(() => {
+    window.addEventListener('beforeunload', persistOnUnload);
     fetchSession().catch(err => {
       console.warn('Session fetch failed:', err);
     });
+  });
+
+  onDestroy(() => {
+    persistOnUnload();
+    window.removeEventListener('beforeunload', persistOnUnload);
+    if (refreshIntervalId) clearInterval(refreshIntervalId);
+    if (wsClient) wsClient.disconnect();
   });
 
   // Initial load (default source: yfinance)

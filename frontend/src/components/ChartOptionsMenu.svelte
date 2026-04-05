@@ -183,6 +183,13 @@
           </fieldset>
         </div>
 
+        <div class="flex items-center gap-3">
+          <span class="text-sm font-medium text-card-foreground min-w-[50px]">Background:</span>
+          <ColourSwatch bind:colour={colours.chartBackground} label="Chart" />
+          <ColourSwatch bind:colour={colours.gridLines} label="Grid" />
+          <ColourSwatch bind:colour={colours.textColour} label="Text" />
+        </div>
+
         {#if chartType === 'candlestick'}
           <div class="flex items-center gap-3">
             <span class="text-sm font-medium text-card-foreground min-w-[50px]">Chart:</span>
