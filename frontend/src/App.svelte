@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, untrack } from 'svelte';
   import Header from './components/Header.svelte';
   import ErrorMessage from './components/ErrorMessage.svelte';
   import Chart from './components/Chart.svelte';
@@ -145,8 +145,7 @@
   $effect(() => {
     const cfg = smaConfig;
     const sym = symbol;
-    const c = candles;
-    if (!cfg.enabled || c.length === 0) {
+    if (!cfg.enabled || untrack(() => candles).length === 0) {
       smaPoints = [];
       return;
     }
@@ -162,8 +161,7 @@
   $effect(() => {
     const cfg = emaConfig;
     const sym = symbol;
-    const c = candles;
-    if (!cfg.enabled || c.length === 0) {
+    if (!cfg.enabled || untrack(() => candles).length === 0) {
       emaPoints = [];
       return;
     }
