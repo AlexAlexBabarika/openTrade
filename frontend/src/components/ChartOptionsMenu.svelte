@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { tick } from 'svelte';
   import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import * as Dialog from '$lib/components/ui/dialog';
+  import * as Select from '$lib/components/ui/select';
   import {
     CandlestickChart,
     LineChart,
@@ -9,7 +11,13 @@
     TrendingUp,
   } from 'lucide-svelte';
   import ColourSwatch from './ColourSwatch.svelte';
-  import type { ChartColours } from '../lib/chartColours';
+  import type { ChartColours, ChartTemplate } from '../lib/chartColours';
+  import {
+    defaultChartColours,
+    loadTemplates,
+    saveTemplate,
+    deleteTemplate,
+  } from '../lib/chartColours';
 
   export type ChartType = 'candlestick' | 'line';
 
@@ -36,57 +44,67 @@
   } = $props();
 
   let open = $state(false);
-  let dialogEl: HTMLDivElement | undefined = $state();
 
-  const FOCUSABLE =
-    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  let templates = $state<ChartTemplate[]>(loadTemplates());
+  let selectedTemplateName = $state('');
 
-  function getFocusableElements(container: HTMLElement): HTMLElement[] {
-    return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE));
+  let saveDialogOpen = $state(false);
+  let templateNameInput = $state('');
+
+  function applyTemplate(name: string) {
+    const tpl = templates.find((t) => t.name === name);
+    if (!tpl) return;
+    colours = { ...tpl.colours };
+    smaConfig = { ...smaConfig, lineWidth: tpl.smaLineWidth };
+    emaConfig = { ...emaConfig, lineWidth: tpl.emaLineWidth };
+    if (tpl.chartType !== undefined) chartType = tpl.chartType;
+    if (tpl.showArea !== undefined) showArea = tpl.showArea;
+    if (tpl.showVolume !== undefined) showVolume = tpl.showVolume;
+    if (tpl.smaEnabled !== undefined) smaConfig = { ...smaConfig, enabled: tpl.smaEnabled };
+    if (tpl.emaEnabled !== undefined) emaConfig = { ...emaConfig, enabled: tpl.emaEnabled };
   }
 
-  function trapFocus(e: KeyboardEvent) {
-    if (e.key !== 'Tab' || !dialogEl) return;
-    const target = e.target as Node;
-    if (!dialogEl.contains(target)) return;
-    const focusable = getFocusableElements(dialogEl);
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (e.shiftKey) {
-      if (document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      }
-    } else {
-      if (document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
+  function openSaveDialog() {
+    templateNameInput = selectedTemplateName || '';
+    saveDialogOpen = true;
   }
 
-  function close() {
-    open = false;
-  }
-
-  function handleBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) close();
-  }
-
-  $effect(() => {
-    if (!open) return;
-    const onKeydown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
-      trapFocus(e);
+  function confirmSave() {
+    if (!templateNameInput.trim()) return;
+    const tpl: ChartTemplate = {
+      name: templateNameInput.trim(),
+      colours: { ...colours },
+      smaLineWidth: smaConfig.lineWidth,
+      emaLineWidth: emaConfig.lineWidth,
+      chartType,
+      showArea,
+      showVolume,
+      smaEnabled: smaConfig.enabled,
+      emaEnabled: emaConfig.enabled,
     };
-    window.addEventListener('keydown', onKeydown);
-    tick().then(() => {
-      const first = dialogEl && getFocusableElements(dialogEl)[0];
-      first?.focus();
-    });
-    return () => window.removeEventListener('keydown', onKeydown);
-  });
+    saveTemplate(tpl);
+    templates = loadTemplates();
+    selectedTemplateName = tpl.name;
+    saveDialogOpen = false;
+  }
+
+  function handleDelete() {
+    if (!selectedTemplateName) return;
+    deleteTemplate(selectedTemplateName);
+    templates = loadTemplates();
+    selectedTemplateName = '';
+  }
+
+  function handleReset() {
+    colours = defaultChartColours();
+    chartType = 'candlestick';
+    showArea = true;
+    showVolume = true;
+    smaConfig = { enabled: false, period: 20, lineWidth: 2 };
+    emaConfig = { enabled: false, period: 20, lineWidth: 2 };
+    selectedTemplateName = '';
+  }
+
 </script>
 
 <Button
@@ -97,39 +115,11 @@
   Chart Options
 </Button>
 
-{#if open}
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-    role="presentation"
-    onclick={handleBackdropClick}
-    onkeydown={e => {
-      if (e.target !== e.currentTarget) return;
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        close();
-      }
-    }}
-  >
-    <div
-      bind:this={dialogEl}
-      class="relative w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Chart Options"
-    >
-      <button
-        type="button"
-        class="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
-        onclick={close}
-        aria-label="Close"
-      >
-        &#x2715;
-      </button>
-
-      <h2 class="mb-5 text-lg font-semibold text-card-foreground">
-        Chart Options
-      </h2>
+<Dialog.Root bind:open>
+  <Dialog.Content class="sm:max-w-lg">
+    <Dialog.Header>
+      <Dialog.Title>Chart Options</Dialog.Title>
+    </Dialog.Header>
 
       <div class="flex flex-col gap-4">
         <!-- Row 1: Chart Type + Overlay -->
@@ -371,7 +361,72 @@
             </div>
           </div>
         </fieldset>
+
+        <!-- Templates -->
+        <fieldset>
+          <legend class="text-sm font-medium text-card-foreground mb-2"
+            >Templates</legend
+          >
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-2 flex-wrap">
+              <Select.Root
+                type="single"
+                bind:value={selectedTemplateName}
+                onValueChange={(name) => {
+                  if (name) applyTemplate(name);
+                }}
+              >
+                <Select.Trigger class="min-w-[160px]">
+                  {selectedTemplateName || 'Select template'}
+                </Select.Trigger>
+                <Select.Content>
+                  {#each templates as tpl (tpl.name)}
+                    <Select.Item value={tpl.name}>{tpl.name}</Select.Item>
+                  {/each}
+                </Select.Content>
+              </Select.Root>
+              <Button variant="outline" size="sm" onclick={openSaveDialog}>
+                Save
+              </Button>
+              {#if selectedTemplateName}
+                <Button variant="outline" size="sm" class="text-red-400 hover:text-red-300 border-red-400/50 hover:border-red-400" onclick={handleDelete}>
+                  Delete
+                </Button>
+              {/if}
+            </div>
+            <Button variant="outline" size="sm" onclick={handleReset}>
+              Reset to Default
+            </Button>
+          </div>
+        </fieldset>
       </div>
-    </div>
-  </div>
-{/if}
+  </Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={saveDialogOpen}>
+  <Dialog.Content class="sm:max-w-md">
+    <Dialog.Header>
+      <Dialog.Title>Save Template</Dialog.Title>
+      <Dialog.Description>Enter a name for your chart template.</Dialog.Description>
+    </Dialog.Header>
+    <form
+      onsubmit={(e) => {
+        e.preventDefault();
+        confirmSave();
+      }}
+    >
+      <Input
+        bind:value={templateNameInput}
+        placeholder="Template name"
+        class="mt-2"
+        autofocus
+      />
+      <Dialog.Footer class="mt-4">
+        <Button variant="outline" type="button" onclick={() => (saveDialogOpen = false)}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={!templateNameInput.trim()}>Save</Button>
+      </Dialog.Footer>
+    </form>
+  </Dialog.Content>
+</Dialog.Root>
