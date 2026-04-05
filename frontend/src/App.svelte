@@ -21,7 +21,12 @@
   import { DEFAULT_MARKET_INTERVAL } from './lib/marketIntervals';
   import { DEFAULT_MARKET_PERIOD } from './lib/marketPeriods';
   import type { ChartColours } from './lib/chartColours';
-  import { defaultChartColours } from './lib/chartColours';
+  import {
+    defaultChartColours,
+    loadChartColoursFromStorage,
+    persistChartColours,
+    snapshotChartColours,
+  } from './lib/chartColours';
 
   let symbol = $state('AAPL');
   let period = $state(DEFAULT_MARKET_PERIOD);
@@ -47,7 +52,9 @@
   });
   let smaPoints = $state<IndicatorPoint[]>([]);
   let emaPoints = $state<IndicatorPoint[]>([]);
-  let colours = $state<ChartColours>(defaultChartColours());
+  let colours = $state<ChartColours>(
+    loadChartColoursFromStorage() ?? defaultChartColours(),
+  );
   let isLoading = $state(false);
   let wsClient: WSClient | null = null;
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -174,6 +181,11 @@
         emaPoints = [];
         errorMessage = e instanceof Error ? e.message : 'Failed to load EMA';
       });
+  });
+
+  // Persist chart colours (ChartOptionsMenu) across sessions
+  $effect(() => {
+    persistChartColours(snapshotChartColours(colours));
   });
 
   onDestroy(() => {
