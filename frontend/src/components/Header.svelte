@@ -18,7 +18,7 @@
     DEFAULT_MARKET_PERIOD,
     MARKET_PERIOD_OPTIONS,
   } from '$lib/marketPeriods';
-  import { LoaderCircle } from 'lucide-svelte';
+  import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 
   let {
     symbol = $bindable('AAPL'),
