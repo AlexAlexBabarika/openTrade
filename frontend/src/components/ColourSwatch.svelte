@@ -1,5 +1,6 @@
-<!-- frontend/src/components/ColourSwatch.svelte -->
 <script lang="ts">
+  import ColourPicker from './ColourPicker.svelte';
+
   let {
     colour = $bindable('#000000'),
     label,
@@ -8,43 +9,23 @@
     label: string;
   } = $props();
 
-  let inputEl: HTMLInputElement | undefined = $state();
+  let open = $state(false);
+  let btnEl: HTMLButtonElement | undefined = $state();
 
-  /** Extract hex RGB from any CSS colour string for the native picker */
-  function toHex6(c: string): string {
-    // Handle #RRGGBBAA or #RRGGBB
-    if (c.startsWith('#')) {
-      const hex = c.slice(1);
-      if (hex.length >= 6) return '#' + hex.slice(0, 6);
-    }
-    // Handle rgb()/rgba() — parse via canvas
-    const ctx = document.createElement('canvas').getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = c;
-      return ctx.fillStyle; // returns #rrggbb
-    }
-    return '#000000';
+  function toggle() {
+    open = !open;
   }
 
-  /** Get alpha suffix from original colour (if any) */
-  function getAlphaSuffix(c: string): string {
-    if (c.startsWith('#') && c.length === 9) {
-      return c.slice(7, 9);
-    }
-    return '';
-  }
-
-  function handleInput(e: Event) {
-    const val = (e.target as HTMLInputElement).value;
-    const alpha = getAlphaSuffix(colour);
-    colour = val + alpha;
+  function getAnchor(): DOMRect {
+    return btnEl!.getBoundingClientRect();
   }
 </script>
 
 <button
+  bind:this={btnEl}
   type="button"
   class="flex items-center gap-2 group"
-  onclick={() => inputEl?.click()}
+  onclick={toggle}
   aria-label="Pick colour for {label}"
 >
   <span
@@ -52,12 +33,12 @@
     style="background-color: {colour};"
   ></span>
   <span class="text-xs text-muted-foreground">{label}</span>
-  <input
-    bind:this={inputEl}
-    type="color"
-    value={toHex6(colour)}
-    oninput={handleInput}
-    class="sr-only"
-    tabindex={-1}
-  />
 </button>
+
+{#if open}
+  <ColourPicker
+    bind:colour
+    anchor={getAnchor()}
+    onclose={() => (open = false)}
+  />
+{/if}
