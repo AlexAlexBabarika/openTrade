@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { CircleAlert } from 'lucide-svelte';
+  import CircleAlert from '@lucide/svelte/icons/circle-alert';
   import { Button } from '$lib/components/ui/button';
   import GlitchText from './GlitchText.svelte';
 

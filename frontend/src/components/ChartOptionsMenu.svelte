@@ -3,13 +3,11 @@
   import { Input } from '$lib/components/ui/input';
   import * as Dialog from '$lib/components/ui/dialog';
   import * as Select from '$lib/components/ui/select';
-  import {
-    CandlestickChart,
-    LineChart,
-    AreaChart,
-    BarChart3,
-    TrendingUp,
-  } from 'lucide-svelte';
+  import CandlestickChart from '@lucide/svelte/icons/candlestick-chart';
+  import LineChart from '@lucide/svelte/icons/line-chart';
+  import AreaChart from '@lucide/svelte/icons/area-chart';
+  import BarChart3 from '@lucide/svelte/icons/bar-chart-3';
+  import TrendingUp from '@lucide/svelte/icons/trending-up';
   import ColourSwatch from './ColourSwatch.svelte';
   import type { ChartColours, ChartTemplate } from '../lib/chartColours';
   import {
