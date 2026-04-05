@@ -152,7 +152,10 @@
     }
     fetchSMA(sym, cfg.period)
       .then(res => (smaPoints = res.points))
-      .catch(() => (smaPoints = []));
+      .catch(e => {
+        smaPoints = [];
+        errorMessage = e instanceof Error ? e.message : 'Failed to load SMA';
+      });
   });
 
   // Fetch EMA when enabled or config changes
@@ -166,7 +169,10 @@
     }
     fetchEMA(sym, cfg.period)
       .then(res => (emaPoints = res.points))
-      .catch(() => (emaPoints = []));
+      .catch(e => {
+        emaPoints = [];
+        errorMessage = e instanceof Error ? e.message : 'Failed to load EMA';
+      });
   });
 
   onDestroy(() => {
