@@ -7,11 +7,13 @@ export interface ChartTemplate {
   colours: ChartColours;
   smaLineWidth: number;
   emaLineWidth: number;
+  bbandsLineWidth?: number;
   chartType?: 'candlestick' | 'line';
   showArea?: boolean;
   showVolume?: boolean;
   smaEnabled?: boolean;
   emaEnabled?: boolean;
+  bbandsEnabled?: boolean;
 }
 
 export interface ChartSettings {
@@ -20,6 +22,7 @@ export interface ChartSettings {
   showVolume: boolean;
   smaEnabled: boolean;
   emaEnabled: boolean;
+  bbandsEnabled: boolean;
 }
 
 export interface ChartColours {
@@ -34,6 +37,9 @@ export interface ChartColours {
   volumeDown: string;
   smaLine: string;
   emaLine: string;
+  bbandsUpper: string;
+  bbandsMiddle: string;
+  bbandsLower: string;
   chartBackground: string;
   gridLines: string;
   textColour: string;
@@ -53,6 +59,9 @@ const CHART_COLOUR_KEYS: (keyof ChartColours)[] = [
   'volumeDown',
   'smaLine',
   'emaLine',
+  'bbandsUpper',
+  'bbandsMiddle',
+  'bbandsLower',
   'chartBackground',
   'gridLines',
   'textColour',
@@ -90,6 +99,7 @@ export function loadChartSettingsFromStorage(): ChartSettings | null {
     showVolume: typeof data.showVolume === 'boolean' ? data.showVolume : true,
     smaEnabled: typeof data.smaEnabled === 'boolean' ? data.smaEnabled : false,
     emaEnabled: typeof data.emaEnabled === 'boolean' ? data.emaEnabled : false,
+    bbandsEnabled: typeof rec.bbandsEnabled === 'boolean' ? rec.bbandsEnabled : false,
   };
 }
 

@@ -23,7 +23,7 @@
     getCssVarColor,
   } from '../lib/chart';
   import { DEFAULT_CHART_COLOURS } from '../lib/chartDefaults';
-  import type { OHLCVCandle, IndicatorPoint } from '../lib/types';
+  import type { OHLCVCandle, IndicatorPoint, BollingerBandsPoint } from '../lib/types';
   import type { ChartType } from './ChartOptionsMenu.svelte';
   import type { ChartColours } from '../lib/chartColours';
   import { linePoint } from '../lib/chart';
@@ -38,8 +38,10 @@
     showVolume = true,
     smaPoints = [] as IndicatorPoint[],
     emaPoints = [] as IndicatorPoint[],
+    bbandsPoints = [] as BollingerBandsPoint[],
     smaLineWidth = 2,
     emaLineWidth = 2,
+    bbandsLineWidth = 1,
     colours = undefined as ChartColours | undefined,
     api = $bindable<ChartApi | null>(null),
   }: {
@@ -50,8 +52,10 @@
     showVolume?: boolean;
     smaPoints?: IndicatorPoint[];
     emaPoints?: IndicatorPoint[];
+    bbandsPoints?: BollingerBandsPoint[];
     smaLineWidth?: number;
     emaLineWidth?: number;
+    bbandsLineWidth?: number;
     colours?: ChartColours;
     api?: ChartApi | null;
   } = $props();
@@ -64,6 +68,9 @@
   let volumeSeries: ISeriesApi<'Histogram'> | null = null;
   let smaSeries: ISeriesApi<'Line'> | null = null;
   let emaSeries: ISeriesApi<'Line'> | null = null;
+  let bbandsUpperSeries: ISeriesApi<'Line'> | null = null;
+  let bbandsMiddleSeries: ISeriesApi<'Line'> | null = null;
+  let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let themeObserver: MutationObserver | null = null;
 
   // Legend state
@@ -359,9 +366,46 @@
     });
   });
 
+  // Bollinger Bands series
+  $effect(() => {
+    if (!chart) return;
+    const points = bbandsPoints;
+    const width = bbandsLineWidth;
+
+    if (points.length > 0) {
+      if (!bbandsUpperSeries) {
+        bbandsUpperSeries = addLineSeries(chart, colours?.bbandsUpper ?? '#7B1FA2');
+      }
+      if (!bbandsMiddleSeries) {
+        bbandsMiddleSeries = addLineSeries(chart, colours?.bbandsMiddle ?? '#9C27B0');
+      }
+      if (!bbandsLowerSeries) {
+        bbandsLowerSeries = addLineSeries(chart, colours?.bbandsLower ?? '#7B1FA2');
+      }
+      bbandsUpperSeries.applyOptions({ lineWidth: width as LineWidth });
+      bbandsMiddleSeries.applyOptions({ lineWidth: width as LineWidth, lineStyle: 2 });
+      bbandsLowerSeries.applyOptions({ lineWidth: width as LineWidth });
+      bbandsUpperSeries.setData(points.map(p => linePoint(p.timestamp, p.upper)));
+      bbandsMiddleSeries.setData(points.map(p => linePoint(p.timestamp, p.middle)));
+      bbandsLowerSeries.setData(points.map(p => linePoint(p.timestamp, p.lower)));
+    } else {
+      if (bbandsUpperSeries) { chart.removeSeries(bbandsUpperSeries); bbandsUpperSeries = null; }
+      if (bbandsMiddleSeries) { chart.removeSeries(bbandsMiddleSeries); bbandsMiddleSeries = null; }
+      if (bbandsLowerSeries) { chart.removeSeries(bbandsLowerSeries); bbandsLowerSeries = null; }
+    }
+  });
+
   $effect(() => {
     if (!chart || !colours) return;
     const c = colours;
+
+    // Read indicator colours unconditionally so they're tracked as
+    // dependencies even when their series don't yet exist.
+    const smaCol = c.smaLine;
+    const emaCol = c.emaLine;
+    const bbUpperCol = c.bbandsUpper;
+    const bbMiddleCol = c.bbandsMiddle;
+    const bbLowerCol = c.bbandsLower;
 
     chart.applyOptions({
       layout: {
@@ -403,6 +447,16 @@
         );
       }
     });
+    
+    if (bbandsUpperSeries) {
+      bbandsUpperSeries.applyOptions({ color: bbUpperCol });
+    }
+    if (bbandsMiddleSeries) {
+      bbandsMiddleSeries.applyOptions({ color: bbMiddleCol });
+    }
+    if (bbandsLowerSeries) {
+      bbandsLowerSeries.applyOptions({ color: bbLowerCol });
+    }
   });
 </script>
 

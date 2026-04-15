@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from backend.market import cache
-from backend.market.indicators import calculate_sma, calculate_ema
+from backend.market.indicators import calculate_sma, calculate_ema, calculate_bollinger_bands
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,24 @@ class IndicatorResponse(BaseModel):
     indicator: str
     period: int
     points: list[IndicatorPoint]
+
+
+class BollingerBandsPoint(BaseModel):
+    timestamp: datetime = Field(..., description="Point time, UTC ISO8601")
+    upper: float = Field(..., description="Upper band value")
+    middle: float = Field(..., description="Middle band (SMA) value")
+    lower: float = Field(..., description="Lower band value")
+
+    class Config:
+        json_encoders = {datetime: lambda v: v.strftime("%Y-%m-%dT%H:%M:%SZ")}
+
+
+class BollingerBandsResponse(BaseModel):
+    symbol: str
+    indicator: str
+    period: int
+    num_std: float
+    points: list[BollingerBandsPoint]
 
 
 def _find_candles(symbol: str) -> list:
@@ -93,4 +111,30 @@ async def get_ema(
         indicator="ema",
         period=period,
         points=[IndicatorPoint(**p) for p in points],
+    )
+
+
+@router.get("/bbands", response_model=BollingerBandsResponse)
+async def get_bbands(
+    symbol: str = Query(..., min_length=1, description="Instrument symbol"),
+    period: int = Query(20, ge=1, le=500, description="Bollinger Bands period"),
+    num_std: float = Query(2.0, gt=0, le=5, description="Standard deviation multiplier"),
+) -> BollingerBandsResponse:
+    """Compute Bollinger Bands from cached OHLCV data."""
+    candles = _find_candles(symbol)
+    if not candles:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No cached data for symbol '{symbol}'. Load market data first.",
+        )
+    try:
+        points = calculate_bollinger_bands(candles, period, num_std)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return BollingerBandsResponse(
+        symbol=symbol.strip(),
+        indicator="bbands",
+        period=period,
+        num_std=num_std,
+        points=[BollingerBandsPoint(**p) for p in points],
     )

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount, untrack } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import Header from './components/Header.svelte';
   import ErrorMessage from './components/ErrorMessage.svelte';
   import Chart from './components/Chart.svelte';
@@ -8,9 +8,10 @@
   import type {
     ChartType,
     MovingAverageConfig,
+    BollingerBandsConfig,
   } from './components/ChartOptionsMenu.svelte';
-  import { fetchSMA, fetchEMA } from './lib/indicators';
-  import type { IndicatorPoint } from './lib/types';
+  import { fetchSMA, fetchEMA, fetchBBands } from './lib/indicators';
+  import type { IndicatorPoint, BollingerBandsPoint } from './lib/types';
   import { API_BASE } from './lib/config';
   import { fetchMarketOHLCV } from './lib/marketData';
   import { readErrorMessage } from './lib/api';
@@ -55,11 +56,20 @@
     period: 20,
     lineWidth: 2,
   });
+  let bbandsConfig = $state<BollingerBandsConfig>({
+    enabled: savedSettings?.bbandsEnabled ?? false,
+    period: 20,
+    stdDev: 2,
+    lineWidth: 1,
+  });
   let smaPoints = $state<IndicatorPoint[]>([]);
   let emaPoints = $state<IndicatorPoint[]>([]);
+  let bbandsPoints = $state<BollingerBandsPoint[]>([]);
   let colours = $state<ChartColours>(
     loadChartColoursFromStorage() ?? defaultChartColours(),
   );
+  let hasCandles = $derived(candles.length > 0);
+  let marketDataVersion = $state(0);
   let isLoading = $state(false);
   let wsClient: WSClient | null = null;
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -74,6 +84,7 @@
     try {
       const data = await fetchMarketOHLCV(symbol, source, period, interval);
       candles = data.candles ?? [];
+      marketDataVersion += 1;
     } catch (e) {
       errorMessage = e instanceof Error ? e.message : 'Failed to load';
     } finally {
@@ -161,7 +172,8 @@
   $effect(() => {
     const cfg = smaConfig;
     const sym = symbol;
-    if (!cfg.enabled || untrack(() => candles).length === 0) {
+    marketDataVersion;
+    if (!cfg.enabled || !hasCandles) {
       smaPoints = [];
       return;
     }
@@ -177,7 +189,8 @@
   $effect(() => {
     const cfg = emaConfig;
     const sym = symbol;
-    if (!cfg.enabled || untrack(() => candles).length === 0) {
+    marketDataVersion;
+    if (!cfg.enabled || !hasCandles) {
       emaPoints = [];
       return;
     }
@@ -186,6 +199,23 @@
       .catch(e => {
         emaPoints = [];
         errorMessage = e instanceof Error ? e.message : 'Failed to load EMA';
+      });
+  });
+
+  // Fetch Bollinger Bands when enabled or config changes
+  $effect(() => {
+    const cfg = bbandsConfig;
+    const sym = symbol;
+    marketDataVersion;
+    if (!cfg.enabled || !hasCandles) {
+      bbandsPoints = [];
+      return;
+    }
+    fetchBBands(sym, cfg.period, cfg.stdDev)
+      .then(res => (bbandsPoints = res.points))
+      .catch(e => {
+        bbandsPoints = [];
+        errorMessage = e instanceof Error ? e.message : 'Failed to load Bollinger Bands';
       });
   });
 
@@ -199,6 +229,7 @@
       showVolume,
       smaEnabled: smaConfig.enabled,
       emaEnabled: emaConfig.enabled,
+      bbandsEnabled: bbandsConfig.enabled,
     });
   }
 
@@ -242,8 +273,10 @@
     {showVolume}
     {smaPoints}
     {emaPoints}
+    {bbandsPoints}
     smaLineWidth={smaConfig.lineWidth}
     emaLineWidth={emaConfig.lineWidth}
+    bbandsLineWidth={bbandsConfig.lineWidth}
     {colours}
     bind:api={chartApi}
   />
@@ -253,6 +286,7 @@
     bind:showVolume
     bind:smaConfig
     bind:emaConfig
+    bind:bbandsConfig
     bind:colours
   />
 </div>

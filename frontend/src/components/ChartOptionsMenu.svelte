@@ -25,12 +25,20 @@
     lineWidth: number;
   }
 
+  export interface BollingerBandsConfig {
+    enabled: boolean;
+    period: number;
+    stdDev: number;
+    lineWidth: number;
+  }
+
   let {
     chartType = $bindable('candlestick'),
     showArea = $bindable(true),
     showVolume = $bindable(true),
     smaConfig = $bindable({ enabled: false, period: 20, lineWidth: 2 }),
     emaConfig = $bindable({ enabled: false, period: 20, lineWidth: 2 }),
+    bbandsConfig = $bindable({ enabled: false, period: 20, stdDev: 2, lineWidth: 1 }),
     colours = $bindable({} as ChartColours),
   }: {
     chartType: ChartType;
@@ -38,6 +46,7 @@
     showVolume: boolean;
     smaConfig: MovingAverageConfig;
     emaConfig: MovingAverageConfig;
+    bbandsConfig: BollingerBandsConfig;
     colours: ChartColours;
   } = $props();
 
@@ -60,6 +69,8 @@
     if (tpl.showVolume !== undefined) showVolume = tpl.showVolume;
     if (tpl.smaEnabled !== undefined) smaConfig = { ...smaConfig, enabled: tpl.smaEnabled };
     if (tpl.emaEnabled !== undefined) emaConfig = { ...emaConfig, enabled: tpl.emaEnabled };
+    if (tpl.bbandsLineWidth !== undefined) bbandsConfig = { ...bbandsConfig, lineWidth: tpl.bbandsLineWidth };
+    if (tpl.bbandsEnabled !== undefined) bbandsConfig = { ...bbandsConfig, enabled: tpl.bbandsEnabled };
   }
 
   function openSaveDialog() {
@@ -74,11 +85,13 @@
       colours: { ...colours },
       smaLineWidth: smaConfig.lineWidth,
       emaLineWidth: emaConfig.lineWidth,
+      bbandsLineWidth: bbandsConfig.lineWidth,
       chartType,
       showArea,
       showVolume,
       smaEnabled: smaConfig.enabled,
       emaEnabled: emaConfig.enabled,
+      bbandsEnabled: bbandsConfig.enabled,
     };
     saveTemplate(tpl);
     templates = loadTemplates();
@@ -100,6 +113,7 @@
     showVolume = true;
     smaConfig = { enabled: false, period: 20, lineWidth: 2 };
     emaConfig = { enabled: false, period: 20, lineWidth: 2 };
+    bbandsConfig = { enabled: false, period: 20, stdDev: 2, lineWidth: 1 };
     selectedTemplateName = '';
   }
 
@@ -293,6 +307,97 @@
                     />
                   </label>
                   <ColourSwatch bind:colour={colours.smaLine} label="Line" />
+                {/if}
+              </div>
+            </div>
+
+            <!-- Bollinger Bands -->
+            <div>
+              <div class="text-xs font-medium text-muted-foreground mb-1.5">
+                Bollinger Bands
+              </div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {bbandsConfig.enabled
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:text-foreground'}"
+                  onclick={() =>
+                    (bbandsConfig = {
+                      ...bbandsConfig,
+                      enabled: !bbandsConfig.enabled,
+                    })}
+                >
+                  <TrendingUp class="size-4" />
+                  BB
+                </button>
+                {#if bbandsConfig.enabled}
+                  <label
+                    class="flex items-center gap-1.5 text-sm text-muted-foreground"
+                  >
+                    Width
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={bbandsConfig.lineWidth}
+                      oninput={e =>
+                        (bbandsConfig = {
+                          ...bbandsConfig,
+                          lineWidth:
+                            parseInt(
+                              (e.target as HTMLInputElement).value,
+                              10,
+                            ) || 1,
+                        })}
+                      class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                    />
+                  </label>
+                  <label
+                    class="flex items-center gap-1.5 text-sm text-muted-foreground"
+                  >
+                    Period
+                    <input
+                      type="number"
+                      min="1"
+                      max="500"
+                      value={bbandsConfig.period}
+                      oninput={e =>
+                        (bbandsConfig = {
+                          ...bbandsConfig,
+                          period:
+                            parseInt(
+                              (e.target as HTMLInputElement).value,
+                              10,
+                            ) || 20,
+                        })}
+                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                    />
+                  </label>
+                  <label
+                    class="flex items-center gap-1.5 text-sm text-muted-foreground"
+                  >
+                    Std
+                    <input
+                      type="number"
+                      min="0.1"
+                      max="5"
+                      step="0.1"
+                      value={bbandsConfig.stdDev}
+                      oninput={e =>
+                        (bbandsConfig = {
+                          ...bbandsConfig,
+                          stdDev:
+                            parseFloat(
+                              (e.target as HTMLInputElement).value,
+                            ) || 2,
+                        })}
+                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                    />
+                  </label>
+                  <ColourSwatch bind:colour={colours.bbandsUpper} label="Upper" />
+                  <ColourSwatch bind:colour={colours.bbandsMiddle} label="Mid" />
+                  <ColourSwatch bind:colour={colours.bbandsLower} label="Lower" />
                 {/if}
               </div>
             </div>
