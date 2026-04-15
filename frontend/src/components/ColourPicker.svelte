@@ -163,6 +163,24 @@
     };
   });
 
+  let containerOffset = $state({ x: 0, y: 0 });
+
+  $effect(() => {
+    if (!popoverEl) return;
+    const rect = popoverEl.getBoundingClientRect();
+    const cs = getComputedStyle(popoverEl);
+    const appliedTop = parseFloat(cs.top) || 0;
+    const appliedLeft = parseFloat(cs.left) || 0;
+    const originX = rect.left - appliedLeft;
+    const originY = rect.top - appliedTop;
+    if (
+      Math.abs(originX - containerOffset.x) > 0.5 ||
+      Math.abs(originY - containerOffset.y) > 0.5
+    ) {
+      containerOffset = { x: originX, y: originY };
+    }
+  });
+
   // Derived CSS values
   let hueColour = $derived(`hsl(${hsva.h}, 100%, 50%)`);
   let opaqueRgba = $derived(hsvaToRgba({ ...hsva, a: 1 }));
@@ -176,7 +194,7 @@
 <div
   bind:this={popoverEl}
   class="fixed z-[60] rounded-lg border border-border bg-card p-4 shadow-xl"
-  style="top: {top}px; left: {left}px; width: {POPOVER_W}px;"
+  style="top: {top - containerOffset.y}px; left: {left - containerOffset.x}px; width: {POPOVER_W}px;"
   role="dialog"
   aria-label="Colour picker"
 >
