@@ -163,6 +163,41 @@
     };
   });
 
+  // When an ancestor has a CSS `transform` (e.g. bits-ui Dialog.Content uses
+  // translate(-50%, -50%)), `position: fixed` resolves against that ancestor's
+  // padding box instead of the viewport. Recover the viewport coords of the
+  // fixed-positioning origin so `anchor` (a viewport-coord DOMRect) still
+  // places the popover correctly.
+  let fixedOrigin = $state({ x: 0, y: 0 });
+
+  function measureOrigin() {
+    if (!popoverEl) return;
+    const rect = popoverEl.getBoundingClientRect();
+    const cs = getComputedStyle(popoverEl);
+    const appliedTop = parseFloat(cs.top) || 0;
+    const appliedLeft = parseFloat(cs.left) || 0;
+    const originX = rect.left - appliedLeft;
+    const originY = rect.top - appliedTop;
+    // Tolerance avoids a reactive feedback loop when sub-pixel rounding
+    // flips the measured origin back and forth across renders.
+    if (
+      Math.abs(originX - fixedOrigin.x) > 0.5 ||
+      Math.abs(originY - fixedOrigin.y) > 0.5
+    ) {
+      fixedOrigin = { x: originX, y: originY };
+    }
+  }
+
+  $effect(() => {
+    if (!popoverEl) return;
+    // Measure after the current frame so any entrance transform/animation on
+    // the dialog ancestor has settled, otherwise the rect can be captured
+    // mid-animation and yield the wrong origin.
+    measureOrigin();
+    const raf = requestAnimationFrame(measureOrigin);
+    return () => cancelAnimationFrame(raf);
+  });
+
   // Derived CSS values
   let hueColour = $derived(`hsl(${hsva.h}, 100%, 50%)`);
   let opaqueRgba = $derived(hsvaToRgba({ ...hsva, a: 1 }));
@@ -176,7 +211,7 @@
 <div
   bind:this={popoverEl}
   class="fixed z-[60] rounded-lg border border-border bg-card p-4 shadow-xl"
-  style="top: {top}px; left: {left}px; width: {POPOVER_W}px;"
+  style="top: {top - fixedOrigin.y}px; left: {left - fixedOrigin.x}px; width: {POPOVER_W}px;"
   role="dialog"
   aria-label="Colour picker"
 >
