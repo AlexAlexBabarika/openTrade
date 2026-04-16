@@ -3,7 +3,13 @@ import type { IChartApi, ISeriesApi, LineData } from 'lightweight-charts';
 import { isoToChartTime } from './chartAdapters';
 import { formatRgb, parse } from 'culori';
 import type { ChartColours } from './chartColours';
-import { DEFAULT_BORDER, DEFAULT_CHART_COLOURS } from './chartDefaults';
+import {
+  DEFAULT_BORDER,
+  DEFAULT_CHART_COLOURS,
+  computeGridLineColor,
+} from './chartDefaults';
+
+export { computeGridLineColor } from './chartDefaults';
 
 export function getCssVarColor(
   variableName: string,
@@ -78,51 +84,66 @@ export function getCssVarColor(
   return fallback;
 }
 
-export function computeGridLineColor(borderColor: string): string {
-  const parsed = parse(borderColor);
-  if (parsed) {
-    const formatted = formatRgb({ ...parsed, alpha: 0.125 });
-    if (formatted) return formatted;
-  }
-  return borderColor;
+const COLOUR_CSS_VARS: Partial<Record<keyof ChartColours, string>> = {
+  chartBackground: '--background',
+  textColour: '--foreground',
+  lineColour: '--foreground',
+  candleUpBody: '--up-color',
+  candleUpWick: '--up-color',
+  candleDownBody: '--down-color',
+  candleDownWick: '--down-color',
+  areaTop: '--area-top-color',
+  areaBottom: '--area-bottom-color',
+};
+
+/** Precedence: user-supplied colour → CSS var (if mapped) → hardcoded default. */
+export function resolveColour(
+  colours: ChartColours | undefined,
+  key: keyof ChartColours,
+): string {
+  const user = colours?.[key];
+  if (user) return user;
+  const cssVar = COLOUR_CSS_VARS[key];
+  if (cssVar) return getCssVarColor(cssVar, DEFAULT_CHART_COLOURS[key]);
+  return DEFAULT_CHART_COLOURS[key];
+}
+
+/** `gridLines` derives from `--border` (faded to 12.5% alpha), not a direct CSS var. */
+export function resolveGridLineColour(colours?: ChartColours): string {
+  if (colours?.gridLines) return colours.gridLines;
+  return computeGridLineColor(getCssVarColor('--border', DEFAULT_BORDER));
 }
 
 export function createChartContainer(
   parent: HTMLElement,
   colours?: ChartColours,
 ): IChartApi {
-  const bgColor =
-    colours?.chartBackground ??
-    getCssVarColor('--background', DEFAULT_CHART_COLOURS.chartBackground);
-  const textColor =
-    colours?.textColour ??
-    getCssVarColor('--foreground', DEFAULT_CHART_COLOURS.textColour);
   const borderColor = getCssVarColor('--border', DEFAULT_BORDER);
-  const gridLineColor = colours?.gridLines ?? computeGridLineColor(borderColor);
-
+  const gridLineColor = resolveGridLineColour(colours);
   const chart = createChart(parent, {
     width: parent.clientWidth,
     height: parent.clientHeight,
     layout: {
-      background: { type: ColorType.Solid, color: bgColor },
-      textColor: textColor,
+      background: {
+        type: ColorType.Solid,
+        color: resolveColour(colours, 'chartBackground'),
+      },
+      textColor: resolveColour(colours, 'textColour'),
     },
     grid: {
       vertLines: { color: gridLineColor },
       horzLines: { color: gridLineColor },
     },
     rightPriceScale: {
-      borderColor: borderColor,
+      borderColor,
       scaleMargins: { top: 0.1, bottom: 0.2 },
     },
     timeScale: {
-      borderColor: borderColor,
+      borderColor,
       timeVisible: true,
       secondsVisible: false,
     },
-    crosshair: {
-      mode: CrosshairMode.Magnet,
-    },
+    crosshair: { mode: CrosshairMode.Magnet },
   });
   chart.timeScale().fitContent();
   return chart;
@@ -148,112 +169,115 @@ export function addCandlestickSeries(
   chart: IChartApi,
   colours?: ChartColours,
 ): ISeriesApi<'Candlestick'> {
-  const upColor =
-    colours?.candleUpBody ??
-    getCssVarColor('--up-color', DEFAULT_CHART_COLOURS.candleUpBody);
-  const downColor =
-    colours?.candleDownBody ??
-    getCssVarColor('--down-color', DEFAULT_CHART_COLOURS.candleDownBody);
-  const wickUpColor = colours?.candleUpWick ?? upColor;
-  const wickDownColor = colours?.candleDownWick ?? downColor;
-
-  const series = chart.addCandlestickSeries({
+  const upColor = resolveColour(colours, 'candleUpBody');
+  const downColor = resolveColour(colours, 'candleDownBody');
+  return chart.addCandlestickSeries({
     upColor,
     downColor,
-    borderDownColor: downColor,
     borderUpColor: upColor,
-    wickDownColor,
-    wickUpColor,
+    borderDownColor: downColor,
+    wickUpColor: colours?.candleUpWick ?? upColor,
+    wickDownColor: colours?.candleDownWick ?? downColor,
   });
-  return series;
 }
 
 export function addAreaSeries(
   chart: IChartApi,
   colours?: ChartColours,
 ): ISeriesApi<'Area'> {
-  const topColor =
-    colours?.areaTop ??
-    getCssVarColor('--area-top-color', DEFAULT_CHART_COLOURS.areaTop);
-  const bottomColor =
-    colours?.areaBottom ??
-    getCssVarColor('--area-bottom-color', DEFAULT_CHART_COLOURS.areaBottom);
-
-  const series = chart.addAreaSeries({
+  return chart.addAreaSeries({
     lastValueVisible: false,
     crosshairMarkerVisible: false,
     lineColor: 'transparent',
-    topColor,
-    bottomColor,
+    topColor: resolveColour(colours, 'areaTop'),
+    bottomColor: resolveColour(colours, 'areaBottom'),
   });
-  return series;
 }
 
-export function syncChartTheme(
-  chart: IChartApi,
-  candleSeries?: ISeriesApi<'Candlestick'> | null,
-  areaSeries?: ISeriesApi<'Area'> | null,
-  lineSeries?: ISeriesApi<'Line'> | null,
-  colours?: ChartColours,
-) {
-  const bgColor =
-    colours?.chartBackground ??
-    getCssVarColor('--background', DEFAULT_CHART_COLOURS.chartBackground);
-  const textColor =
-    colours?.textColour ??
-    getCssVarColor('--foreground', DEFAULT_CHART_COLOURS.textColour);
-  const borderColor = getCssVarColor('--border', DEFAULT_BORDER);
-  const gridLineColor = colours?.gridLines ?? computeGridLineColor(borderColor);
+export interface SyncChartThemeArgs {
+  chart: IChartApi;
+  candleSeries?: ISeriesApi<'Candlestick'> | null;
+  areaSeries?: ISeriesApi<'Area'> | null;
+  lineSeries?: ISeriesApi<'Line'> | null;
+  smaSeries?: ISeriesApi<'Line'> | null;
+  emaSeries?: ISeriesApi<'Line'> | null;
+  bbandsUpperSeries?: ISeriesApi<'Line'> | null;
+  bbandsMiddleSeries?: ISeriesApi<'Line'> | null;
+  bbandsLowerSeries?: ISeriesApi<'Line'> | null;
+  colours?: ChartColours;
+}
 
+export function syncChartTheme({
+  chart,
+  candleSeries,
+  areaSeries,
+  lineSeries,
+  smaSeries,
+  emaSeries,
+  bbandsUpperSeries,
+  bbandsMiddleSeries,
+  bbandsLowerSeries,
+  colours,
+}: SyncChartThemeArgs): void {
+  const borderColor = getCssVarColor('--border', DEFAULT_BORDER);
+  const gridLineColor = resolveGridLineColour(colours);
   chart.applyOptions({
     layout: {
-      background: { type: ColorType.Solid, color: bgColor },
-      textColor: textColor,
+      background: {
+        type: ColorType.Solid,
+        color: resolveColour(colours, 'chartBackground'),
+      },
+      textColor: resolveColour(colours, 'textColour'),
     },
     grid: {
       vertLines: { color: gridLineColor },
       horzLines: { color: gridLineColor },
     },
-    rightPriceScale: {
-      borderColor: borderColor,
-    },
-    timeScale: {
-      borderColor: borderColor,
-    },
+    rightPriceScale: { borderColor },
+    timeScale: { borderColor },
   });
 
   if (candleSeries) {
-    const upColor =
-      colours?.candleUpBody ??
-      getCssVarColor('--up-color', DEFAULT_CHART_COLOURS.candleUpBody);
-    const downColor =
-      colours?.candleDownBody ??
-      getCssVarColor('--down-color', DEFAULT_CHART_COLOURS.candleDownBody);
-    const wickUpColor = colours?.candleUpWick ?? upColor;
-    const wickDownColor = colours?.candleDownWick ?? downColor;
+    const upColor = resolveColour(colours, 'candleUpBody');
+    const downColor = resolveColour(colours, 'candleDownBody');
     candleSeries.applyOptions({
       upColor,
       downColor,
-      borderDownColor: downColor,
       borderUpColor: upColor,
-      wickDownColor,
-      wickUpColor,
+      borderDownColor: downColor,
+      wickUpColor: colours?.candleUpWick ?? upColor,
+      wickDownColor: colours?.candleDownWick ?? downColor,
     });
   }
-
   if (areaSeries) {
-    const topColor =
-      colours?.areaTop ??
-      getCssVarColor('--area-top-color', DEFAULT_CHART_COLOURS.areaTop);
-    const bottomColor =
-      colours?.areaBottom ??
-      getCssVarColor('--area-bottom-color', DEFAULT_CHART_COLOURS.areaBottom);
-    areaSeries.applyOptions({ topColor, bottomColor });
+    areaSeries.applyOptions({
+      topColor: resolveColour(colours, 'areaTop'),
+      bottomColor: resolveColour(colours, 'areaBottom'),
+    });
   }
-
   if (lineSeries) {
-    const lineColor = colours?.lineColour ?? textColor;
-    lineSeries.applyOptions({ color: lineColor });
+    lineSeries.applyOptions({ color: resolveColour(colours, 'lineColour') });
+  }
+  if (smaSeries) {
+    smaSeries.applyOptions({ color: resolveColour(colours, 'smaLine') });
+  }
+  if (emaSeries) {
+    emaSeries.applyOptions({ color: resolveColour(colours, 'emaLine') });
+  }
+  if (bbandsUpperSeries) {
+    bbandsUpperSeries.applyOptions({
+      color: resolveColour(colours, 'bbandsUpper'),
+    });
+  }
+  if (bbandsMiddleSeries) {
+    bbandsMiddleSeries.applyOptions({
+      color: resolveColour(colours, 'bbandsMiddle'),
+    });
+  }
+  if (bbandsLowerSeries) {
+    bbandsLowerSeries.applyOptions({
+      color: resolveColour(colours, 'bbandsLower'),
+    });
   }
 }
 

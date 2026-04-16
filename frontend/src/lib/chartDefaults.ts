@@ -3,13 +3,13 @@ import type { ChartColours } from './chartColours';
 
 export const DEFAULT_BORDER = '#404040';
 
-function fadedBorder(border: string): string {
-  const parsed = parse(border);
+export function computeGridLineColor(borderColor: string): string {
+  const parsed = parse(borderColor);
   if (parsed) {
     const formatted = formatRgb({ ...parsed, alpha: 0.125 });
     if (formatted) return formatted;
   }
-  return border;
+  return borderColor;
 }
 
 export const DEFAULT_CHART_COLOURS: ChartColours = {
@@ -28,6 +28,6 @@ export const DEFAULT_CHART_COLOURS: ChartColours = {
   bbandsMiddle: '#9C27B0',
   bbandsLower: '#7B1FA2',
   chartBackground: '#141414',
-  gridLines: fadedBorder(DEFAULT_BORDER),
+  gridLines: computeGridLineColor(DEFAULT_BORDER),
   textColour: '#d1d4dc',
 };
