@@ -10,3 +10,4 @@ websockets>=13.0
 supabase>=2.0.0
 cryptography>=44.0.0
 python-binance>=1.0.0
+numpy>=2.4.4
