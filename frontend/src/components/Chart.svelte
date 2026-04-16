@@ -27,6 +27,8 @@
   import type { ChartColours } from '../lib/chartColours';
   import { linePoint } from '../lib/chart';
 
+  export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
+
   let {
     candles = [] as OHLCVCandle[],
     symbol = '',
@@ -38,6 +40,7 @@
     smaLineWidth = 2,
     emaLineWidth = 2,
     colours = undefined as ChartColours | undefined,
+    api = $bindable<ChartApi | null>(null),
   }: {
     candles: OHLCVCandle[];
     symbol: string;
@@ -49,6 +52,7 @@
     smaLineWidth?: number;
     emaLineWidth?: number;
     colours?: ChartColours;
+    api?: ChartApi | null;
   } = $props();
 
   let containerEl: HTMLDivElement;
@@ -204,6 +208,30 @@
     }
   }
 
+  function appendCandle(c: OHLCVCandle): void {
+    if (!chart) return;
+
+    if (candleSeries) {
+      candleSeries.update(candleOHLCVtoCandlestickData(c));
+    }
+    if (lineSeries) {
+      lineSeries.update(candleOHLCVtoAreaData(c));
+    }
+    if (areaSeries && candles.length >= 20) {
+      if (candles.length === 20) {
+        areaSeries.setData(candles.map(candleOHLCVtoAreaData));
+      } else {
+        areaSeries.update(candleOHLCVtoAreaData(c));
+      }
+    }
+    if (volumeSeries) {
+      volumeSeries.update(
+        candleOHLCVtoVolumeData(c, colours?.volumeUp, colours?.volumeDown),
+      );
+    }
+    updateLegend(undefined);
+  }
+
   function updateChartData(data: OHLCVCandle[]): void {
     if (!chart) return;
 
@@ -245,6 +273,7 @@
     if (candles.length > 0) {
       updateChartData(candles);
     }
+    api = { appendCandle };
     window.addEventListener('resize', handleResize);
 
     // Watch for theme changes on the html element
@@ -261,6 +290,7 @@
   });
 
   onDestroy(() => {
+    api = null;
     window.removeEventListener('resize', handleResize);
     if (themeObserver) {
       themeObserver.disconnect();

@@ -3,6 +3,7 @@
   import Header from './components/Header.svelte';
   import ErrorMessage from './components/ErrorMessage.svelte';
   import Chart from './components/Chart.svelte';
+  import type { ChartApi } from './components/Chart.svelte';
   import ChartOptionsMenu from './components/ChartOptionsMenu.svelte';
   import type {
     ChartType,
@@ -38,7 +39,8 @@
 
   let errorMessage = $state<string | null>(null);
   let connectionStatus = $state<ConnectionStatus>('disconnected');
-  let candles = $state<OHLCVCandle[]>([]);
+  let candles = $state.raw<OHLCVCandle[]>([]);
+  let chartApi = $state<ChartApi | null>(null);
   const savedSettings = loadChartSettingsFromStorage();
   let chartType = $state<ChartType>(savedSettings?.chartType ?? 'candlestick');
   let showArea = $state(savedSettings?.showArea ?? true);
@@ -88,12 +90,13 @@
     errorMessage = null;
     if (wsClient) wsClient.disconnect();
     const streamCandles: OHLCVCandle[] = [];
+    candles = streamCandles;
     wsClient = new WSClient({
       provider: source,
       symbol: sym,
       onCandle: c => {
         streamCandles.push(c);
-        candles = [...streamCandles];
+        chartApi?.appendCandle(c);
       },
       onStatus: s => {
         connectionStatus = s;
@@ -117,15 +120,15 @@
       );
       if (!res.ok) throw new Error(await readErrorMessage(res));
       await res.json();
-      candles = [];
       if (wsClient) wsClient.disconnect();
       const streamCandles: OHLCVCandle[] = [];
+      candles = streamCandles;
       wsClient = new WSClient({
         provider: 'csv',
         symbol: sym,
         onCandle: c => {
           streamCandles.push(c);
-          candles = [...streamCandles];
+          chartApi?.appendCandle(c);
         },
         onStatus: s => {
           connectionStatus = s;
@@ -242,6 +245,7 @@
     smaLineWidth={smaConfig.lineWidth}
     emaLineWidth={emaConfig.lineWidth}
     {colours}
+    bind:api={chartApi}
   />
   <ChartOptionsMenu
     bind:chartType
