@@ -15,7 +15,11 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from backend.market import cache
-from backend.market.indicators import calculate_sma, calculate_ema, calculate_bollinger_bands
+from backend.market.indicators import (
+    calculate_sma,
+    calculate_ema,
+    calculate_bollinger_bands,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +122,9 @@ async def get_ema(
 async def get_bbands(
     symbol: str = Query(..., min_length=1, description="Instrument symbol"),
     period: int = Query(20, ge=1, le=500, description="Bollinger Bands period"),
-    num_std: float = Query(2.0, gt=0, le=5, description="Standard deviation multiplier"),
+    num_std: float = Query(
+        2.0, gt=0, le=5, description="Standard deviation multiplier"
+    ),
 ) -> BollingerBandsResponse:
     """Compute Bollinger Bands from cached OHLCV data."""
     candles = _find_candles(symbol)
