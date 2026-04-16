@@ -1,4 +1,5 @@
 import { getCssVarColor, computeGridLineColor } from './chart';
+import { DEFAULT_BORDER, DEFAULT_CHART_COLOURS } from './chartDefaults';
 import { safeLocalStorageGet, safeLocalStorageSet } from './storage';
 
 export interface ChartTemplate {
@@ -124,25 +125,36 @@ export function deleteTemplate(name: string): void {
 }
 
 export function defaultChartColours(): ChartColours {
-  const up = getCssVarColor('--up-color', '#5ea500');
-  const down = getCssVarColor('--down-color', '#e7000b');
+  const up = getCssVarColor('--up-color', DEFAULT_CHART_COLOURS.candleUpBody);
+  const down = getCssVarColor(
+    '--down-color',
+    DEFAULT_CHART_COLOURS.candleDownBody,
+  );
   return {
     candleUpBody: up,
     candleDownBody: down,
     candleUpWick: up,
     candleDownWick: down,
-    lineColour: getCssVarColor('--foreground', '#d1d4dc'),
-    areaTop: getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)'),
+    lineColour: getCssVarColor('--foreground', DEFAULT_CHART_COLOURS.lineColour),
+    areaTop: getCssVarColor('--area-top-color', DEFAULT_CHART_COLOURS.areaTop),
     areaBottom: getCssVarColor(
       '--area-bottom-color',
-      'rgba(56, 33, 110, 0.05)',
+      DEFAULT_CHART_COLOURS.areaBottom,
     ),
-    volumeUp: '#26a63130',
-    volumeDown: '#c21a2a30',
-    smaLine: '#2962FF',
-    emaLine: '#FF6D00',
-    chartBackground: getCssVarColor('--background', '#141414'),
-    gridLines: computeGridLineColor(getCssVarColor('--border', '#404040')),
-    textColour: getCssVarColor('--foreground', '#d1d4dc'),
+    volumeUp: DEFAULT_CHART_COLOURS.volumeUp,
+    volumeDown: DEFAULT_CHART_COLOURS.volumeDown,
+    smaLine: DEFAULT_CHART_COLOURS.smaLine,
+    emaLine: DEFAULT_CHART_COLOURS.emaLine,
+    chartBackground: getCssVarColor(
+      '--background',
+      DEFAULT_CHART_COLOURS.chartBackground,
+    ),
+    gridLines: computeGridLineColor(
+      getCssVarColor('--border', DEFAULT_BORDER),
+    ),
+    textColour: getCssVarColor(
+      '--foreground',
+      DEFAULT_CHART_COLOURS.textColour,
+    ),
   };
 }

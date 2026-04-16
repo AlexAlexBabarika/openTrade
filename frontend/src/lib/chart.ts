@@ -3,6 +3,7 @@ import type { IChartApi, ISeriesApi, LineData } from 'lightweight-charts';
 import { isoToChartTime } from './chartAdapters';
 import { formatRgb, parse } from 'culori';
 import type { ChartColours } from './chartColours';
+import { DEFAULT_BORDER, DEFAULT_CHART_COLOURS } from './chartDefaults';
 
 export function getCssVarColor(
   variableName: string,
@@ -91,10 +92,12 @@ export function createChartContainer(
   colours?: ChartColours,
 ): IChartApi {
   const bgColor =
-    colours?.chartBackground ?? getCssVarColor('--background', '#141414');
+    colours?.chartBackground ??
+    getCssVarColor('--background', DEFAULT_CHART_COLOURS.chartBackground);
   const textColor =
-    colours?.textColour ?? getCssVarColor('--foreground', '#d1d4dc');
-  const borderColor = getCssVarColor('--border', '#404040');
+    colours?.textColour ??
+    getCssVarColor('--foreground', DEFAULT_CHART_COLOURS.textColour);
+  const borderColor = getCssVarColor('--border', DEFAULT_BORDER);
   const gridLineColor = colours?.gridLines ?? computeGridLineColor(borderColor);
 
   const chart = createChart(parent, {
@@ -146,9 +149,11 @@ export function addCandlestickSeries(
   colours?: ChartColours,
 ): ISeriesApi<'Candlestick'> {
   const upColor =
-    colours?.candleUpBody ?? getCssVarColor('--up-color', '#5ea500');
+    colours?.candleUpBody ??
+    getCssVarColor('--up-color', DEFAULT_CHART_COLOURS.candleUpBody);
   const downColor =
-    colours?.candleDownBody ?? getCssVarColor('--down-color', '#e7000b');
+    colours?.candleDownBody ??
+    getCssVarColor('--down-color', DEFAULT_CHART_COLOURS.candleDownBody);
   const wickUpColor = colours?.candleUpWick ?? upColor;
   const wickDownColor = colours?.candleDownWick ?? downColor;
 
@@ -169,10 +174,10 @@ export function addAreaSeries(
 ): ISeriesApi<'Area'> {
   const topColor =
     colours?.areaTop ??
-    getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
+    getCssVarColor('--area-top-color', DEFAULT_CHART_COLOURS.areaTop);
   const bottomColor =
     colours?.areaBottom ??
-    getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)');
+    getCssVarColor('--area-bottom-color', DEFAULT_CHART_COLOURS.areaBottom);
 
   const series = chart.addAreaSeries({
     lastValueVisible: false,
@@ -192,10 +197,12 @@ export function syncChartTheme(
   colours?: ChartColours,
 ) {
   const bgColor =
-    colours?.chartBackground ?? getCssVarColor('--background', '#141414');
+    colours?.chartBackground ??
+    getCssVarColor('--background', DEFAULT_CHART_COLOURS.chartBackground);
   const textColor =
-    colours?.textColour ?? getCssVarColor('--foreground', '#d1d4dc');
-  const borderColor = getCssVarColor('--border', '#404040');
+    colours?.textColour ??
+    getCssVarColor('--foreground', DEFAULT_CHART_COLOURS.textColour);
+  const borderColor = getCssVarColor('--border', DEFAULT_BORDER);
   const gridLineColor = colours?.gridLines ?? computeGridLineColor(borderColor);
 
   chart.applyOptions({
@@ -217,9 +224,11 @@ export function syncChartTheme(
 
   if (candleSeries) {
     const upColor =
-      colours?.candleUpBody ?? getCssVarColor('--up-color', '#5ea500');
+      colours?.candleUpBody ??
+      getCssVarColor('--up-color', DEFAULT_CHART_COLOURS.candleUpBody);
     const downColor =
-      colours?.candleDownBody ?? getCssVarColor('--down-color', '#e7000b');
+      colours?.candleDownBody ??
+      getCssVarColor('--down-color', DEFAULT_CHART_COLOURS.candleDownBody);
     const wickUpColor = colours?.candleUpWick ?? upColor;
     const wickDownColor = colours?.candleDownWick ?? downColor;
     candleSeries.applyOptions({
@@ -235,10 +244,10 @@ export function syncChartTheme(
   if (areaSeries) {
     const topColor =
       colours?.areaTop ??
-      getCssVarColor('--area-top-color', 'rgba(56, 33, 110, 0.5)');
+      getCssVarColor('--area-top-color', DEFAULT_CHART_COLOURS.areaTop);
     const bottomColor =
       colours?.areaBottom ??
-      getCssVarColor('--area-bottom-color', 'rgba(56, 33, 110, 0.05)');
+      getCssVarColor('--area-bottom-color', DEFAULT_CHART_COLOURS.areaBottom);
     areaSeries.applyOptions({ topColor, bottomColor });
   }
 
