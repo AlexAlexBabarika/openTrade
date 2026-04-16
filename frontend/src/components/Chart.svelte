@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
-  import { ColorType } from 'lightweight-charts';
   import type {
     IChartApi,
     ISeriesApi,
@@ -20,9 +19,8 @@
     addAreaSeries,
     addLineSeries,
     syncChartTheme,
-    getCssVarColor,
+    resolveColour,
   } from '../lib/chart';
-  import { DEFAULT_CHART_COLOURS } from '../lib/chartDefaults';
   import type {
     OHLCVCandle,
     IndicatorPoint,
@@ -211,10 +209,7 @@
     if (type === 'candlestick') {
       candleSeries = addCandlestickSeries(chart, colours);
     } else {
-      const lineColor =
-        colours?.lineColour ??
-        getCssVarColor('--foreground', DEFAULT_CHART_COLOURS.lineColour);
-      lineSeries = addLineSeries(chart, lineColor);
+      lineSeries = addLineSeries(chart, resolveColour(colours, 'lineColour'));
     }
   }
 
@@ -283,7 +278,18 @@
     // Watch for theme changes on the html element
     themeObserver = new MutationObserver(() => {
       if (chart) {
-        syncChartTheme(chart, candleSeries, areaSeries, lineSeries, colours);
+        syncChartTheme({
+          chart,
+          candleSeries,
+          areaSeries,
+          lineSeries,
+          smaSeries,
+          emaSeries,
+          bbandsUpperSeries,
+          bbandsMiddleSeries,
+          bbandsLowerSeries,
+          colours,
+        });
       }
     });
 
@@ -334,10 +340,7 @@
       if (!chart) return;
       if (points.length > 0) {
         if (!smaSeries) {
-          smaSeries = addLineSeries(
-            chart,
-            colours?.smaLine ?? DEFAULT_CHART_COLOURS.smaLine,
-          );
+          smaSeries = addLineSeries(chart, resolveColour(colours, 'smaLine'));
         }
         smaSeries.applyOptions({ lineWidth: width as LineWidth });
         smaSeries.setData(points.map(p => linePoint(p.timestamp, p.value)));
@@ -356,10 +359,7 @@
       if (!chart) return;
       if (points.length > 0) {
         if (!emaSeries) {
-          emaSeries = addLineSeries(
-            chart,
-            colours?.emaLine ?? DEFAULT_CHART_COLOURS.emaLine,
-          );
+          emaSeries = addLineSeries(chart, resolveColour(colours, 'emaLine'));
         }
         emaSeries.applyOptions({ lineWidth: width as LineWidth });
         emaSeries.setData(points.map(p => linePoint(p.timestamp, p.value)));
@@ -381,19 +381,19 @@
         if (!bbandsUpperSeries) {
           bbandsUpperSeries = addLineSeries(
             chart,
-            colours?.bbandsUpper ?? DEFAULT_CHART_COLOURS.bbandsUpper,
+            resolveColour(colours, 'bbandsUpper'),
           );
         }
         if (!bbandsMiddleSeries) {
           bbandsMiddleSeries = addLineSeries(
             chart,
-            colours?.bbandsMiddle ?? DEFAULT_CHART_COLOURS.bbandsMiddle,
+            resolveColour(colours, 'bbandsMiddle'),
           );
         }
         if (!bbandsLowerSeries) {
           bbandsLowerSeries = addLineSeries(
             chart,
-            colours?.bbandsLower ?? DEFAULT_CHART_COLOURS.bbandsLower,
+            resolveColour(colours, 'bbandsLower'),
           );
         }
         bbandsUpperSeries.applyOptions({ lineWidth: width as LineWidth });
@@ -430,44 +430,18 @@
 
   $effect(() => {
     if (!chart || !colours) return;
-    const c = colours;
-
-    chart.applyOptions({
-      layout: {
-        background: { type: ColorType.Solid, color: c.chartBackground },
-        textColor: c.textColour,
-      },
-      grid: {
-        vertLines: { color: c.gridLines },
-        horzLines: { color: c.gridLines },
-      },
+    syncChartTheme({
+      chart,
+      candleSeries,
+      areaSeries,
+      lineSeries,
+      smaSeries,
+      emaSeries,
+      bbandsUpperSeries,
+      bbandsMiddleSeries,
+      bbandsLowerSeries,
+      colours,
     });
-
-    if (candleSeries) {
-      candleSeries.applyOptions({
-        upColor: c.candleUpBody,
-        downColor: c.candleDownBody,
-        borderUpColor: c.candleUpBody,
-        borderDownColor: c.candleDownBody,
-        wickUpColor: c.candleUpWick,
-        wickDownColor: c.candleDownWick,
-      });
-    }
-    if (lineSeries) lineSeries.applyOptions({ color: c.lineColour });
-    if (areaSeries) {
-      areaSeries.applyOptions({
-        topColor: c.areaTop,
-        bottomColor: c.areaBottom,
-      });
-    }
-    if (smaSeries) smaSeries.applyOptions({ color: c.smaLine });
-    if (emaSeries) emaSeries.applyOptions({ color: c.emaLine });
-    if (bbandsUpperSeries)
-      bbandsUpperSeries.applyOptions({ color: c.bbandsUpper });
-    if (bbandsMiddleSeries)
-      bbandsMiddleSeries.applyOptions({ color: c.bbandsMiddle });
-    if (bbandsLowerSeries)
-      bbandsLowerSeries.applyOptions({ color: c.bbandsLower });
   });
 
   $effect(() => {

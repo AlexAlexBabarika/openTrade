@@ -1,5 +1,5 @@
-import { getCssVarColor, computeGridLineColor } from './chart';
-import { DEFAULT_BORDER, DEFAULT_CHART_COLOURS } from './chartDefaults';
+import { resolveColour, resolveGridLineColour } from './chart';
+import { DEFAULT_CHART_COLOURS } from './chartDefaults';
 import { safeLocalStorageGet, safeLocalStorageSet } from './storage';
 
 export interface ChartTemplate {
@@ -136,25 +136,16 @@ export function deleteTemplate(name: string): void {
 }
 
 export function defaultChartColours(): ChartColours {
-  const up = getCssVarColor('--up-color', DEFAULT_CHART_COLOURS.candleUpBody);
-  const down = getCssVarColor(
-    '--down-color',
-    DEFAULT_CHART_COLOURS.candleDownBody,
-  );
+  const up = resolveColour(undefined, 'candleUpBody');
+  const down = resolveColour(undefined, 'candleDownBody');
   return {
     candleUpBody: up,
     candleDownBody: down,
     candleUpWick: up,
     candleDownWick: down,
-    lineColour: getCssVarColor(
-      '--foreground',
-      DEFAULT_CHART_COLOURS.lineColour,
-    ),
-    areaTop: getCssVarColor('--area-top-color', DEFAULT_CHART_COLOURS.areaTop),
-    areaBottom: getCssVarColor(
-      '--area-bottom-color',
-      DEFAULT_CHART_COLOURS.areaBottom,
-    ),
+    lineColour: resolveColour(undefined, 'lineColour'),
+    areaTop: resolveColour(undefined, 'areaTop'),
+    areaBottom: resolveColour(undefined, 'areaBottom'),
     volumeUp: DEFAULT_CHART_COLOURS.volumeUp,
     volumeDown: DEFAULT_CHART_COLOURS.volumeDown,
     smaLine: DEFAULT_CHART_COLOURS.smaLine,
@@ -162,14 +153,8 @@ export function defaultChartColours(): ChartColours {
     bbandsUpper: DEFAULT_CHART_COLOURS.bbandsUpper,
     bbandsMiddle: DEFAULT_CHART_COLOURS.bbandsMiddle,
     bbandsLower: DEFAULT_CHART_COLOURS.bbandsLower,
-    chartBackground: getCssVarColor(
-      '--background',
-      DEFAULT_CHART_COLOURS.chartBackground,
-    ),
-    gridLines: computeGridLineColor(getCssVarColor('--border', DEFAULT_BORDER)),
-    textColour: getCssVarColor(
-      '--foreground',
-      DEFAULT_CHART_COLOURS.textColour,
-    ),
+    chartBackground: resolveColour(undefined, 'chartBackground'),
+    gridLines: resolveGridLineColour(),
+    textColour: resolveColour(undefined, 'textColour'),
   };
 }
