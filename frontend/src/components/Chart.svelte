@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, untrack } from 'svelte';
   import { ColorType } from 'lightweight-charts';
   import type {
     IChartApi,
@@ -157,10 +157,6 @@
     if (!containerEl) return;
 
     chart = createChartContainer(containerEl, colours);
-    applyVolume(showVolume);
-    applyArea(showArea);
-    applySeries(chartType);
-
     chart.subscribeCrosshairMove(updateLegend);
     updateLegend(undefined);
   }
@@ -232,30 +228,27 @@
     updateLegend(undefined);
   }
 
-  function updateChartData(data: OHLCVCandle[]): void {
+  function setSeriesData(data: OHLCVCandle[]): void {
     if (!chart) return;
 
     if (areaSeries) {
-      if (data.length >= 20) {
-        areaSeries.setData(data.map(candleOHLCVtoAreaData));
-      } else {
-        areaSeries.setData([]);
-      }
+      areaSeries.setData(
+        data.length >= 20 ? data.map(candleOHLCVtoAreaData) : [],
+      );
     }
-
     if (candleSeries) {
       candleSeries.setData(data.map(candleOHLCVtoCandlestickData));
     }
     if (lineSeries) {
       lineSeries.setData(data.map(candleOHLCVtoAreaData));
     }
-
     if (volumeSeries) {
       volumeSeries.setData(
-        data.map(c => candleOHLCVtoVolumeData(c, colours?.volumeUp, colours?.volumeDown))
+        data.map(c =>
+          candleOHLCVtoVolumeData(c, colours?.volumeUp, colours?.volumeDown),
+        ),
       );
     }
-    chart.timeScale().fitContent();
     updateLegend(undefined);
   }
 
@@ -270,9 +263,6 @@
 
   onMount(() => {
     initChart();
-    if (candles.length > 0) {
-      updateChartData(candles);
-    }
     api = { appendCandle };
     window.addEventListener('resize', handleResize);
 
@@ -301,77 +291,63 @@
     }
   });
 
-  $effect(() => {
-    if (chart && candles) {
-      updateChartData(candles);
-    }
-  });
+  let prevCandles: OHLCVCandle[] | undefined;
 
   $effect(() => {
     if (!chart) return;
     const type = chartType;
-    applySeries(type);
-    if (candles.length > 0) {
-      updateChartData(candles);
-    }
+    const area = showArea;
+    const volume = showVolume;
+    const data = candles;
+    untrack(() => {
+      if (!chart) return;
+      applySeries(type);
+      applyArea(area);
+      applyVolume(volume);
+      setSeriesData(data);
+      if (data !== prevCandles) {
+        chart.timeScale().fitContent();
+        prevCandles = data;
+      }
+    });
   });
 
-  $effect(() => {
-    if (!chart) return;
-    const enabled = showArea;
-    applyArea(enabled);
-    if (candles.length > 0) {
-      updateChartData(candles);
-    }
-  });
-
-  $effect(() => {
-    if (!chart) return;
-    const enabled = showVolume;
-    applyVolume(enabled);
-    if (candles.length > 0) {
-      updateChartData(candles);
-    }
-  });
-
-  // SMA series
   $effect(() => {
     if (!chart) return;
     const points = smaPoints;
     const width = smaLineWidth;
-
-    if (points.length > 0) {
-      if (!smaSeries) {
-        smaSeries = addLineSeries(chart, colours?.smaLine ?? '#2962FF');
-      }
-      smaSeries.applyOptions({ lineWidth: width as LineWidth });
-      smaSeries.setData(points.map(p => linePoint(p.timestamp, p.value)));
-    } else {
-      if (smaSeries) {
+    untrack(() => {
+      if (!chart) return;
+      if (points.length > 0) {
+        if (!smaSeries) {
+          smaSeries = addLineSeries(chart, colours?.smaLine ?? '#2962FF');
+        }
+        smaSeries.applyOptions({ lineWidth: width as LineWidth });
+        smaSeries.setData(points.map(p => linePoint(p.timestamp, p.value)));
+      } else if (smaSeries) {
         chart.removeSeries(smaSeries);
         smaSeries = null;
       }
-    }
+    });
   });
 
-  // EMA series
   $effect(() => {
     if (!chart) return;
     const points = emaPoints;
     const width = emaLineWidth;
-
-    if (points.length > 0) {
-      if (!emaSeries) {
-        emaSeries = addLineSeries(chart, colours?.emaLine ?? '#FF6D00');
-      }
-      emaSeries.applyOptions({ lineWidth: width as LineWidth });
-      emaSeries.setData(points.map(p => linePoint(p.timestamp, p.value)));
-    } else {
-      if (emaSeries) {
+    untrack(() => {
+      if (!chart) return;
+      if (points.length > 0) {
+        if (!emaSeries) {
+          emaSeries = addLineSeries(chart, colours?.emaLine ?? '#FF6D00');
+        }
+        emaSeries.applyOptions({ lineWidth: width as LineWidth });
+        emaSeries.setData(points.map(p => linePoint(p.timestamp, p.value)));
+      } else if (emaSeries) {
         chart.removeSeries(emaSeries);
         emaSeries = null;
       }
-    }
+    });
   });
 
   $effect(() => {
@@ -399,32 +375,25 @@
         wickDownColor: c.candleDownWick,
       });
     }
-
-    if (lineSeries) {
-      lineSeries.applyOptions({ color: c.lineColour });
-    }
-
+    if (lineSeries) lineSeries.applyOptions({ color: c.lineColour });
     if (areaSeries) {
-      areaSeries.applyOptions({
-        topColor: c.areaTop,
-        bottomColor: c.areaBottom,
-      });
+      areaSeries.applyOptions({ topColor: c.areaTop, bottomColor: c.areaBottom });
     }
+    if (smaSeries) smaSeries.applyOptions({ color: c.smaLine });
+    if (emaSeries) emaSeries.applyOptions({ color: c.emaLine });
+  });
 
-    if (smaSeries) {
-      smaSeries.applyOptions({ color: c.smaLine });
-    }
-
-    if (emaSeries) {
-      emaSeries.applyOptions({ color: c.emaLine });
-    }
-
-    // Volume is per-bar, re-map data
-    if (volumeSeries && candles.length > 0) {
-      volumeSeries.setData(
-        candles.map(d => candleOHLCVtoVolumeData(d, c.volumeUp, c.volumeDown))
-      );
-    }
+  $effect(() => {
+    if (!chart || !colours || !volumeSeries) return;
+    const up = colours.volumeUp;
+    const down = colours.volumeDown;
+    untrack(() => {
+      if (volumeSeries && candles.length > 0) {
+        volumeSeries.setData(
+          candles.map(d => candleOHLCVtoVolumeData(d, up, down)),
+        );
+      }
+    });
   });
 </script>
 
