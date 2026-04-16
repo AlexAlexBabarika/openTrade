@@ -1,3 +1,5 @@
+import type { movingAverageType } from './types';
+
 declare global {
   interface Window {
     __API_BASE__?: string;
@@ -35,10 +37,10 @@ export function yfinanceUrl(
   return `${API_BASE}/data/yfinance/${encodeURIComponent(symbol)}?${params}`;
 }
 
-export function smaUrl(symbol: string, period: number = 20): string {
-  return `${API_BASE}/data/indicators/sma?symbol=${encodeURIComponent(symbol)}&period=${period}`;
-}
-
-export function emaUrl(symbol: string, period: number = 20): string {
-  return `${API_BASE}/data/indicators/ema?symbol=${encodeURIComponent(symbol)}&period=${period}`;
+export function maUrl(
+  ma_type: movingAverageType,
+  symbol: string,
+  period: number = 20,
+): string {
+  return `${API_BASE}/data/indicators/${ma_type}?symbol=${encodeURIComponent(symbol)}&period=${period}`;
 }
