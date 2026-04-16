@@ -28,3 +28,18 @@ export enum movingAverageType {
   SMA = 'sma',
   EMA = 'ema',
 }
+
+export interface BollingerBandsPoint {
+  timestamp: string;
+  upper: number;
+  middle: number;
+  lower: number;
+}
+
+export interface BollingerBandsResponse {
+  symbol: string;
+  indicator: string;
+  period: number;
+  num_std: number;
+  points: BollingerBandsPoint[];
+}

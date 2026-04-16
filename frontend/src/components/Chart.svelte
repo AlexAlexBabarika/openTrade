@@ -23,7 +23,7 @@
     getCssVarColor,
   } from '../lib/chart';
   import { DEFAULT_CHART_COLOURS } from '../lib/chartDefaults';
-  import type { OHLCVCandle, IndicatorPoint } from '../lib/types';
+  import type { OHLCVCandle, IndicatorPoint, BollingerBandsPoint } from '../lib/types';
   import type { ChartType } from './ChartOptionsMenu.svelte';
   import type { ChartColours } from '../lib/chartColours';
   import { linePoint } from '../lib/chart';
@@ -38,8 +38,10 @@
     showVolume = true,
     smaPoints = [] as IndicatorPoint[],
     emaPoints = [] as IndicatorPoint[],
+    bbandsPoints = [] as BollingerBandsPoint[],
     smaLineWidth = 2,
     emaLineWidth = 2,
+    bbandsLineWidth = 1,
     colours = undefined as ChartColours | undefined,
     api = $bindable<ChartApi | null>(null),
   }: {
@@ -50,8 +52,10 @@
     showVolume?: boolean;
     smaPoints?: IndicatorPoint[];
     emaPoints?: IndicatorPoint[];
+    bbandsPoints?: BollingerBandsPoint[];
     smaLineWidth?: number;
     emaLineWidth?: number;
+    bbandsLineWidth?: number;
     colours?: ChartColours;
     api?: ChartApi | null;
   } = $props();
@@ -64,6 +68,9 @@
   let volumeSeries: ISeriesApi<'Histogram'> | null = null;
   let smaSeries: ISeriesApi<'Line'> | null = null;
   let emaSeries: ISeriesApi<'Line'> | null = null;
+  let bbandsUpperSeries: ISeriesApi<'Line'> | null = null;
+  let bbandsMiddleSeries: ISeriesApi<'Line'> | null = null;
+  let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let themeObserver: MutationObserver | null = null;
 
   // Legend state
@@ -359,6 +366,64 @@
     });
   });
 
+  // Bollinger Bands series
+  $effect(() => {
+    if (!chart) return;
+    const points = bbandsPoints;
+    const width = bbandsLineWidth;
+    untrack(() => {
+      if (!chart) return;
+      if (points.length > 0) {
+        if (!bbandsUpperSeries) {
+          bbandsUpperSeries = addLineSeries(
+            chart,
+            colours?.bbandsUpper ?? DEFAULT_CHART_COLOURS.bbandsUpper,
+          );
+        }
+        if (!bbandsMiddleSeries) {
+          bbandsMiddleSeries = addLineSeries(
+            chart,
+            colours?.bbandsMiddle ?? DEFAULT_CHART_COLOURS.bbandsMiddle,
+          );
+        }
+        if (!bbandsLowerSeries) {
+          bbandsLowerSeries = addLineSeries(
+            chart,
+            colours?.bbandsLower ?? DEFAULT_CHART_COLOURS.bbandsLower,
+          );
+        }
+        bbandsUpperSeries.applyOptions({ lineWidth: width as LineWidth });
+        bbandsMiddleSeries.applyOptions({
+          lineWidth: width as LineWidth,
+          lineStyle: 2,
+        });
+        bbandsLowerSeries.applyOptions({ lineWidth: width as LineWidth });
+        bbandsUpperSeries.setData(
+          points.map(p => linePoint(p.timestamp, p.upper)),
+        );
+        bbandsMiddleSeries.setData(
+          points.map(p => linePoint(p.timestamp, p.middle)),
+        );
+        bbandsLowerSeries.setData(
+          points.map(p => linePoint(p.timestamp, p.lower)),
+        );
+      } else {
+        if (bbandsUpperSeries) {
+          chart.removeSeries(bbandsUpperSeries);
+          bbandsUpperSeries = null;
+        }
+        if (bbandsMiddleSeries) {
+          chart.removeSeries(bbandsMiddleSeries);
+          bbandsMiddleSeries = null;
+        }
+        if (bbandsLowerSeries) {
+          chart.removeSeries(bbandsLowerSeries);
+          bbandsLowerSeries = null;
+        }
+      }
+    });
+  });
+
   $effect(() => {
     if (!chart || !colours) return;
     const c = colours;
@@ -390,6 +455,9 @@
     }
     if (smaSeries) smaSeries.applyOptions({ color: c.smaLine });
     if (emaSeries) emaSeries.applyOptions({ color: c.emaLine });
+    if (bbandsUpperSeries) bbandsUpperSeries.applyOptions({ color: c.bbandsUpper });
+    if (bbandsMiddleSeries) bbandsMiddleSeries.applyOptions({ color: c.bbandsMiddle });
+    if (bbandsLowerSeries) bbandsLowerSeries.applyOptions({ color: c.bbandsLower });
   });
 
   $effect(() => {
