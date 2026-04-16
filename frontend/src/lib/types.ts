@@ -23,7 +23,6 @@ export interface IndicatorResponse {
   points: IndicatorPoint[];
 }
 
-// Used for maUrl() in config.ts
 export enum movingAverageType {
   SMA = 'sma',
   EMA = 'ema',

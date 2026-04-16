@@ -2,13 +2,15 @@ import { resolveColour, resolveGridLineColour } from './chart';
 import { DEFAULT_CHART_COLOURS } from './chartDefaults';
 import { safeLocalStorageGet, safeLocalStorageSet } from './storage';
 
+export type ChartType = 'candlestick' | 'line';
+
 export interface ChartTemplate {
   name: string;
   colours: ChartColours;
   smaLineWidth: number;
   emaLineWidth: number;
   bbandsLineWidth?: number;
-  chartType?: 'candlestick' | 'line';
+  chartType?: ChartType;
   showArea?: boolean;
   showVolume?: boolean;
   smaEnabled?: boolean;
@@ -17,7 +19,7 @@ export interface ChartTemplate {
 }
 
 export interface ChartSettings {
-  chartType: 'candlestick' | 'line';
+  chartType: ChartType;
   showArea: boolean;
   showVolume: boolean;
   smaEnabled: boolean;

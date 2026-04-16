@@ -6,15 +6,14 @@
   import type { ChartApi } from './components/Chart.svelte';
   import ChartOptionsMenu from './components/ChartOptionsMenu.svelte';
   import type {
-    ChartType,
     MovingAverageConfig,
     BollingerBandsConfig,
   } from './components/ChartOptionsMenu.svelte';
+  import type { ChartType } from './lib/chartColours';
   import { fetchSMA, fetchEMA, fetchBBands } from './lib/indicators';
   import type { IndicatorPoint, BollingerBandsPoint } from './lib/types';
-  import { API_BASE } from './lib/config';
   import { fetchMarketOHLCV } from './lib/marketData';
-  import { readErrorMessage } from './lib/api';
+  import { apiFetch, readErrorMessage } from './lib/api';
   import { WSClient } from './lib/ws';
   import type { ConnectionStatus } from './lib/ws';
   import type { OHLCVCandle } from './lib/types';
@@ -91,18 +90,16 @@
     }
   }
 
-  function startStream(): void {
-    const sym = symbol.trim();
-    if (!sym) {
-      errorMessage = 'Enter a symbol';
-      return;
-    }
-    errorMessage = null;
+  function startWsStream(
+    provider: MarketDataProviderValue,
+    sym: string,
+    opts: { reconnectDelayMs?: number; maxReconnectAttempts?: number } = {},
+  ): void {
     if (wsClient) wsClient.disconnect();
     const streamCandles: OHLCVCandle[] = [];
     candles = streamCandles;
     wsClient = new WSClient({
-      provider: source,
+      provider,
       symbol: sym,
       onCandle: c => {
         streamCandles.push(c);
@@ -111,10 +108,22 @@
       onStatus: s => {
         connectionStatus = s;
       },
+      ...opts,
+    });
+    wsClient.connect();
+  }
+
+  function startStream(): void {
+    const sym = symbol.trim();
+    if (!sym) {
+      errorMessage = 'Enter a symbol';
+      return;
+    }
+    errorMessage = null;
+    startWsStream(source, sym, {
       reconnectDelayMs: 3000,
       maxReconnectAttempts: 10,
     });
-    wsClient.connect();
   }
 
   async function handleCsvUpload(file: File): Promise<void> {
@@ -124,27 +133,13 @@
     const form = new FormData();
     form.append('file', file);
     try {
-      const res = await fetch(
-        `${API_BASE}/data/csv?symbol=${encodeURIComponent(sym)}`,
+      const res = await apiFetch(
+        `/data/csv?symbol=${encodeURIComponent(sym)}`,
         { method: 'POST', body: form },
       );
       if (!res.ok) throw new Error(await readErrorMessage(res));
       await res.json();
-      if (wsClient) wsClient.disconnect();
-      const streamCandles: OHLCVCandle[] = [];
-      candles = streamCandles;
-      wsClient = new WSClient({
-        provider: 'csv',
-        symbol: sym,
-        onCandle: c => {
-          streamCandles.push(c);
-          chartApi?.appendCandle(c);
-        },
-        onStatus: s => {
-          connectionStatus = s;
-        },
-      });
-      wsClient.connect();
+      startWsStream('csv', sym);
     } catch (e) {
       errorMessage = e instanceof Error ? e.message : 'Upload failed';
     } finally {
@@ -152,7 +147,6 @@
     }
   }
 
-  // Auto-refresh effect
   $effect(() => {
     if (refreshIntervalId) {
       clearInterval(refreshIntervalId);
@@ -167,55 +161,67 @@
     }
   });
 
-  // Fetch SMA when enabled or config changes
+  const INDICATOR_DEBOUNCE_MS = 300;
+
   $effect(() => {
-    const cfg = smaConfig;
+    const enabled = smaConfig.enabled;
+    const period = smaConfig.period;
     const sym = symbol;
     marketDataVersion;
-    if (!cfg.enabled || !hasCandles) {
+    if (!enabled || !hasCandles) {
       smaPoints = [];
       return;
     }
-    fetchSMA(sym, cfg.period)
-      .then(res => (smaPoints = res.points))
-      .catch(e => {
-        smaPoints = [];
-        errorMessage = e instanceof Error ? e.message : 'Failed to load SMA';
-      });
+    const id = setTimeout(() => {
+      fetchSMA(sym, period)
+        .then(res => (smaPoints = res.points))
+        .catch(e => {
+          smaPoints = [];
+          errorMessage = e instanceof Error ? e.message : 'Failed to load SMA';
+        });
+    }, INDICATOR_DEBOUNCE_MS);
+    return () => clearTimeout(id);
   });
 
-  // Fetch EMA when enabled or config changes
   $effect(() => {
-    const cfg = emaConfig;
+    const enabled = emaConfig.enabled;
+    const period = emaConfig.period;
     const sym = symbol;
     marketDataVersion;
-    if (!cfg.enabled || !hasCandles) {
+    if (!enabled || !hasCandles) {
       emaPoints = [];
       return;
     }
-    fetchEMA(sym, cfg.period)
-      .then(res => (emaPoints = res.points))
-      .catch(e => {
-        emaPoints = [];
-        errorMessage = e instanceof Error ? e.message : 'Failed to load EMA';
-      });
+    const id = setTimeout(() => {
+      fetchEMA(sym, period)
+        .then(res => (emaPoints = res.points))
+        .catch(e => {
+          emaPoints = [];
+          errorMessage = e instanceof Error ? e.message : 'Failed to load EMA';
+        });
+    }, INDICATOR_DEBOUNCE_MS);
+    return () => clearTimeout(id);
   });
 
-  // Fetch Bollinger Bands when enabled or config changes
   $effect(() => {
-    const cfg = bbandsConfig;
+    const enabled = bbandsConfig.enabled;
+    const period = bbandsConfig.period;
+    const stdDev = bbandsConfig.stdDev;
     const sym = symbol;
     marketDataVersion;
-    if (!cfg.enabled || !hasCandles) {
+    if (!enabled || !hasCandles) {
       bbandsPoints = [];
       return;
     }
-    fetchBBands(sym, cfg.period, cfg.stdDev)
-      .then(res => (bbandsPoints = res.points))
-      .catch(e => {
-        bbandsPoints = [];
-        errorMessage = e instanceof Error ? e.message : 'Failed to load Bollinger Bands';
-      });
+    const id = setTimeout(() => {
+      fetchBBands(sym, period, stdDev)
+        .then(res => (bbandsPoints = res.points))
+        .catch(e => {
+          bbandsPoints = [];
+          errorMessage = e instanceof Error ? e.message : 'Failed to load Bollinger Bands';
+        });
+    }, INDICATOR_DEBOUNCE_MS);
+    return () => clearTimeout(id);
   });
 
   // Persist chart colours and settings to localStorage only when the page unloads,
@@ -232,11 +238,14 @@
     });
   }
 
-  onMount(() => {
+  onMount(async () => {
     window.addEventListener('beforeunload', persistOnUnload);
-    fetchSession().catch(err => {
+    try {
+      await fetchSession();
+    } catch (err) {
       console.warn('Session fetch failed:', err);
-    });
+    }
+    loadMarketData().catch(() => {});
   });
 
   onDestroy(() => {
@@ -245,9 +254,6 @@
     if (refreshIntervalId) clearInterval(refreshIntervalId);
     if (wsClient) wsClient.disconnect();
   });
-
-  // Initial load (default source: yfinance)
-  loadMarketData().catch(() => {});
 </script>
 
 <div class="flex flex-col h-screen bg-background">

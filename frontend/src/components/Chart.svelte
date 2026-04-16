@@ -20,14 +20,14 @@
     addLineSeries,
     syncChartTheme,
     resolveColour,
+    invalidateCssVarCache,
   } from '../lib/chart';
   import type {
     OHLCVCandle,
     IndicatorPoint,
     BollingerBandsPoint,
   } from '../lib/types';
-  import type { ChartType } from './ChartOptionsMenu.svelte';
-  import type { ChartColours } from '../lib/chartColours';
+  import type { ChartColours, ChartType } from '../lib/chartColours';
   import { linePoint } from '../lib/chart';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
@@ -75,7 +75,6 @@
   let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let themeObserver: MutationObserver | null = null;
 
-  // Legend state
   let legendName = $state('');
   let legendPrice = $state('');
   let legendDate = $state('');
@@ -86,6 +85,12 @@
     return (Math.round(price * 100) / 100).toFixed(2);
   }
 
+  const dateFormatter = new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
   function formatDate(time: Time): string {
     let date: Date;
     if (typeof time === 'string') {
@@ -95,24 +100,7 @@
     } else {
       date = new Date(time.year, time.month - 1, time.day);
     }
-    const day = date.getDate();
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
+    return dateFormatter.format(date);
   }
 
   function updateLegend(param: MouseEventParams | undefined): void {
@@ -196,7 +184,6 @@
   function applySeries(type: ChartType): void {
     if (!chart) return;
 
-    // Remove existing price series
     if (candleSeries) {
       chart.removeSeries(candleSeries);
       candleSeries = null;
@@ -211,6 +198,10 @@
     } else {
       lineSeries = addLineSeries(chart, resolveColour(colours, 'lineColour'));
     }
+  }
+
+  function toVolume(c: OHLCVCandle) {
+    return candleOHLCVtoVolumeData(c, colours?.volumeUp, colours?.volumeDown);
   }
 
   function appendCandle(c: OHLCVCandle): void {
@@ -230,9 +221,7 @@
       }
     }
     if (volumeSeries) {
-      volumeSeries.update(
-        candleOHLCVtoVolumeData(c, colours?.volumeUp, colours?.volumeDown),
-      );
+      volumeSeries.update(toVolume(c));
     }
     updateLegend(undefined);
   }
@@ -252,11 +241,7 @@
       lineSeries.setData(data.map(candleOHLCVtoAreaData));
     }
     if (volumeSeries) {
-      volumeSeries.setData(
-        data.map(c =>
-          candleOHLCVtoVolumeData(c, colours?.volumeUp, colours?.volumeDown),
-        ),
-      );
+      volumeSeries.setData(data.map(toVolume));
     }
     updateLegend(undefined);
   }
@@ -275,9 +260,9 @@
     api = { appendCandle };
     window.addEventListener('resize', handleResize);
 
-    // Watch for theme changes on the html element
     themeObserver = new MutationObserver(() => {
       if (chart) {
+        invalidateCssVarCache();
         syncChartTheme({
           chart,
           candleSeries,
@@ -370,7 +355,6 @@
     });
   });
 
-  // Bollinger Bands series
   $effect(() => {
     if (!chart) return;
     const points = bbandsPoints;
@@ -446,32 +430,31 @@
 
   $effect(() => {
     if (!chart || !colours || !volumeSeries) return;
-    const up = colours.volumeUp;
-    const down = colours.volumeDown;
+    colours.volumeUp;
+    colours.volumeDown;
     untrack(() => {
       if (volumeSeries && candles.length > 0) {
-        volumeSeries.setData(
-          candles.map(d => candleOHLCVtoVolumeData(d, up, down)),
-        );
+        volumeSeries.setData(candles.map(toVolume));
       }
     });
   });
 </script>
 
-<div class="flex-1 flex flex-col relative z-0 w-full overflow-hidden">
-  <div class="flex-1 min-h-[400px] relative w-full" bind:this={containerEl}>
-    {#if showLegend}
-      <div
-        class="absolute left-4 top-4 z-10 text-sm font-light pointer-events-none font-sans leading-[18px]"
-        style:color={colours?.textColour}
-      >
-        <div class="text-2xl my-1 font-medium">{legendName}</div>
-        <div class="text-[22px] my-1 font-semibold">{legendPrice}</div>
-        <div style:opacity="0.7">{legendDate}</div>
-        <div style:opacity="0.7">Volume: {legendVolume}</div>
-      </div>
-    {/if}
-  </div>
+<div
+  class="flex-1 min-h-[400px] relative w-full z-0 overflow-hidden"
+  bind:this={containerEl}
+>
+  {#if showLegend}
+    <div
+      class="absolute left-4 top-4 z-10 text-sm font-light pointer-events-none font-sans leading-[18px]"
+      style:color={colours?.textColour}
+    >
+      <div class="text-2xl my-1 font-medium">{legendName}</div>
+      <div class="text-[22px] my-1 font-semibold">{legendPrice}</div>
+      <div style:opacity="0.7">{legendDate}</div>
+      <div style:opacity="0.7">Volume: {legendVolume}</div>
+    </div>
+  {/if}
 </div>
 
 <style>
