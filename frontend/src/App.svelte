@@ -27,7 +27,6 @@
     defaultChartColours,
     loadChartColoursFromStorage,
     persistChartColours,
-    snapshotChartColours,
     loadChartSettingsFromStorage,
     persistChartSettings,
   } from './lib/chartColours';
@@ -222,7 +221,7 @@
   // Persist chart colours and settings to localStorage only when the page unloads,
   // avoiding excessive writes during drag operations in colour pickers.
   function persistOnUnload() {
-    persistChartColours(snapshotChartColours(colours));
+    persistChartColours(colours);
     persistChartSettings({
       chartType,
       showArea,
