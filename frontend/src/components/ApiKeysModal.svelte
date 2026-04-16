@@ -53,12 +53,11 @@
   });
 
   async function loadExistingKeys() {
-    fetchingKeys = true;
+    fetchingKeys = existingKeys.length === 0;
     error = null;
     try {
       existingKeys = await listApiKeys();
     } catch (err) {
-      existingKeys = [];
       error = err instanceof Error ? err.message : 'Failed to load API keys';
     } finally {
       fetchingKeys = false;
@@ -73,7 +72,7 @@
     fetchingKeys = false;
     error = null;
     success = null;
-    existingKeys = [];
+    // Keep existingKeys across opens — refreshed in background by loadExistingKeys.
   }
 
   let successTimeout: ReturnType<typeof setTimeout> | null = null;

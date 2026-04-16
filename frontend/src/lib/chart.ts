@@ -11,12 +11,29 @@ import {
 
 export { computeGridLineColor } from './chartDefaults';
 
+const cssVarCache = new Map<string, string>();
+
+/** Call when theme changes so memoised CSS-var lookups re-resolve. */
+export function invalidateCssVarCache(): void {
+  cssVarCache.clear();
+}
+
 export function getCssVarColor(
   variableName: string,
   fallback: string = '#000000',
 ): string {
   if (typeof window === 'undefined') return fallback;
 
+  const cacheKey = `${variableName}|${fallback}`;
+  const cached = cssVarCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const result = resolveCssVarColor(variableName, fallback);
+  cssVarCache.set(cacheKey, result);
+  return result;
+}
+
+function resolveCssVarColor(variableName: string, fallback: string): string {
   const root = document.documentElement;
   const style = getComputedStyle(root);
 

@@ -42,7 +42,8 @@ export function maUrl(
   symbol: string,
   period: number = 20,
 ): string {
-  return `${API_BASE}/data/indicators/${ma_type}?symbol=${encodeURIComponent(symbol)}&period=${period}`;
+  const params = new URLSearchParams({ symbol, period: String(period) });
+  return `${API_BASE}/data/indicators/${ma_type}?${params}`;
 }
 
 export function bbandsUrl(
@@ -50,5 +51,10 @@ export function bbandsUrl(
   period: number = 20,
   numStd: number = 2,
 ): string {
-  return `${API_BASE}/data/indicators/bbands?symbol=${encodeURIComponent(symbol)}&period=${period}&num_std=${numStd}`;
+  const params = new URLSearchParams({
+    symbol,
+    period: String(period),
+    num_std: String(numStd),
+  });
+  return `${API_BASE}/data/indicators/bbands?${params}`;
 }

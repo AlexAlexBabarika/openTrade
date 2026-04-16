@@ -1,5 +1,6 @@
 import type { OHLCVCandle } from './types';
 import { wsStreamUrl } from './config';
+import type { MarketDataProviderValue } from './marketDataProviders';
 
 export type ConnectionStatus =
   | 'connecting'
@@ -8,8 +9,7 @@ export type ConnectionStatus =
   | 'error';
 
 export interface WSClientOptions {
-  /** Data source id: yfinance, binance, twelvedata, csv (must match REST cache). */
-  provider: string;
+  provider: MarketDataProviderValue;
   symbol: string;
   onCandle: (c: OHLCVCandle) => void;
   onStatus?: (status: ConnectionStatus) => void;
@@ -22,7 +22,7 @@ export interface WSClientOptions {
 
 export class WSClient {
   private ws: WebSocket | null = null;
-  private provider: string;
+  private provider: MarketDataProviderValue;
   private symbol: string;
   private onCandle: (c: OHLCVCandle) => void;
   private onStatus?: (status: ConnectionStatus) => void;

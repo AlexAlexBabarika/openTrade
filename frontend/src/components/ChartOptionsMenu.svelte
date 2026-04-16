@@ -9,15 +9,17 @@
   import BarChart3 from '@lucide/svelte/icons/bar-chart-3';
   import TrendingUp from '@lucide/svelte/icons/trending-up';
   import ColourSwatch from './ColourSwatch.svelte';
-  import type { ChartColours, ChartTemplate } from '../lib/chartColours';
+  import type {
+    ChartColours,
+    ChartTemplate,
+    ChartType,
+  } from '../lib/chartColours';
   import {
     defaultChartColours,
     loadTemplates,
     saveTemplate,
     deleteTemplate,
   } from '../lib/chartColours';
-
-  export type ChartType = 'candlestick' | 'line';
 
   export interface MovingAverageConfig {
     enabled: boolean;
@@ -52,25 +54,40 @@
 
   let open = $state(false);
 
-  let templates = $state<ChartTemplate[]>(loadTemplates());
+  let templates = $state<ChartTemplate[]>([]);
   let selectedTemplateName = $state('');
+
+  $effect(() => {
+    if (open) templates = loadTemplates();
+  });
 
   let saveDialogOpen = $state(false);
   let templateNameInput = $state('');
 
   function applyTemplate(name: string) {
-    const tpl = templates.find((t) => t.name === name);
+    const tpl = templates.find(t => t.name === name);
     if (!tpl) return;
     colours = { ...tpl.colours };
-    smaConfig = { ...smaConfig, lineWidth: tpl.smaLineWidth };
-    emaConfig = { ...emaConfig, lineWidth: tpl.emaLineWidth };
+    smaConfig = {
+      ...smaConfig,
+      lineWidth: tpl.smaLineWidth,
+      ...(tpl.smaEnabled !== undefined && { enabled: tpl.smaEnabled }),
+    };
+    emaConfig = {
+      ...emaConfig,
+      lineWidth: tpl.emaLineWidth,
+      ...(tpl.emaEnabled !== undefined && { enabled: tpl.emaEnabled }),
+    };
+    bbandsConfig = {
+      ...bbandsConfig,
+      ...(tpl.bbandsLineWidth !== undefined && {
+        lineWidth: tpl.bbandsLineWidth,
+      }),
+      ...(tpl.bbandsEnabled !== undefined && { enabled: tpl.bbandsEnabled }),
+    };
     if (tpl.chartType !== undefined) chartType = tpl.chartType;
     if (tpl.showArea !== undefined) showArea = tpl.showArea;
     if (tpl.showVolume !== undefined) showVolume = tpl.showVolume;
-    if (tpl.smaEnabled !== undefined) smaConfig = { ...smaConfig, enabled: tpl.smaEnabled };
-    if (tpl.emaEnabled !== undefined) emaConfig = { ...emaConfig, enabled: tpl.emaEnabled };
-    if (tpl.bbandsLineWidth !== undefined) bbandsConfig = { ...bbandsConfig, lineWidth: tpl.bbandsLineWidth };
-    if (tpl.bbandsEnabled !== undefined) bbandsConfig = { ...bbandsConfig, enabled: tpl.bbandsEnabled };
   }
 
   function openSaveDialog() {
@@ -104,6 +121,14 @@
     deleteTemplate(selectedTemplateName);
     templates = loadTemplates();
     selectedTemplateName = '';
+  }
+
+  function intOr(e: Event, fallback: number): number {
+    return parseInt((e.target as HTMLInputElement).value, 10) || fallback;
+  }
+
+  function floatOr(e: Event, fallback: number): number {
+    return parseFloat((e.target as HTMLInputElement).value) || fallback;
   }
 
   function handleReset() {
@@ -276,11 +301,7 @@
                       oninput={e =>
                         (smaConfig = {
                           ...smaConfig,
-                          lineWidth:
-                            parseInt(
-                              (e.target as HTMLInputElement).value,
-                              10,
-                            ) || 2,
+                          lineWidth: intOr(e, 2),
                         })}
                       class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                     />
@@ -297,11 +318,7 @@
                       oninput={e =>
                         (smaConfig = {
                           ...smaConfig,
-                          period:
-                            parseInt(
-                              (e.target as HTMLInputElement).value,
-                              10,
-                            ) || 20,
+                          period: intOr(e, 20),
                         })}
                       class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                     />
@@ -344,11 +361,7 @@
                       oninput={e =>
                         (bbandsConfig = {
                           ...bbandsConfig,
-                          lineWidth:
-                            parseInt(
-                              (e.target as HTMLInputElement).value,
-                              10,
-                            ) || 1,
+                          lineWidth: intOr(e, 1),
                         })}
                       class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                     />
@@ -365,11 +378,7 @@
                       oninput={e =>
                         (bbandsConfig = {
                           ...bbandsConfig,
-                          period:
-                            parseInt(
-                              (e.target as HTMLInputElement).value,
-                              10,
-                            ) || 20,
+                          period: intOr(e, 20),
                         })}
                       class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                     />
@@ -387,10 +396,7 @@
                       oninput={e =>
                         (bbandsConfig = {
                           ...bbandsConfig,
-                          stdDev:
-                            parseFloat(
-                              (e.target as HTMLInputElement).value,
-                            ) || 2,
+                          stdDev: floatOr(e, 2),
                         })}
                       class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                     />
@@ -435,11 +441,7 @@
                       oninput={e =>
                         (emaConfig = {
                           ...emaConfig,
-                          lineWidth:
-                            parseInt(
-                              (e.target as HTMLInputElement).value,
-                              10,
-                            ) || 2,
+                          lineWidth: intOr(e, 2),
                         })}
                       class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                     />
@@ -456,11 +458,7 @@
                       oninput={e =>
                         (emaConfig = {
                           ...emaConfig,
-                          period:
-                            parseInt(
-                              (e.target as HTMLInputElement).value,
-                              10,
-                            ) || 20,
+                          period: intOr(e, 20),
                         })}
                       class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                     />

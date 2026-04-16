@@ -2,13 +2,15 @@ import { resolveColour, resolveGridLineColour } from './chart';
 import { DEFAULT_CHART_COLOURS } from './chartDefaults';
 import { safeLocalStorageGet, safeLocalStorageSet } from './storage';
 
+export type ChartType = 'candlestick' | 'line';
+
 export interface ChartTemplate {
   name: string;
   colours: ChartColours;
   smaLineWidth: number;
   emaLineWidth: number;
   bbandsLineWidth?: number;
-  chartType?: 'candlestick' | 'line';
+  chartType?: ChartType;
   showArea?: boolean;
   showVolume?: boolean;
   smaEnabled?: boolean;
@@ -17,7 +19,7 @@ export interface ChartTemplate {
 }
 
 export interface ChartSettings {
-  chartType: 'candlestick' | 'line';
+  chartType: ChartType;
   showArea: boolean;
   showVolume: boolean;
   smaEnabled: boolean;
@@ -47,30 +49,9 @@ export interface ChartColours {
 
 const STORAGE_KEY = 'opentrade:chartColours';
 
-const CHART_COLOUR_KEYS: (keyof ChartColours)[] = [
-  'candleUpBody',
-  'candleDownBody',
-  'candleUpWick',
-  'candleDownWick',
-  'lineColour',
-  'areaTop',
-  'areaBottom',
-  'volumeUp',
-  'volumeDown',
-  'smaLine',
-  'emaLine',
-  'bbandsUpper',
-  'bbandsMiddle',
-  'bbandsLower',
-  'chartBackground',
-  'gridLines',
-  'textColour',
-];
-
-/** Shallow copy; reading each field helps Svelte effects track nested `$state` updates. */
-export function snapshotChartColours(c: ChartColours): ChartColours {
-  return { ...c };
-}
+const CHART_COLOUR_KEYS = Object.keys(
+  DEFAULT_CHART_COLOURS,
+) as (keyof ChartColours)[];
 
 export function loadChartColoursFromStorage(): ChartColours | null {
   const data = safeLocalStorageGet<Record<string, unknown>>(STORAGE_KEY);
@@ -90,17 +71,20 @@ export function persistChartColours(colours: ChartColours): void {
 
 const SETTINGS_KEY = 'opentrade:chartSettings';
 
+function boolOr(v: unknown, fallback: boolean): boolean {
+  return typeof v === 'boolean' ? v : fallback;
+}
+
 export function loadChartSettingsFromStorage(): ChartSettings | null {
   const data = safeLocalStorageGet<Record<string, unknown>>(SETTINGS_KEY);
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
   return {
     chartType: data.chartType === 'line' ? 'line' : 'candlestick',
-    showArea: typeof data.showArea === 'boolean' ? data.showArea : true,
-    showVolume: typeof data.showVolume === 'boolean' ? data.showVolume : true,
-    smaEnabled: typeof data.smaEnabled === 'boolean' ? data.smaEnabled : false,
-    emaEnabled: typeof data.emaEnabled === 'boolean' ? data.emaEnabled : false,
-    bbandsEnabled:
-      typeof data.bbandsEnabled === 'boolean' ? data.bbandsEnabled : false,
+    showArea: boolOr(data.showArea, true),
+    showVolume: boolOr(data.showVolume, true),
+    smaEnabled: boolOr(data.smaEnabled, false),
+    emaEnabled: boolOr(data.emaEnabled, false),
+    bbandsEnabled: boolOr(data.bbandsEnabled, false),
   };
 }
 

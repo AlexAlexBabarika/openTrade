@@ -50,78 +50,49 @@
     hexInput = hex;
   }
 
-  // --- Gradient area (saturation x brightness) ---
-  let gradDragging = $state(false);
+  type DragKind = 'grad' | 'hue' | 'alpha';
+  let dragging = $state<DragKind | null>(null);
 
-  function gradUpdate(e: PointerEvent, rect: DOMRect) {
+  function makeDrag(
+    kind: DragKind,
+    applyDelta: (rect: DOMRect, e: PointerEvent) => Partial<HSVA>,
+  ) {
+    function update(e: PointerEvent, rect: DOMRect) {
+      hsva = { ...hsva, ...applyDelta(rect, e) };
+      emitColour();
+    }
+    return {
+      down(e: PointerEvent) {
+        dragging = kind;
+        const el = e.currentTarget as HTMLElement;
+        el.setPointerCapture(e.pointerId);
+        update(e, el.getBoundingClientRect());
+      },
+      move(e: PointerEvent) {
+        if (dragging !== kind) return;
+        update(e, (e.currentTarget as HTMLElement).getBoundingClientRect());
+      },
+      up() {
+        if (dragging === kind) dragging = null;
+      },
+    };
+  }
+
+  const grad = makeDrag('grad', (rect, e) => {
     const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
     const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
-    hsva = { ...hsva, s: x / rect.width, v: 1 - y / rect.height };
-    emitColour();
-  }
+    return { s: x / rect.width, v: 1 - y / rect.height };
+  });
 
-  function gradDown(e: PointerEvent) {
-    gradDragging = true;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    gradUpdate(e, (e.currentTarget as HTMLElement).getBoundingClientRect());
-  }
-
-  function gradMove(e: PointerEvent) {
-    if (!gradDragging) return;
-    gradUpdate(e, (e.currentTarget as HTMLElement).getBoundingClientRect());
-  }
-
-  function gradUp() {
-    gradDragging = false;
-  }
-
-  // --- Hue slider ---
-  let hueDragging = $state(false);
-
-  function hueUpdate(e: PointerEvent, rect: DOMRect) {
+  const hue = makeDrag('hue', (rect, e) => {
     const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    hsva = { ...hsva, h: (x / rect.width) * 360 };
-    emitColour();
-  }
+    return { h: (x / rect.width) * 360 };
+  });
 
-  function hueDown(e: PointerEvent) {
-    hueDragging = true;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    hueUpdate(e, (e.currentTarget as HTMLElement).getBoundingClientRect());
-  }
-
-  function hueMove(e: PointerEvent) {
-    if (!hueDragging) return;
-    hueUpdate(e, (e.currentTarget as HTMLElement).getBoundingClientRect());
-  }
-
-  function hueUp() {
-    hueDragging = false;
-  }
-
-  // --- Alpha slider ---
-  let alphaDragging = $state(false);
-
-  function alphaUpdate(e: PointerEvent, rect: DOMRect) {
+  const alpha = makeDrag('alpha', (rect, e) => {
     const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    hsva = { ...hsva, a: x / rect.width };
-    emitColour();
-  }
-
-  function alphaDown(e: PointerEvent) {
-    alphaDragging = true;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    alphaUpdate(e, (e.currentTarget as HTMLElement).getBoundingClientRect());
-  }
-
-  function alphaMove(e: PointerEvent) {
-    if (!alphaDragging) return;
-    alphaUpdate(e, (e.currentTarget as HTMLElement).getBoundingClientRect());
-  }
-
-  function alphaUp() {
-    alphaDragging = false;
-  }
+    return { a: x / rect.width };
+  });
 
   // --- Hex input ---
   function handleHexInput(e: Event) {
@@ -220,9 +191,9 @@
     class="relative rounded-md overflow-hidden cursor-crosshair touch-none"
     style="width: {GRAD_W}px; height: {GRAD_H}px; background: {hueColour};"
     role="presentation"
-    onpointerdown={gradDown}
-    onpointermove={gradMove}
-    onpointerup={gradUp}
+    onpointerdown={grad.down}
+    onpointermove={grad.move}
+    onpointerup={grad.up}
   >
     <div class="absolute inset-0" style="background: linear-gradient(to right, #fff, transparent);"></div>
     <div class="absolute inset-0" style="background: linear-gradient(to top, #000, transparent);"></div>
@@ -242,9 +213,9 @@
     aria-valuenow={Math.round(hsva.h)}
     aria-valuemin={0}
     aria-valuemax={360}
-    onpointerdown={hueDown}
-    onpointermove={hueMove}
-    onpointerup={hueUp}
+    onpointerdown={hue.down}
+    onpointermove={hue.move}
+    onpointerup={hue.up}
   >
     <div
       class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-4 rounded-sm border-2 border-white shadow-[0_0_3px_rgba(0,0,0,0.6)] pointer-events-none"
@@ -262,9 +233,9 @@
     aria-valuenow={Math.round(hsva.a * 100)}
     aria-valuemin={0}
     aria-valuemax={100}
-    onpointerdown={alphaDown}
-    onpointermove={alphaMove}
-    onpointerup={alphaUp}
+    onpointerdown={alpha.down}
+    onpointermove={alpha.move}
+    onpointerup={alpha.up}
   >
     <!-- Checkerboard background -->
     <div
