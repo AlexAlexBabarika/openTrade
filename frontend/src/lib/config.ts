@@ -45,6 +45,10 @@ export function maUrl(
   return `${API_BASE}/data/indicators/${ma_type}?symbol=${encodeURIComponent(symbol)}&period=${period}`;
 }
 
-export function bbandsUrl(symbol: string, period: number = 20, numStd: number = 2): string {
+export function bbandsUrl(
+  symbol: string,
+  period: number = 20,
+  numStd: number = 2,
+): string {
   return `${API_BASE}/data/indicators/bbands?symbol=${encodeURIComponent(symbol)}&period=${period}&num_std=${numStd}`;
 }

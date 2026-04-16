@@ -371,41 +371,62 @@
     if (!chart) return;
     const points = bbandsPoints;
     const width = bbandsLineWidth;
-
-    if (points.length > 0) {
-      if (!bbandsUpperSeries) {
-        bbandsUpperSeries = addLineSeries(chart, colours?.bbandsUpper ?? '#7B1FA2');
+    untrack(() => {
+      if (!chart) return;
+      if (points.length > 0) {
+        if (!bbandsUpperSeries) {
+          bbandsUpperSeries = addLineSeries(
+            chart,
+            colours?.bbandsUpper ?? DEFAULT_CHART_COLOURS.bbandsUpper,
+          );
+        }
+        if (!bbandsMiddleSeries) {
+          bbandsMiddleSeries = addLineSeries(
+            chart,
+            colours?.bbandsMiddle ?? DEFAULT_CHART_COLOURS.bbandsMiddle,
+          );
+        }
+        if (!bbandsLowerSeries) {
+          bbandsLowerSeries = addLineSeries(
+            chart,
+            colours?.bbandsLower ?? DEFAULT_CHART_COLOURS.bbandsLower,
+          );
+        }
+        bbandsUpperSeries.applyOptions({ lineWidth: width as LineWidth });
+        bbandsMiddleSeries.applyOptions({
+          lineWidth: width as LineWidth,
+          lineStyle: 2,
+        });
+        bbandsLowerSeries.applyOptions({ lineWidth: width as LineWidth });
+        bbandsUpperSeries.setData(
+          points.map(p => linePoint(p.timestamp, p.upper)),
+        );
+        bbandsMiddleSeries.setData(
+          points.map(p => linePoint(p.timestamp, p.middle)),
+        );
+        bbandsLowerSeries.setData(
+          points.map(p => linePoint(p.timestamp, p.lower)),
+        );
+      } else {
+        if (bbandsUpperSeries) {
+          chart.removeSeries(bbandsUpperSeries);
+          bbandsUpperSeries = null;
+        }
+        if (bbandsMiddleSeries) {
+          chart.removeSeries(bbandsMiddleSeries);
+          bbandsMiddleSeries = null;
+        }
+        if (bbandsLowerSeries) {
+          chart.removeSeries(bbandsLowerSeries);
+          bbandsLowerSeries = null;
+        }
       }
-      if (!bbandsMiddleSeries) {
-        bbandsMiddleSeries = addLineSeries(chart, colours?.bbandsMiddle ?? '#9C27B0');
-      }
-      if (!bbandsLowerSeries) {
-        bbandsLowerSeries = addLineSeries(chart, colours?.bbandsLower ?? '#7B1FA2');
-      }
-      bbandsUpperSeries.applyOptions({ lineWidth: width as LineWidth });
-      bbandsMiddleSeries.applyOptions({ lineWidth: width as LineWidth, lineStyle: 2 });
-      bbandsLowerSeries.applyOptions({ lineWidth: width as LineWidth });
-      bbandsUpperSeries.setData(points.map(p => linePoint(p.timestamp, p.upper)));
-      bbandsMiddleSeries.setData(points.map(p => linePoint(p.timestamp, p.middle)));
-      bbandsLowerSeries.setData(points.map(p => linePoint(p.timestamp, p.lower)));
-    } else {
-      if (bbandsUpperSeries) { chart.removeSeries(bbandsUpperSeries); bbandsUpperSeries = null; }
-      if (bbandsMiddleSeries) { chart.removeSeries(bbandsMiddleSeries); bbandsMiddleSeries = null; }
-      if (bbandsLowerSeries) { chart.removeSeries(bbandsLowerSeries); bbandsLowerSeries = null; }
-    }
+    });
   });
 
   $effect(() => {
     if (!chart || !colours) return;
     const c = colours;
-
-    // Read indicator colours unconditionally so they're tracked as
-    // dependencies even when their series don't yet exist.
-    const smaCol = c.smaLine;
-    const emaCol = c.emaLine;
-    const bbUpperCol = c.bbandsUpper;
-    const bbMiddleCol = c.bbandsMiddle;
-    const bbLowerCol = c.bbandsLower;
 
     chart.applyOptions({
       layout: {
@@ -434,6 +455,9 @@
     }
     if (smaSeries) smaSeries.applyOptions({ color: c.smaLine });
     if (emaSeries) emaSeries.applyOptions({ color: c.emaLine });
+    if (bbandsUpperSeries) bbandsUpperSeries.applyOptions({ color: c.bbandsUpper });
+    if (bbandsMiddleSeries) bbandsMiddleSeries.applyOptions({ color: c.bbandsMiddle });
+    if (bbandsLowerSeries) bbandsLowerSeries.applyOptions({ color: c.bbandsLower });
   });
 
   $effect(() => {
@@ -447,16 +471,6 @@
         );
       }
     });
-    
-    if (bbandsUpperSeries) {
-      bbandsUpperSeries.applyOptions({ color: bbUpperCol });
-    }
-    if (bbandsMiddleSeries) {
-      bbandsMiddleSeries.applyOptions({ color: bbMiddleCol });
-    }
-    if (bbandsLowerSeries) {
-      bbandsLowerSeries.applyOptions({ color: bbLowerCol });
-    }
   });
 </script>
 

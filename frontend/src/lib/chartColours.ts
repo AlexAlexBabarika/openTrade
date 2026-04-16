@@ -99,7 +99,8 @@ export function loadChartSettingsFromStorage(): ChartSettings | null {
     showVolume: typeof data.showVolume === 'boolean' ? data.showVolume : true,
     smaEnabled: typeof data.smaEnabled === 'boolean' ? data.smaEnabled : false,
     emaEnabled: typeof data.emaEnabled === 'boolean' ? data.emaEnabled : false,
-    bbandsEnabled: typeof rec.bbandsEnabled === 'boolean' ? rec.bbandsEnabled : false,
+    bbandsEnabled:
+      typeof data.bbandsEnabled === 'boolean' ? data.bbandsEnabled : false,
   };
 }
 
@@ -158,6 +159,9 @@ export function defaultChartColours(): ChartColours {
     volumeDown: DEFAULT_CHART_COLOURS.volumeDown,
     smaLine: DEFAULT_CHART_COLOURS.smaLine,
     emaLine: DEFAULT_CHART_COLOURS.emaLine,
+    bbandsUpper: DEFAULT_CHART_COLOURS.bbandsUpper,
+    bbandsMiddle: DEFAULT_CHART_COLOURS.bbandsMiddle,
+    bbandsLower: DEFAULT_CHART_COLOURS.bbandsLower,
     chartBackground: getCssVarColor(
       '--background',
       DEFAULT_CHART_COLOURS.chartBackground,

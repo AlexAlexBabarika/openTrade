@@ -1,5 +1,5 @@
 import { apiJson } from './api';
-import { maUrl } from './config';
+import { maUrl, bbandsUrl } from './config';
 import type { IndicatorResponse, BollingerBandsResponse } from './types';
 import { movingAverageType } from './types';
 
@@ -21,12 +21,10 @@ export function fetchEMA(
   );
 }
 
-export async function fetchBBands(
+export function fetchBBands(
   symbol: string,
   period: number,
   numStd: number,
 ): Promise<BollingerBandsResponse> {
-  const res = await apiFetch(bbandsUrl(symbol, period, numStd));
-  if (!res.ok) throw new Error(await readErrorMessage(res));
-  return res.json();
+  return apiJson<BollingerBandsResponse>(bbandsUrl(symbol, period, numStd));
 }
