@@ -1,4 +1,4 @@
-import { apiFetch, readErrorMessage } from './api';
+import { apiFetch, apiJson, readErrorMessage } from './api';
 
 export const API_KEY_PROVIDERS = [
   { value: 'twelvedata', label: 'Twelve Data' },
@@ -17,17 +17,19 @@ export type ApiKeyInfo = {
 };
 
 export async function listApiKeys(): Promise<ApiKeyInfo[]> {
-  const res = await apiFetch('/user/api-keys', {}, true);
-  if (!res.ok) throw new Error(await readErrorMessage(res));
-  const data = (await res.json()) as { keys: ApiKeyInfo[] };
+  const data = await apiJson<{ keys: ApiKeyInfo[] }>(
+    '/user/api-keys',
+    {},
+    true,
+  );
   return data.keys;
 }
 
-export async function createApiKey(
+export function createApiKey(
   provider: ApiKeyProvider,
   apiKey: string,
 ): Promise<ApiKeyInfo> {
-  const res = await apiFetch(
+  return apiJson<ApiKeyInfo>(
     '/user/api-keys',
     {
       method: 'POST',
@@ -35,15 +37,13 @@ export async function createApiKey(
     },
     true,
   );
-  if (!res.ok) throw new Error(await readErrorMessage(res));
-  return (await res.json()) as ApiKeyInfo;
 }
 
-export async function updateApiKey(
+export function updateApiKey(
   provider: ApiKeyProvider,
   apiKey: string,
 ): Promise<ApiKeyInfo> {
-  const res = await apiFetch(
+  return apiJson<ApiKeyInfo>(
     `/user/api-keys/${provider}`,
     {
       method: 'PUT',
@@ -51,8 +51,6 @@ export async function updateApiKey(
     },
     true,
   );
-  if (!res.ok) throw new Error(await readErrorMessage(res));
-  return (await res.json()) as ApiKeyInfo;
 }
 
 export async function deleteApiKey(provider: ApiKeyProvider): Promise<void> {
