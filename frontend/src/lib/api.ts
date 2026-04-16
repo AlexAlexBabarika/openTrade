@@ -57,6 +57,16 @@ export async function apiFetch(
   return fetch(url, { ...init, headers });
 }
 
+export async function apiJson<T>(
+  path: string,
+  init: RequestInit = {},
+  withAuth = false,
+): Promise<T> {
+  const res = await apiFetch(path, init, withAuth);
+  if (!res.ok) throw new Error(await readErrorMessage(res));
+  return (await res.json()) as T;
+}
+
 export async function readErrorMessage(response: Response): Promise<string> {
   try {
     const contentType = response.headers.get('content-type') ?? '';

@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 import {
   apiFetch,
+  apiJson,
   clearAccessToken,
   getAccessToken,
   readErrorMessage,
@@ -67,14 +68,10 @@ export async function login(
   setLoading(true);
   setError(null);
   try {
-    const response = await apiFetch('/auth/login', {
+    const payload = await apiJson<AuthSessionPayload>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    if (!response.ok) {
-      throw new Error(await readErrorMessage(response));
-    }
-    const payload = (await response.json()) as AuthSessionPayload;
     setAuthenticated(payload);
     return payload.user;
   } catch (error) {

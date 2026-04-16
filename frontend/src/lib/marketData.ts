@@ -1,4 +1,4 @@
-import { apiFetch, getAccessToken, readErrorMessage } from './api';
+import { apiJson, getAccessToken } from './api';
 import type { MarketDataProviderValue } from './marketDataProviders';
 import type { OHLCVCandle } from './types';
 
@@ -39,15 +39,9 @@ export async function fetchMarketOHLCV(
   });
 
   const withAuth = provider === 'twelvedata' || provider === 'binance';
-  const res = await apiFetch(
+  return apiJson<MarketOHLCVResponse>(
     `/data/market?${params.toString()}`,
     { method: 'GET' },
     withAuth,
   );
-
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res));
-  }
-
-  return (await res.json()) as MarketOHLCVResponse;
 }
