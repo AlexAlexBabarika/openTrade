@@ -4,6 +4,7 @@ import type {
   HistogramData,
   Time,
 } from 'lightweight-charts';
+import { DEFAULT_CHART_COLOURS } from './chartDefaults';
 import type { OHLCVCandle } from './types';
 
 export function isoToChartTime(iso: string): Time {
@@ -37,7 +38,7 @@ export function candleOHLCVtoVolumeData(
     value: c.volume,
     color:
       c.close > c.open
-        ? (volumeUpColor ?? '#26a63130')
-        : (volumeDownColor ?? '#c21a2a30'),
+        ? (volumeUpColor ?? DEFAULT_CHART_COLOURS.volumeUp)
+        : (volumeDownColor ?? DEFAULT_CHART_COLOURS.volumeDown),
   };
 }

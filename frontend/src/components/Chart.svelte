@@ -22,6 +22,7 @@
     syncChartTheme,
     getCssVarColor,
   } from '../lib/chart';
+  import { DEFAULT_CHART_COLOURS } from '../lib/chartDefaults';
   import type { OHLCVCandle, IndicatorPoint } from '../lib/types';
   import type { ChartType } from './ChartOptionsMenu.svelte';
   import type { ChartColours } from '../lib/chartColours';
@@ -199,7 +200,9 @@
     if (type === 'candlestick') {
       candleSeries = addCandlestickSeries(chart, colours);
     } else {
-      const lineColor = colours?.lineColour ?? getCssVarColor('--foreground', '#d1d4dc');
+      const lineColor =
+        colours?.lineColour ??
+        getCssVarColor('--foreground', DEFAULT_CHART_COLOURS.lineColour);
       lineSeries = addLineSeries(chart, lineColor);
     }
   }
@@ -320,7 +323,10 @@
       if (!chart) return;
       if (points.length > 0) {
         if (!smaSeries) {
-          smaSeries = addLineSeries(chart, colours?.smaLine ?? '#2962FF');
+          smaSeries = addLineSeries(
+            chart,
+            colours?.smaLine ?? DEFAULT_CHART_COLOURS.smaLine,
+          );
         }
         smaSeries.applyOptions({ lineWidth: width as LineWidth });
         smaSeries.setData(points.map(p => linePoint(p.timestamp, p.value)));
@@ -339,7 +345,10 @@
       if (!chart) return;
       if (points.length > 0) {
         if (!emaSeries) {
-          emaSeries = addLineSeries(chart, colours?.emaLine ?? '#FF6D00');
+          emaSeries = addLineSeries(
+            chart,
+            colours?.emaLine ?? DEFAULT_CHART_COLOURS.emaLine,
+          );
         }
         emaSeries.applyOptions({ lineWidth: width as LineWidth });
         emaSeries.setData(points.map(p => linePoint(p.timestamp, p.value)));
