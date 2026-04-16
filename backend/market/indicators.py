@@ -1,8 +1,26 @@
 """
 Technical indicator calculations for OHLCV data.
+
+All heavy computation is delegated to numpy for vectorised performance.
 """
 
+from __future__ import annotations
+
+import numpy as np
+from numpy.typing import NDArray
+
 from backend.market.models import OHLCVCandle
+
+
+def _close_array(candles: list[OHLCVCandle]) -> NDArray[np.float64]:
+    return np.array([c.close for c in candles], dtype=np.float64)
+
+
+def _rolling_mean(arr: NDArray[np.float64], period: int) -> NDArray[np.float64]:
+    """Vectorised rolling mean via cumulative sum. Length = len(arr) - period + 1."""
+    cs = np.cumsum(arr)
+    cs[period:] -= cs[:-period]
+    return cs[period - 1 :] / period
 
 
 def calculate_sma(candles: list[OHLCVCandle], period: int) -> list[dict]:
@@ -16,24 +34,13 @@ def calculate_sma(candles: list[OHLCVCandle], period: int) -> list[dict]:
     if len(candles) < period:
         return []
 
-    results: list[dict] = []
-    closes = [c.close for c in candles]
-    window_sum = sum(closes[:period])
-    results.append(
-        {
-            "timestamp": candles[period - 1].timestamp,
-            "value": round(window_sum / period, 6),
-        }
-    )
-    for i in range(period, len(candles)):
-        window_sum += closes[i] - closes[i - period]
-        results.append(
-            {
-                "timestamp": candles[i].timestamp,
-                "value": round(window_sum / period, 6),
-            }
-        )
-    return results
+    closes = _close_array(candles)
+    sma = _rolling_mean(closes, period)
+
+    return [
+        {"timestamp": candles[period - 1 + i].timestamp, "value": round(float(v), 6)}
+        for i, v in enumerate(sma)
+    ]
 
 
 def calculate_bollinger_bands(
@@ -51,29 +58,27 @@ def calculate_bollinger_bands(
     if len(candles) < period:
         return []
 
-    import math
+    closes = _close_array(candles)
+    sma = _rolling_mean(closes, period)
 
-    closes = [c.close for c in candles]
-    results: list[dict] = []
+    sq_cs = np.cumsum(closes**2)
+    sq_cs[period:] -= sq_cs[:-period]
+    mean_sq = sq_cs[period - 1 :] / period
+    std = np.sqrt(np.maximum(mean_sq - sma**2, 0.0))
 
-    window_sum = sum(closes[:period])
-    for i in range(period - 1, len(candles)):
-        if i > period - 1:
-            window_sum += closes[i] - closes[i - period]
-        sma = window_sum / period
-        variance = (
-            sum((closes[j] - sma) ** 2 for j in range(i - period + 1, i + 1)) / period
-        )
-        std_dev = math.sqrt(variance)
-        results.append(
-            {
-                "timestamp": candles[i].timestamp,
-                "upper": round(sma + num_std * std_dev, 6),
-                "middle": round(sma, 6),
-                "lower": round(sma - num_std * std_dev, 6),
-            }
-        )
-    return results
+    band = num_std * std
+    upper = sma + band
+    lower = sma - band
+
+    return [
+        {
+            "timestamp": candles[period - 1 + i].timestamp,
+            "upper": round(float(upper[i]), 6),
+            "middle": round(float(sma[i]), 6),
+            "lower": round(float(lower[i]), 6),
+        }
+        for i in range(len(sma))
+    ]
 
 
 def calculate_ema(candles: list[OHLCVCandle], period: int) -> list[dict]:
@@ -87,27 +92,15 @@ def calculate_ema(candles: list[OHLCVCandle], period: int) -> list[dict]:
     if len(candles) < period:
         return []
 
-    closes = [c.close for c in candles]
+    closes = _close_array(candles)
     multiplier = 2.0 / (period + 1)
 
-    # Seed EMA with SMA of first `period` values
-    sma_seed = sum(closes[:period]) / period
-    results: list[dict] = [
-        {
-            "timestamp": candles[period - 1].timestamp,
-            "value": round(sma_seed, 6),
-        }
+    ema = np.empty(len(closes) - period + 1, dtype=np.float64)
+    ema[0] = closes[:period].mean()
+    for i in range(1, len(ema)):
+        ema[i] = (closes[period - 1 + i] - ema[i - 1]) * multiplier + ema[i - 1]
+
+    return [
+        {"timestamp": candles[period - 1 + i].timestamp, "value": round(float(v), 6)}
+        for i, v in enumerate(ema)
     ]
-
-    ema_prev = sma_seed
-    for i in range(period, len(candles)):
-        ema_val = (closes[i] - ema_prev) * multiplier + ema_prev
-        results.append(
-            {
-                "timestamp": candles[i].timestamp,
-                "value": round(ema_val, 6),
-            }
-        )
-        ema_prev = ema_val
-
-    return results

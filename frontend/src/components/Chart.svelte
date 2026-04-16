@@ -23,7 +23,11 @@
     getCssVarColor,
   } from '../lib/chart';
   import { DEFAULT_CHART_COLOURS } from '../lib/chartDefaults';
-  import type { OHLCVCandle, IndicatorPoint, BollingerBandsPoint } from '../lib/types';
+  import type {
+    OHLCVCandle,
+    IndicatorPoint,
+    BollingerBandsPoint,
+  } from '../lib/types';
   import type { ChartType } from './ChartOptionsMenu.svelte';
   import type { ChartColours } from '../lib/chartColours';
   import { linePoint } from '../lib/chart';
@@ -451,13 +455,19 @@
     }
     if (lineSeries) lineSeries.applyOptions({ color: c.lineColour });
     if (areaSeries) {
-      areaSeries.applyOptions({ topColor: c.areaTop, bottomColor: c.areaBottom });
+      areaSeries.applyOptions({
+        topColor: c.areaTop,
+        bottomColor: c.areaBottom,
+      });
     }
     if (smaSeries) smaSeries.applyOptions({ color: c.smaLine });
     if (emaSeries) emaSeries.applyOptions({ color: c.emaLine });
-    if (bbandsUpperSeries) bbandsUpperSeries.applyOptions({ color: c.bbandsUpper });
-    if (bbandsMiddleSeries) bbandsMiddleSeries.applyOptions({ color: c.bbandsMiddle });
-    if (bbandsLowerSeries) bbandsLowerSeries.applyOptions({ color: c.bbandsLower });
+    if (bbandsUpperSeries)
+      bbandsUpperSeries.applyOptions({ color: c.bbandsUpper });
+    if (bbandsMiddleSeries)
+      bbandsMiddleSeries.applyOptions({ color: c.bbandsMiddle });
+    if (bbandsLowerSeries)
+      bbandsLowerSeries.applyOptions({ color: c.bbandsLower });
   });
 
   $effect(() => {
