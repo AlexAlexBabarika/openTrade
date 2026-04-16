@@ -135,7 +135,10 @@ export function defaultChartColours(): ChartColours {
     candleDownBody: down,
     candleUpWick: up,
     candleDownWick: down,
-    lineColour: getCssVarColor('--foreground', DEFAULT_CHART_COLOURS.lineColour),
+    lineColour: getCssVarColor(
+      '--foreground',
+      DEFAULT_CHART_COLOURS.lineColour,
+    ),
     areaTop: getCssVarColor('--area-top-color', DEFAULT_CHART_COLOURS.areaTop),
     areaBottom: getCssVarColor(
       '--area-bottom-color',
@@ -149,9 +152,7 @@ export function defaultChartColours(): ChartColours {
       '--background',
       DEFAULT_CHART_COLOURS.chartBackground,
     ),
-    gridLines: computeGridLineColor(
-      getCssVarColor('--border', DEFAULT_BORDER),
-    ),
+    gridLines: computeGridLineColor(getCssVarColor('--border', DEFAULT_BORDER)),
     textColour: getCssVarColor(
       '--foreground',
       DEFAULT_CHART_COLOURS.textColour,
