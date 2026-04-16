@@ -13,7 +13,10 @@ export interface WSClientOptions {
   symbol: string;
   onCandle: (c: OHLCVCandle) => void;
   onStatus?: (status: ConnectionStatus) => void;
+  /** Base delay for exponential backoff; doubled each attempt up to maxReconnectDelayMs. */
   reconnectDelayMs?: number;
+  /** Cap for the exponential backoff. */
+  maxReconnectDelayMs?: number;
   maxReconnectAttempts?: number;
 }
 
@@ -24,6 +27,7 @@ export class WSClient {
   private onCandle: (c: OHLCVCandle) => void;
   private onStatus?: (status: ConnectionStatus) => void;
   private reconnectDelayMs: number;
+  private maxReconnectDelayMs: number;
   private maxReconnectAttempts: number;
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -34,7 +38,8 @@ export class WSClient {
     this.symbol = options.symbol;
     this.onCandle = options.onCandle;
     this.onStatus = options.onStatus;
-    this.reconnectDelayMs = options.reconnectDelayMs ?? 3000;
+    this.reconnectDelayMs = options.reconnectDelayMs ?? 1000;
+    this.maxReconnectDelayMs = options.maxReconnectDelayMs ?? 30000;
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 10;
   }
 
@@ -87,13 +92,20 @@ export class WSClient {
         this.reconnectTimer = setTimeout(() => {
           this.reconnectAttempts++;
           this.doConnect();
-        }, this.reconnectDelayMs);
+        }, this.nextReconnectDelay());
       }
     };
 
     this.ws.onerror = () => {
       this.onStatus?.('error');
     };
+  }
+
+  /** Exponential backoff with full jitter to desync multiple clients. */
+  private nextReconnectDelay(): number {
+    const exp = this.reconnectDelayMs * 2 ** this.reconnectAttempts;
+    const capped = Math.min(exp, this.maxReconnectDelayMs);
+    return Math.random() * capped;
   }
 
   disconnect(): void {
