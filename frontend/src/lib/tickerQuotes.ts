@@ -1,11 +1,10 @@
 import { fetchMarketOHLCV, type RemoteMarketProvider } from './marketData';
 
-/**
- * Fetch the latest daily close for a symbol on the given remote provider.
- * Uses `period=5d, interval=1d` so payloads stay tiny and the value is stable
- * regardless of the chart's current zoom level. Returns null if the provider
- * returns no candles. Rejections are the caller's to handle.
- */
+export type TickerQuote =
+  | { status: 'loading' }
+  | { status: 'ok'; close: number | null }
+  | { status: 'error' };
+
 export async function fetchLastClose(
   symbol: string,
   provider: RemoteMarketProvider,

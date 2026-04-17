@@ -2,7 +2,8 @@
   import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
   import Plus from '@lucide/svelte/icons/plus';
   import GroupSelector from './GroupSelector.svelte';
-  import type { TickerGroup, TrackedTicker } from '../lib/tickers';
+  import type { TickerGroup, TrackedTicker, GroupActions } from '../lib/tickers';
+  import type { TickerQuote } from '../lib/tickerQuotes';
 
   let {
     symbol = '',
@@ -10,13 +11,8 @@
     groups,
     selectedGroupName,
     tickers,
-    closes,
-    onselectgroup,
-    onrenamegroup,
-    onduplicategroup,
-    oncleargroup,
-    onaddgroup,
-    ondeletegroup,
+    quotes,
+    groupActions,
     onaddticker,
     onselectticker,
     onhide = () => {},
@@ -26,13 +22,8 @@
     groups: TickerGroup[];
     selectedGroupName: string;
     tickers: TrackedTicker[];
-    closes: Record<string, number | null>;
-    onselectgroup: (name: string) => void;
-    onrenamegroup: () => void;
-    onduplicategroup: () => void;
-    oncleargroup: () => void;
-    onaddgroup: () => void;
-    ondeletegroup: () => void;
+    quotes: Record<string, TickerQuote>;
+    groupActions: GroupActions;
     onaddticker: () => void;
     onselectticker: (symbol: string) => void;
     onhide?: () => void;
@@ -46,7 +37,11 @@
     });
   }
 
-  const priceLabel = $derived(formatPrice(closePrice));
+  function formatQuote(q: TickerQuote | undefined): string {
+    if (!q || q.status === 'loading') return '…';
+    if (q.status === 'error') return '—';
+    return formatPrice(q.close);
+  }
 </script>
 
 <aside
@@ -57,12 +52,7 @@
     <GroupSelector
       {groups}
       selectedName={selectedGroupName}
-      onselect={onselectgroup}
-      onrename={onrenamegroup}
-      onduplicate={onduplicategroup}
-      onclear={oncleargroup}
-      onadd={onaddgroup}
-      ondelete={ondeletegroup}
+      actions={groupActions}
     />
     <div class="flex items-center gap-1">
       <button
@@ -98,8 +88,13 @@
             onclick={() => onselectticker(ticker.symbol)}
           >
             <span class="truncate">{ticker.symbol}</span>
-            <span class="font-mono tabular-nums text-muted-foreground shrink-0">
-              {formatPrice(closes[ticker.symbol])}
+            <span
+              class="font-mono tabular-nums text-muted-foreground shrink-0"
+              title={quotes[ticker.symbol]?.status === 'error'
+                ? 'Failed to fetch — will retry when group or source changes'
+                : undefined}
+            >
+              {formatQuote(quotes[ticker.symbol])}
             </span>
           </button>
         {/each}
@@ -116,7 +111,7 @@
         {symbol || '—'}
       </span>
       <span class="text-sm font-mono tabular-nums text-foreground">
-        {priceLabel}
+        {formatPrice(closePrice)}
       </span>
     </div>
   </div>

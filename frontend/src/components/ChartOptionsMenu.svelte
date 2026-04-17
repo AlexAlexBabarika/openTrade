@@ -1,8 +1,8 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
   import * as Dialog from '$lib/components/ui/dialog';
   import * as Select from '$lib/components/ui/select';
+  import TextPromptDialog from './TextPromptDialog.svelte';
   import CandlestickChart from '@lucide/svelte/icons/candlestick-chart';
   import LineChart from '@lucide/svelte/icons/line-chart';
   import AreaChart from '@lucide/svelte/icons/area-chart';
@@ -62,7 +62,6 @@
   });
 
   let saveDialogOpen = $state(false);
-  let templateNameInput = $state('');
 
   function applyTemplate(name: string) {
     const tpl = templates.find(t => t.name === name);
@@ -91,14 +90,12 @@
   }
 
   function openSaveDialog() {
-    templateNameInput = selectedTemplateName || '';
     saveDialogOpen = true;
   }
 
-  function confirmSave() {
-    if (!templateNameInput.trim()) return;
+  function confirmSave(name: string) {
     const tpl: ChartTemplate = {
-      name: templateNameInput.trim(),
+      name,
       colours: { ...colours },
       smaLineWidth: smaConfig.lineWidth,
       emaLineWidth: emaConfig.lineWidth,
@@ -113,7 +110,6 @@
     saveTemplate(tpl);
     templates = loadTemplates();
     selectedTemplateName = tpl.name;
-    saveDialogOpen = false;
   }
 
   function handleDelete() {
@@ -513,30 +509,12 @@
   </Dialog.Content>
 </Dialog.Root>
 
-<Dialog.Root bind:open={saveDialogOpen}>
-  <Dialog.Content class="sm:max-w-md">
-    <Dialog.Header>
-      <Dialog.Title>Save Template</Dialog.Title>
-      <Dialog.Description>Enter a name for your chart template.</Dialog.Description>
-    </Dialog.Header>
-    <form
-      onsubmit={(e) => {
-        e.preventDefault();
-        confirmSave();
-      }}
-    >
-      <Input
-        bind:value={templateNameInput}
-        placeholder="Template name"
-        class="mt-2"
-        autofocus
-      />
-      <Dialog.Footer class="mt-4">
-        <Button variant="outline" type="button" onclick={() => (saveDialogOpen = false)}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={!templateNameInput.trim()}>Save</Button>
-      </Dialog.Footer>
-    </form>
-  </Dialog.Content>
-</Dialog.Root>
+<TextPromptDialog
+  open={saveDialogOpen}
+  onopenchange={v => (saveDialogOpen = v)}
+  title="Save Template"
+  description="Enter a name for your chart template."
+  placeholder="Template name"
+  initialValue={selectedTemplateName}
+  onsubmit={confirmSave}
+/>

@@ -30,6 +30,15 @@ export interface TickerGroup {
   tickers: TrackedTicker[];
 }
 
+export interface GroupActions {
+  select: (name: string) => void;
+  rename: () => void;
+  duplicate: () => void;
+  clear: () => void;
+  add: () => void;
+  delete: () => void;
+}
+
 const GROUPS_STORAGE_KEY = 'opentrade:groups';
 const SELECTED_GROUP_STORAGE_KEY = 'opentrade:selectedGroup';
 
@@ -63,10 +72,7 @@ export function persistSelectedGroupName(name: string): void {
   safeLocalStorageSet(SELECTED_GROUP_STORAGE_KEY, name);
 }
 
-export function uniqueDuplicateName(
-  groups: TickerGroup[],
-  base: string,
-): string {
+function uniqueDuplicateName(groups: TickerGroup[], base: string): string {
   const taken = new Set(groups.map(g => g.name));
   const candidate = `${base} copy`;
   if (!taken.has(candidate)) return candidate;
@@ -75,10 +81,59 @@ export function uniqueDuplicateName(
   return `${candidate} ${n}`;
 }
 
-export function updateGroup(
+export function addGroup(groups: TickerGroup[], name: string): TickerGroup[] {
+  return [...groups, { name, tickers: [] }];
+}
+
+export function renameGroup(
   groups: TickerGroup[],
-  index: number,
-  patch: Partial<TickerGroup>,
+  from: string,
+  to: string,
 ): TickerGroup[] {
-  return groups.map((g, i) => (i === index ? { ...g, ...patch } : g));
+  return groups.map(g => (g.name === from ? { ...g, name: to } : g));
+}
+
+export function duplicateGroup(
+  groups: TickerGroup[],
+  source: string,
+): { groups: TickerGroup[]; newName: string } | null {
+  const src = groups.find(g => g.name === source);
+  if (!src) return null;
+  const newName = uniqueDuplicateName(groups, src.name);
+  return {
+    groups: [
+      ...groups,
+      { name: newName, tickers: src.tickers.map(t => ({ ...t })) },
+    ],
+    newName,
+  };
+}
+
+export function deleteGroup(
+  groups: TickerGroup[],
+  target: string,
+): TickerGroup[] | null {
+  if (groups.length <= 1) return null;
+  const next = groups.filter(g => g.name !== target);
+  return next.length === groups.length ? null : next;
+}
+
+export function clearGroup(
+  groups: TickerGroup[],
+  target: string,
+): TickerGroup[] {
+  return groups.map(g => (g.name === target ? { ...g, tickers: [] } : g));
+}
+
+export function addTickerToGroup(
+  groups: TickerGroup[],
+  groupName: string,
+  symbol: string,
+): TickerGroup[] {
+  const ticker: TrackedTicker = { symbol, priority: TickerPriority.Normal };
+  return groups.map(g =>
+    g.name === groupName && !g.tickers.some(t => t.symbol === symbol)
+      ? { ...g, tickers: [...g.tickers, ticker] }
+      : g,
+  );
 }
