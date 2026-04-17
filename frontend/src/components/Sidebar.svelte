@@ -5,11 +5,7 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Check from '@lucide/svelte/icons/check';
   import GroupSelector from './GroupSelector.svelte';
-  import {
-    TickerPriority,
-    PRIORITY_COLOURS,
-    getPriorityColour,
-  } from '../lib/tickers';
+  import { TickerPriority, PRIORITY_COLOURS } from '../lib/tickers';
   import type { TickerGroup, TrackedTicker, GroupActions } from '../lib/tickers';
   import type { TickerQuote } from '../lib/tickerQuotes';
 
@@ -141,7 +137,7 @@
           >
             <span class="flex items-center gap-1.5 min-w-0">
               {#if ticker.priority !== TickerPriority.None}
-                {@const colour = getPriorityColour(ticker.priority)}
+                {@const colour = PRIORITY_COLOURS[ticker.priority]}
                 <Flag
                   class="h-3 w-3 shrink-0"
                   style="color: {colour}; fill: {colour};"
@@ -179,29 +175,22 @@
 </aside>
 
 {#if contextMenu}
-  <!-- All reads go through contextMenu?. so nothing throws during the brief
-       reactive re-evaluation that happens when the block is transitioning from
-       non-null to null (click handler sets contextMenu = null synchronously,
-       but Svelte re-runs these expressions once before unmounting). -->
-  {@const menuSymbol = contextMenu?.symbol ?? ''}
-  {@const menuX = contextMenu?.x ?? 0}
-  {@const menuY = contextMenu?.y ?? 0}
+  {@const menu = contextMenu}
   {@const currentPriority =
-    tickers.find(t => t.symbol === menuSymbol)?.priority ??
+    tickers.find(t => t.symbol === menu.symbol)?.priority ??
     TickerPriority.None}
   <div
     bind:this={menuEl}
     class="fixed z-50 w-44 rounded-md border border-border bg-popover text-popover-foreground shadow-md py-1"
-    style="left: {menuX}px; top: {menuY}px;"
+    style="left: {menu.x}px; top: {menu.y}px;"
     role="menu"
   >
     <button
       type="button"
       class="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
       onclick={() => {
-        const sym = menuSymbol;
+        ondeleteticker(menu.symbol);
         contextMenu = null;
-        ondeleteticker(sym);
       }}
     >
       <Trash2 class="h-3.5 w-3.5" /> Delete ticker
@@ -215,9 +204,8 @@
         type="button"
         class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
         onclick={() => {
-          const sym = menuSymbol;
+          onsetpriority(menu.symbol, p);
           contextMenu = null;
-          onsetpriority(sym, p);
         }}
       >
         {#if p === TickerPriority.None}

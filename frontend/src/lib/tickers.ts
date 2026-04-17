@@ -24,10 +24,6 @@ export const PRIORITY_COLOURS: Record<FlaggedPriority, string> = {
   [TickerPriority.Critical]: '#ef4444',
 };
 
-export function getPriorityColour(priority: FlaggedPriority): string {
-  return PRIORITY_COLOURS[priority];
-}
-
 export interface TickerGroup {
   name: string;
   tickers: TrackedTicker[];
