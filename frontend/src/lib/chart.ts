@@ -203,8 +203,8 @@ export function addCandlestickSeries(
   return chart.addCandlestickSeries({
     upColor,
     downColor,
-    borderUpColor: upColor,
-    borderDownColor: downColor,
+    borderUpColor: colours?.candleUpBorder ?? upColor,
+    borderDownColor: colours?.candleDownBorder ?? downColor,
     wickUpColor: colours?.candleUpWick ?? upColor,
     wickDownColor: colours?.candleDownWick ?? downColor,
   });
@@ -272,8 +272,8 @@ export function syncChartTheme({
     candleSeries.applyOptions({
       upColor,
       downColor,
-      borderUpColor: upColor,
-      borderDownColor: downColor,
+      borderUpColor: colours?.candleUpBorder ?? upColor,
+      borderDownColor: colours?.candleDownBorder ?? downColor,
       wickUpColor: colours?.candleUpWick ?? upColor,
       wickDownColor: colours?.candleDownWick ?? downColor,
     });

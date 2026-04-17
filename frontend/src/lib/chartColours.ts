@@ -32,6 +32,8 @@ export interface ChartColours {
   candleDownBody: string;
   candleUpWick: string;
   candleDownWick: string;
+  candleUpBorder: string;
+  candleDownBorder: string;
   lineColour: string;
   areaTop: string;
   areaBottom: string;
@@ -127,6 +129,8 @@ export function defaultChartColours(): ChartColours {
     candleDownBody: down,
     candleUpWick: up,
     candleDownWick: down,
+    candleUpBorder: up,
+    candleDownBorder: down,
     lineColour: resolveColour(undefined, 'lineColour'),
     areaTop: resolveColour(undefined, 'areaTop'),
     areaBottom: resolveColour(undefined, 'areaBottom'),
