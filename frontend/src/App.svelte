@@ -1,12 +1,11 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import Header from './components/Header.svelte';
+  import TopHeader from './components/TopHeader.svelte';
+  import BottomHeader from './components/BottomHeader.svelte';
   import ErrorMessage from './components/ErrorMessage.svelte';
   import Chart from './components/Chart.svelte';
   import type { ChartApi } from './components/Chart.svelte';
   import Sidebar from './components/Sidebar.svelte';
-  import PanelRight from '@lucide/svelte/icons/panel-right';
-  import ChartOptionsMenu from './components/ChartOptionsMenu.svelte';
   import type {
     MovingAverageConfig,
     BollingerBandsConfig,
@@ -477,7 +476,7 @@
 </script>
 
 <div class="flex flex-col h-screen bg-background">
-  <Header
+  <TopHeader
     bind:symbol
     bind:period
     bind:interval
@@ -534,20 +533,20 @@
         }}
         ondeleteticker={handleDeleteTicker}
         onsetpriority={handleSetPriority}
-        onhide={() => (sidebarVisible = false)}
       />
     {/if}
   </div>
-  {#if !sidebarVisible}
-    <button
-      type="button"
-      class="fixed bottom-10 right-18 z-40 inline-flex items-center justify-center h-9 w-9 rounded-md border border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors shadow"
-      aria-label="Show sidebar"
-      onclick={() => (sidebarVisible = true)}
-    >
-      <PanelRight class="h-4 w-4" />
-    </button>
-  {/if}
+  <BottomHeader
+    bind:chartType
+    bind:showArea
+    bind:showVolume
+    bind:smaConfig
+    bind:emaConfig
+    bind:bbandsConfig
+    bind:colours
+    {sidebarVisible}
+    ontogglesidebar={() => (sidebarVisible = !sidebarVisible)}
+  />
   <TextPromptDialog
     open={groupDialogMode !== null}
     onopenchange={v => {
@@ -579,14 +578,5 @@
     duplicateMessage="This symbol is already in the group."
     normalize={s => s.toUpperCase()}
     onsubmit={handleAddSymbolSubmit}
-  />
-  <ChartOptionsMenu
-    bind:chartType
-    bind:showArea
-    bind:showVolume
-    bind:smaConfig
-    bind:emaConfig
-    bind:bbandsConfig
-    bind:colours
   />
 </div>
