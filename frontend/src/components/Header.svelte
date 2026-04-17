@@ -12,10 +12,8 @@
   } from '$lib/marketDataProviders';
   import { DEFAULT_MARKET_INTERVAL } from '$lib/marketIntervals';
   import IntervalPicker from './IntervalPicker.svelte';
-  import {
-    DEFAULT_MARKET_PERIOD,
-    MARKET_PERIOD_OPTIONS,
-  } from '$lib/marketPeriods';
+  import { DEFAULT_MARKET_PERIOD } from '$lib/marketPeriods';
+  import PeriodPicker from './PeriodPicker.svelte';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import ChartCandlestick from '@lucide/svelte/icons/chart-candlestick';
 
@@ -82,16 +80,7 @@
     <Input type="text" placeholder="Symbol (e.g. AAPL)" bind:value={symbol} />
   </div>
 
-  <Select.Root type="single" bind:value={period}>
-    <Select.Trigger class="w-24">
-      {MARKET_PERIOD_OPTIONS.find(p => p.value === period)?.label ?? period}
-    </Select.Trigger>
-    <Select.Content>
-      {#each MARKET_PERIOD_OPTIONS as p (p.value)}
-        <Select.Item value={p.value}>{p.label}</Select.Item>
-      {/each}
-    </Select.Content>
-  </Select.Root>
+  <PeriodPicker bind:value={period} />
 
   <IntervalPicker bind:value={interval} />
 
