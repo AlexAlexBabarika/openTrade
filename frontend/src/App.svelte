@@ -31,12 +31,19 @@
     loadChartSettingsFromStorage,
     persistChartSettings,
   } from './lib/chartColours';
-  import type { TickerGroup } from './lib/tickers';
+  import type {
+    TickerGroup,
+    FlaggedPriority,
+    PriorityConflict,
+    TickerPriority,
+  } from './lib/tickers';
   import {
     loadGroupsFromStorage,
     persistGroups,
     loadSelectedGroupName,
     persistSelectedGroupName,
+    loadSelectedPriority,
+    persistSelectedPriority,
     addGroup,
     renameGroup,
     duplicateGroup,
@@ -45,10 +52,16 @@
     addTickerToGroup,
     removeTickerFromGroup,
     setTickerPriority,
+    collectTickersByPriority,
+    priorityCounts as computePriorityCounts,
+    setPriorityEverywhere,
+    removeTickerEverywhere,
+    findPriorityConflict,
   } from './lib/tickers';
   import { fetchLastClose, type TickerQuote } from './lib/tickerQuotes';
   import { untrack } from 'svelte';
   import TextPromptDialog from './components/TextPromptDialog.svelte';
+  import PriorityConflictDialog from './components/PriorityConflictDialog.svelte';
 
   let symbol = $state('AAPL');
   let loadedSymbol = $state('');
@@ -95,14 +108,23 @@
   const initialGroups = loadGroupsFromStorage();
   let groups = $state<TickerGroup[]>(initialGroups);
   let selectedGroupName = $state(loadSelectedGroupName(initialGroups));
+  let selectedPriority = $state<FlaggedPriority | null>(loadSelectedPriority());
   let groupDialogMode = $state<null | 'add' | 'rename'>(null);
   let addSymbolDialogOpen = $state(false);
+  let priorityConflictState = $state<{
+    symbol: string;
+    desired: TickerPriority;
+    conflict: PriorityConflict;
+  } | null>(null);
 
   $effect(() => {
     persistGroups(groups);
   });
   $effect(() => {
     persistSelectedGroupName(selectedGroupName);
+  });
+  $effect(() => {
+    persistSelectedPriority(selectedPriority);
   });
 
   let currentGroup = $derived(groups.find(g => g.name === selectedGroupName));
@@ -137,6 +159,7 @@
     if (groupDialogMode === 'add') {
       groups = addGroup(groups, name);
       selectedGroupName = name;
+      selectedPriority = null;
     } else if (groupDialogMode === 'rename') {
       groups = renameGroup(groups, selectedGroupName, name);
       selectedGroupName = name;
@@ -147,18 +170,75 @@
     groups = addTickerToGroup(groups, selectedGroupName, sym);
   }
 
+  function handleSelectGroup(name: string) {
+    selectedGroupName = name;
+    selectedPriority = null;
+  }
+
+  function handleSelectPriority(p: FlaggedPriority) {
+    selectedPriority = p;
+  }
+
+  function handleDeleteTicker(sym: string) {
+    groups = selectedPriority
+      ? removeTickerEverywhere(groups, sym)
+      : removeTickerFromGroup(groups, selectedGroupName, sym);
+  }
+
+  function handleSetPriority(sym: string, priority: TickerPriority) {
+    if (selectedPriority) {
+      groups = setPriorityEverywhere(groups, sym, priority);
+      return;
+    }
+    const conflict = findPriorityConflict(
+      groups,
+      sym,
+      priority,
+      selectedGroupName,
+    );
+    if (conflict) {
+      priorityConflictState = { symbol: sym, desired: priority, conflict };
+      return;
+    }
+    groups = setTickerPriority(groups, selectedGroupName, sym, priority);
+  }
+
+  function resolveConflictKeepExisting() {
+    if (!priorityConflictState) return;
+    const { symbol: sym, conflict } = priorityConflictState;
+    groups = setTickerPriority(
+      groups,
+      selectedGroupName,
+      sym,
+      conflict.existingPriority,
+    );
+    priorityConflictState = null;
+  }
+
+  function resolveConflictSwitchGroup(groupName: string) {
+    selectedGroupName = groupName;
+    selectedPriority = null;
+    priorityConflictState = null;
+  }
+
   let groupDialogInitial = $derived(
     groupDialogMode === 'rename' ? selectedGroupName : '',
   );
   let groupDialogExistingNames = $derived(groups.map(g => g.name));
   let currentTickers = $derived(currentGroup?.tickers ?? []);
   let currentTickerSymbols = $derived(currentTickers.map(t => t.symbol));
+  let displayTickers = $derived(
+    selectedPriority
+      ? collectTickersByPriority(groups, selectedPriority)
+      : currentTickers,
+  );
+  let priorityCountsMap = $derived(computePriorityCounts(groups));
 
   let tickerQuotes = $state<Record<string, TickerQuote>>({});
 
   $effect(() => {
     const currentSource = source;
-    const tickers = currentTickers;
+    const tickers = displayTickers;
     if (currentSource === 'csv') return;
 
     const snapshot = untrack(() => tickerQuotes);
@@ -188,7 +268,7 @@
 
   let tickerQuotesForGroup = $derived.by(() => {
     const out: Record<string, TickerQuote> = {};
-    for (const t of currentTickers) {
+    for (const t of displayTickers) {
       const entry = tickerQuotes[`${source}:${t.symbol}`];
       if (entry) out[t.symbol] = entry;
     }
@@ -423,10 +503,12 @@
         closePrice={lastClose}
         {groups}
         {selectedGroupName}
-        tickers={currentTickers}
+        {selectedPriority}
+        priorityCounts={priorityCountsMap}
+        tickers={displayTickers}
         quotes={tickerQuotesForGroup}
         groupActions={{
-          select: name => (selectedGroupName = name),
+          select: handleSelectGroup,
           rename: openRenameDialog,
           duplicate: handleDuplicateGroup,
           clear: handleClearGroup,
@@ -434,16 +516,13 @@
           delete: handleDeleteGroup,
         }}
         onaddticker={() => (addSymbolDialogOpen = true)}
+        onselectpriority={handleSelectPriority}
         onselectticker={sym => {
           symbol = sym;
           void loadMarketData();
         }}
-        ondeleteticker={sym => {
-          groups = removeTickerFromGroup(groups, selectedGroupName, sym);
-        }}
-        onsetpriority={(sym, priority) => {
-          groups = setTickerPriority(groups, selectedGroupName, sym, priority);
-        }}
+        ondeleteticker={handleDeleteTicker}
+        onsetpriority={handleSetPriority}
         onhide={() => (sidebarVisible = false)}
       />
     {/if}
@@ -469,6 +548,16 @@
     existingNames={groupDialogExistingNames}
     duplicateMessage="A group with this name already exists."
     onsubmit={handleGroupDialogSubmit}
+  />
+  <PriorityConflictDialog
+    open={priorityConflictState !== null}
+    onopenchange={v => {
+      if (!v) priorityConflictState = null;
+    }}
+    conflict={priorityConflictState?.conflict ?? null}
+    desired={priorityConflictState?.desired ?? null}
+    onkeepexisting={resolveConflictKeepExisting}
+    onswitchgroup={resolveConflictSwitchGroup}
   />
   <TextPromptDialog
     open={addSymbolDialogOpen}
