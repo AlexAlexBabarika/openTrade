@@ -31,6 +31,16 @@
     loadChartSettingsFromStorage,
     persistChartSettings,
   } from './lib/chartColours';
+  import type { TickerGroup } from './lib/tickers';
+  import {
+    loadGroupsFromStorage,
+    persistGroups,
+    loadSelectedGroupName,
+    persistSelectedGroupName,
+    uniqueDuplicateName,
+    updateGroup,
+  } from './lib/tickers';
+  import GroupNameDialog from './components/GroupNameDialog.svelte';
 
   let symbol = $state('AAPL');
   let loadedSymbol = $state('');
@@ -73,6 +83,86 @@
   let marketDataVersion = $state(0);
   let isLoading = $state(false);
   let sidebarVisible = $state(true);
+
+  const initialGroups = loadGroupsFromStorage();
+  let groups = $state<TickerGroup[]>(initialGroups);
+  let selectedGroupName = $state(loadSelectedGroupName(initialGroups));
+  let groupDialogMode = $state<null | 'add' | 'rename'>(null);
+  let groupDialogOpen = $state(false);
+
+  $effect(() => {
+    persistGroups(groups);
+  });
+  $effect(() => {
+    persistSelectedGroupName(selectedGroupName);
+  });
+
+  let selectedGroupIndex = $derived(
+    Math.max(
+      0,
+      groups.findIndex(g => g.name === selectedGroupName),
+    ),
+  );
+
+  function handleDuplicateGroup() {
+    const current = groups[selectedGroupIndex];
+    if (!current) return;
+    const newName = uniqueDuplicateName(groups, current.name);
+    groups = [
+      ...groups,
+      { name: newName, tickers: current.tickers.map(t => ({ ...t })) },
+    ];
+    selectedGroupName = newName;
+  }
+
+  function handleDeleteGroup() {
+    if (groups.length <= 1) return;
+    const idx = selectedGroupIndex;
+    if (!groups[idx]) return;
+    const next = groups.filter((_, i) => i !== idx);
+    groups = next;
+    selectedGroupName = next[0].name;
+  }
+
+  function handleClearGroup() {
+    const idx = selectedGroupIndex;
+    if (!groups[idx]) return;
+    groups = updateGroup(groups, idx, { tickers: [] });
+  }
+
+  function openAddDialog() {
+    groupDialogMode = 'add';
+    groupDialogOpen = true;
+  }
+
+  function openRenameDialog() {
+    groupDialogMode = 'rename';
+    groupDialogOpen = true;
+  }
+
+  function handleGroupDialogSubmit(name: string) {
+    if (groupDialogMode === 'add') {
+      groups = [...groups, { name, tickers: [] }];
+      selectedGroupName = name;
+    } else if (groupDialogMode === 'rename') {
+      const idx = selectedGroupIndex;
+      if (!groups[idx]) return;
+      groups = updateGroup(groups, idx, { name });
+      selectedGroupName = name;
+    }
+  }
+
+  let groupDialogTitle = $derived(
+    groupDialogMode === 'rename' ? 'Rename group' : 'Add group',
+  );
+  let groupDialogInitial = $derived(
+    groupDialogOpen && groupDialogMode === 'rename'
+      ? groups[selectedGroupIndex]?.name ?? ''
+      : '',
+  );
+  let groupDialogExistingNames = $derived(
+    groupDialogOpen ? groups.map(g => g.name) : [],
+  );
   let lastClose = $derived(
     candles.length > 0 ? candles[candles.length - 1].close : null,
   );
@@ -300,6 +390,14 @@
       <Sidebar
         symbol={loadedSymbol}
         closePrice={lastClose}
+        {groups}
+        {selectedGroupName}
+        onselectgroup={name => (selectedGroupName = name)}
+        onrenamegroup={openRenameDialog}
+        onduplicategroup={handleDuplicateGroup}
+        oncleargroup={handleClearGroup}
+        onaddgroup={openAddDialog}
+        ondeletegroup={handleDeleteGroup}
         onhide={() => (sidebarVisible = false)}
       />
     {/if}
@@ -314,6 +412,13 @@
       <PanelRight class="h-4 w-4" />
     </button>
   {/if}
+  <GroupNameDialog
+    bind:open={groupDialogOpen}
+    title={groupDialogTitle}
+    initialValue={groupDialogInitial}
+    existingNames={groupDialogExistingNames}
+    onsubmit={handleGroupDialogSubmit}
+  />
   <ChartOptionsMenu
     bind:chartType
     bind:showArea

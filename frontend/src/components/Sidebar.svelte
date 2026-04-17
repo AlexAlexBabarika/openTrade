@@ -1,13 +1,31 @@
 <script lang="ts">
   import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
+  import GroupSelector from './GroupSelector.svelte';
+  import type { TickerGroup } from '../lib/tickers';
 
   let {
     symbol = '',
     closePrice = null as number | null,
+    groups,
+    selectedGroupName,
+    onselectgroup,
+    onrenamegroup,
+    onduplicategroup,
+    oncleargroup,
+    onaddgroup,
+    ondeletegroup,
     onhide = () => {},
   }: {
     symbol?: string;
     closePrice?: number | null;
+    groups: TickerGroup[];
+    selectedGroupName: string;
+    onselectgroup: (name: string) => void;
+    onrenamegroup: () => void;
+    onduplicategroup: () => void;
+    oncleargroup: () => void;
+    onaddgroup: () => void;
+    ondeletegroup: () => void;
     onhide?: () => void;
   } = $props();
 
@@ -22,13 +40,20 @@
 </script>
 
 <aside
-  class="w-[17%] min-w-[200px] border-l border-border bg-background flex flex-col shrink-0 overflow-hidden"
+  class="w-[17%] min-w-[200px] border-l border-border bg-background flex flex-col shrink-0 overflow-visible"
   aria-label="Sidebar"
 >
   <div class="flex items-center justify-between px-2 py-2 border-b border-border h-10">
-    <span class="text-xs font-medium text-muted-foreground tracking-wide uppercase">
-      Watchlist
-    </span>
+    <GroupSelector
+      {groups}
+      selectedName={selectedGroupName}
+      onselect={onselectgroup}
+      onrename={onrenamegroup}
+      onduplicate={onduplicategroup}
+      onclear={oncleargroup}
+      onadd={onaddgroup}
+      ondelete={ondeletegroup}
+    />
     <button
       type="button"
       class="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-accent hover:text-accent-foreground text-muted-foreground transition-colors"
