@@ -446,13 +446,13 @@
 >
   {#if showLegend}
     <div
-      class="absolute left-4 top-4 z-10 text-sm font-light pointer-events-none font-sans leading-[18px]"
+      class="absolute left-4 top-4 z-10 text-sm font-light pointer-events-none font-mono leading-[18px]"
       style:color={colours?.textColour}
     >
       <div class="text-2xl my-1 font-medium">{legendName}</div>
-      <div class="text-[22px] my-1 font-semibold">{legendPrice}</div>
-      <div style:opacity="0.7">{legendDate}</div>
-      <div style:opacity="0.7">Volume: {legendVolume}</div>
+      <div class="text-[22px] my-1 font-semibold font-mono">{legendPrice}</div>
+      <div style:opacity="0.7" class="font-mono">{legendDate}</div>
+      <div style:opacity="0.7" class="font-mono">Volume: {legendVolume}</div>
     </div>
   {/if}
 </div>
