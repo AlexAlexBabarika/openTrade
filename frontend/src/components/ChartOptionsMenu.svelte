@@ -228,12 +228,14 @@
         </div>
 
         {#if chartType === 'candlestick'}
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 flex-wrap">
             <span class="text-sm font-medium text-card-foreground min-w-[50px]">Chart:</span>
             <ColourSwatch bind:colour={colours.candleUpBody} label="Up body" />
             <ColourSwatch bind:colour={colours.candleDownBody} label="Down body" />
             <ColourSwatch bind:colour={colours.candleUpWick} label="Up wick" />
             <ColourSwatch bind:colour={colours.candleDownWick} label="Down wick" />
+            <ColourSwatch bind:colour={colours.candleUpBorder} label="Up border" />
+            <ColourSwatch bind:colour={colours.candleDownBorder} label="Down border" />
           </div>
         {/if}
 

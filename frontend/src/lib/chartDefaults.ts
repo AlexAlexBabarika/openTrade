@@ -17,6 +17,8 @@ export const DEFAULT_CHART_COLOURS: ChartColours = {
   candleDownBody: '#e7000b',
   candleUpWick: '#5ea500',
   candleDownWick: '#e7000b',
+  candleUpBorder: '#5ea500',
+  candleDownBorder: '#e7000b',
   lineColour: '#d1d4dc',
   areaTop: 'rgba(56, 33, 110, 0.5)',
   areaBottom: 'rgba(56, 33, 110, 0.05)',
