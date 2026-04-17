@@ -5,17 +5,27 @@
   import * as Dialog from '$lib/components/ui/dialog';
 
   let {
-    open = $bindable(false),
+    open,
+    onopenchange,
     title,
+    description,
     initialValue = '',
     existingNames = [],
+    placeholder = '',
+    duplicateMessage = 'A value with this name already exists.',
+    normalize = (v: string) => v,
     onsubmit,
   }: {
     open: boolean;
+    onopenchange: (open: boolean) => void;
     title: string;
+    description?: string;
     initialValue?: string;
     existingNames?: string[];
-    onsubmit: (name: string) => void;
+    placeholder?: string;
+    duplicateMessage?: string;
+    normalize?: (value: string) => string;
+    onsubmit: (value: string) => void;
   } = $props();
 
   let value = $state('');
@@ -24,10 +34,10 @@
     if (open) value = untrack(() => initialValue);
   });
 
-  let trimmed = $derived(value.trim());
+  let trimmed = $derived(normalize(value.trim()));
   let isDuplicate = $derived(
     trimmed.length > 0 &&
-      trimmed !== initialValue.trim() &&
+      trimmed !== normalize(initialValue.trim()) &&
       existingNames.includes(trimmed),
   );
   let isValid = $derived(trimmed.length > 0 && !isDuplicate);
@@ -35,14 +45,17 @@
   function confirm() {
     if (!isValid) return;
     onsubmit(trimmed);
-    open = false;
+    onopenchange(false);
   }
 </script>
 
-<Dialog.Root bind:open>
+<Dialog.Root {open} onOpenChange={onopenchange}>
   <Dialog.Content class="sm:max-w-md">
     <Dialog.Header>
       <Dialog.Title>{title}</Dialog.Title>
+      {#if description}
+        <Dialog.Description>{description}</Dialog.Description>
+      {/if}
     </Dialog.Header>
     <form
       onsubmit={e => {
@@ -52,15 +65,15 @@
     >
       <Input
         bind:value
-        placeholder="Group name"
+        {placeholder}
         class="mt-2"
         autofocus
       />
       {#if isDuplicate}
-        <p class="mt-2 text-xs text-destructive">A group with this name already exists.</p>
+        <p class="mt-2 text-xs text-destructive">{duplicateMessage}</p>
       {/if}
       <Dialog.Footer class="mt-4">
-        <Button variant="outline" type="button" onclick={() => (open = false)}>
+        <Button variant="outline" type="button" onclick={() => onopenchange(false)}>
           Cancel
         </Button>
         <Button type="submit" disabled={!isValid}>Save</Button>

@@ -5,26 +5,16 @@
   import Eraser from '@lucide/svelte/icons/eraser';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import type { TickerGroup } from '../lib/tickers';
+  import type { TickerGroup, GroupActions } from '../lib/tickers';
 
   let {
     groups,
     selectedName,
-    onselect,
-    onrename,
-    onduplicate,
-    onclear,
-    onadd,
-    ondelete,
+    actions,
   }: {
     groups: TickerGroup[];
     selectedName: string;
-    onselect: (name: string) => void;
-    onrename: () => void;
-    onduplicate: () => void;
-    onclear: () => void;
-    onadd: () => void;
-    ondelete: () => void;
+    actions: GroupActions;
   } = $props();
 
   let open = $state(false);
@@ -36,16 +26,16 @@
 
   $effect(() => {
     if (!open) return;
-    const handleDown = (e: MouseEvent) => {
+    const handleDown = (e: PointerEvent) => {
       if (rootEl && !rootEl.contains(e.target as Node)) close();
     };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
     };
-    document.addEventListener('mousedown', handleDown);
+    document.addEventListener('pointerdown', handleDown, { capture: true });
     document.addEventListener('keydown', handleKey);
     return () => {
-      document.removeEventListener('mousedown', handleDown);
+      document.removeEventListener('pointerdown', handleDown, { capture: true });
       document.removeEventListener('keydown', handleKey);
     };
   });
@@ -56,7 +46,7 @@
   }
 
   function pickGroup(name: string) {
-    onselect(name);
+    actions.select(name);
     close();
   }
 </script>
@@ -81,28 +71,28 @@
       <button
         type="button"
         class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-        onclick={() => runAction(onrename)}
+        onclick={() => runAction(actions.rename)}
       >
         <Pencil class="h-3.5 w-3.5" /> Rename current
       </button>
       <button
         type="button"
         class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-        onclick={() => runAction(onduplicate)}
+        onclick={() => runAction(actions.duplicate)}
       >
         <Copy class="h-3.5 w-3.5" /> Duplicate current
       </button>
       <button
         type="button"
         class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-        onclick={() => runAction(onclear)}
+        onclick={() => runAction(actions.clear)}
       >
         <Eraser class="h-3.5 w-3.5" /> Clear current
       </button>
       <button
         type="button"
         class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-        onclick={() => runAction(onadd)}
+        onclick={() => runAction(actions.add)}
       >
         <Plus class="h-3.5 w-3.5" /> Add new group
       </button>
@@ -110,7 +100,7 @@
         <button
           type="button"
           class="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
-          onclick={() => runAction(ondelete)}
+          onclick={() => runAction(actions.delete)}
         >
           <Trash2 class="h-3.5 w-3.5" /> Delete current
         </button>
