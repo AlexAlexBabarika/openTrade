@@ -19,6 +19,7 @@
     MARKET_PERIOD_OPTIONS,
   } from '$lib/marketPeriods';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+  import ChartCandlestick from '@lucide/svelte/icons/chart-candlestick';
 
   let {
     symbol = $bindable('AAPL'),
@@ -74,6 +75,11 @@
 <div
   class="flex items-center gap-4 px-4 py-3 bg-background border-b border-border flex-wrap relative z-40"
 >
+  <div class="flex items-center gap-1.5 font-mono text-sm font-semibold tracking-tight select-none">
+    <span>openTrade</span>
+    <ChartCandlestick class="h-4 w-4 text-primary" />
+  </div>
+
   <div class="w-32">
     <Input type="text" placeholder="Symbol (e.g. AAPL)" bind:value={symbol} />
   </div>
