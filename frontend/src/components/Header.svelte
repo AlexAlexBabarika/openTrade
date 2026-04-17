@@ -3,7 +3,6 @@
   import ApiKeysModal from './ApiKeysModal.svelte';
   import type { ConnectionStatus } from '../lib/ws';
   import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
   import * as Select from '$lib/components/ui/select';
   import { authState, logout } from '$lib/auth';
   import {
@@ -74,10 +73,6 @@
   <div class="flex items-center gap-1.5 font-mono text-sm font-semibold tracking-tight select-none">
     <span>openTrade</span>
     <ChartCandlestick class="h-4 w-4 text-primary" />
-  </div>
-
-  <div class="w-32">
-    <Input type="text" placeholder="Symbol (e.g. AAPL)" bind:value={symbol} />
   </div>
 
   <PeriodPicker bind:value={period} />
