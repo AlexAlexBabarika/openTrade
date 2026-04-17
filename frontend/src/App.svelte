@@ -33,6 +33,7 @@
   } from './lib/chartColours';
   import type { TickerGroup } from './lib/tickers';
   import {
+    TickerPriority,
     loadGroupsFromStorage,
     persistGroups,
     loadSelectedGroupName,
@@ -40,6 +41,8 @@
     uniqueDuplicateName,
     updateGroup,
   } from './lib/tickers';
+  import { fetchLastClose } from './lib/tickerQuotes';
+  import { untrack } from 'svelte';
   import GroupNameDialog from './components/GroupNameDialog.svelte';
 
   let symbol = $state('AAPL');
@@ -89,6 +92,7 @@
   let selectedGroupName = $state(loadSelectedGroupName(initialGroups));
   let groupDialogMode = $state<null | 'add' | 'rename'>(null);
   let groupDialogOpen = $state(false);
+  let addSymbolDialogOpen = $state(false);
 
   $effect(() => {
     persistGroups(groups);
@@ -152,6 +156,20 @@
     }
   }
 
+  function handleAddSymbolSubmit(raw: string) {
+    const sym = raw.trim().toUpperCase();
+    if (!sym) return;
+    const idx = selectedGroupIndex;
+    const current = groups[idx];
+    if (!current) return;
+    if (current.tickers.some(t => t.symbol === sym)) return;
+    const nextTickers = [
+      ...current.tickers,
+      { symbol: sym, priority: TickerPriority.Normal },
+    ];
+    groups = updateGroup(groups, idx, { tickers: nextTickers });
+  }
+
   let groupDialogTitle = $derived(
     groupDialogMode === 'rename' ? 'Rename group' : 'Add group',
   );
@@ -163,6 +181,36 @@
   let groupDialogExistingNames = $derived(
     groupDialogOpen ? groups.map(g => g.name) : [],
   );
+  let currentTickers = $derived(groups[selectedGroupIndex]?.tickers ?? []);
+  let currentTickerSymbols = $derived(
+    addSymbolDialogOpen ? currentTickers.map(t => t.symbol) : [],
+  );
+
+  let tickerQuotes = $state<Record<string, number | null>>({});
+
+  $effect(() => {
+    const currentSource = source;
+    const tickers = currentTickers;
+    if (currentSource === 'csv') return;
+    for (const t of tickers) {
+      const key = `${currentSource}:${t.symbol}`;
+      if (untrack(() => key in tickerQuotes)) continue;
+      tickerQuotes = { ...untrack(() => tickerQuotes), [key]: null };
+      fetchLastClose(t.symbol, currentSource)
+        .then(close => {
+          tickerQuotes = { ...untrack(() => tickerQuotes), [key]: close };
+        })
+        .catch(() => {});
+    }
+  });
+
+  let tickerCloses = $derived.by(() => {
+    const out: Record<string, number | null> = {};
+    for (const t of currentTickers) {
+      out[t.symbol] = tickerQuotes[`${source}:${t.symbol}`] ?? null;
+    }
+    return out;
+  });
   let lastClose = $derived(
     candles.length > 0 ? candles[candles.length - 1].close : null,
   );
@@ -392,12 +440,19 @@
         closePrice={lastClose}
         {groups}
         {selectedGroupName}
+        tickers={currentTickers}
+        closes={tickerCloses}
         onselectgroup={name => (selectedGroupName = name)}
         onrenamegroup={openRenameDialog}
         onduplicategroup={handleDuplicateGroup}
         oncleargroup={handleClearGroup}
         onaddgroup={openAddDialog}
         ondeletegroup={handleDeleteGroup}
+        onaddticker={() => (addSymbolDialogOpen = true)}
+        onselectticker={sym => {
+          symbol = sym;
+          loadMarketData().catch(() => {});
+        }}
         onhide={() => (sidebarVisible = false)}
       />
     {/if}
@@ -418,6 +473,14 @@
     initialValue={groupDialogInitial}
     existingNames={groupDialogExistingNames}
     onsubmit={handleGroupDialogSubmit}
+  />
+  <GroupNameDialog
+    bind:open={addSymbolDialogOpen}
+    title="Add symbol"
+    placeholder="Symbol (e.g. AAPL)"
+    existingNames={currentTickerSymbols}
+    duplicateMessage="This symbol is already in the group."
+    onsubmit={handleAddSymbolSubmit}
   />
   <ChartOptionsMenu
     bind:chartType

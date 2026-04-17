@@ -9,12 +9,16 @@
     title,
     initialValue = '',
     existingNames = [],
+    placeholder = 'Group name',
+    duplicateMessage = 'A group with this name already exists.',
     onsubmit,
   }: {
     open: boolean;
     title: string;
     initialValue?: string;
     existingNames?: string[];
+    placeholder?: string;
+    duplicateMessage?: string;
     onsubmit: (name: string) => void;
   } = $props();
 
@@ -52,12 +56,12 @@
     >
       <Input
         bind:value
-        placeholder="Group name"
+        {placeholder}
         class="mt-2"
         autofocus
       />
       {#if isDuplicate}
-        <p class="mt-2 text-xs text-destructive">A group with this name already exists.</p>
+        <p class="mt-2 text-xs text-destructive">{duplicateMessage}</p>
       {/if}
       <Dialog.Footer class="mt-4">
         <Button variant="outline" type="button" onclick={() => (open = false)}>
