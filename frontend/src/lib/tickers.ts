@@ -1,6 +1,7 @@
 import { safeLocalStorageGet, safeLocalStorageSet } from './storage';
 
 export enum TickerPriority {
+  None = 'none',
   Ignore = 'ignore',
   Low = 'low',
   Normal = 'normal',
@@ -8,12 +9,14 @@ export enum TickerPriority {
   Critical = 'critical',
 }
 
+export type FlaggedPriority = Exclude<TickerPriority, TickerPriority.None>;
+
 export interface TrackedTicker {
   symbol: string;
   priority: TickerPriority;
 }
 
-export const PRIORITY_COLOURS: Record<TickerPriority, string> = {
+export const PRIORITY_COLOURS: Record<FlaggedPriority, string> = {
   [TickerPriority.Ignore]: '#6b7280',
   [TickerPriority.Low]: '#60a5fa',
   [TickerPriority.Normal]: '#22c55e',
@@ -21,9 +24,14 @@ export const PRIORITY_COLOURS: Record<TickerPriority, string> = {
   [TickerPriority.Critical]: '#ef4444',
 };
 
-export function getPriorityColour(priority: TickerPriority): string {
-  return PRIORITY_COLOURS[priority];
-}
+export const PRIORITY_OPTIONS: readonly TickerPriority[] = [
+  TickerPriority.None,
+  TickerPriority.Ignore,
+  TickerPriority.Low,
+  TickerPriority.Normal,
+  TickerPriority.High,
+  TickerPriority.Critical,
+];
 
 export interface TickerGroup {
   name: string;
@@ -41,6 +49,7 @@ export interface GroupActions {
 
 const GROUPS_STORAGE_KEY = 'opentrade:groups';
 const SELECTED_GROUP_STORAGE_KEY = 'opentrade:selectedGroup';
+const PRIORITY_NONE_MIGRATION_KEY = 'opentrade:priorityNoneMigration.v1';
 
 function isValidGroup(value: unknown): value is TickerGroup {
   if (!value || typeof value !== 'object') return false;
@@ -49,11 +58,11 @@ function isValidGroup(value: unknown): value is TickerGroup {
 }
 
 export function loadGroupsFromStorage(): TickerGroup[] {
-  const raw = safeLocalStorageGet<unknown>(GROUPS_STORAGE_KEY);
-  if (!Array.isArray(raw) || raw.length === 0 || !raw.every(isValidGroup)) {
+  const groups = safeLocalStorageGet<unknown>(GROUPS_STORAGE_KEY);
+  if (!Array.isArray(groups) || groups.length === 0 || !groups.every(isValidGroup)) {
     return [{ name: 'All', tickers: [] }];
   }
-  return raw;
+  return groups as TickerGroup[];
 }
 
 export function persistGroups(groups: TickerGroup[]): void {
@@ -118,11 +127,19 @@ export function deleteGroup(
   return next.length === groups.length ? null : next;
 }
 
+function updateGroup(
+  groups: TickerGroup[],
+  groupName: string,
+  update: (g: TickerGroup) => TickerGroup,
+): TickerGroup[] {
+  return groups.map(g => (g.name === groupName ? update(g) : g));
+}
+
 export function clearGroup(
   groups: TickerGroup[],
   target: string,
 ): TickerGroup[] {
-  return groups.map(g => (g.name === target ? { ...g, tickers: [] } : g));
+  return updateGroup(groups, target, g => ({ ...g, tickers: [] }));
 }
 
 export function addTickerToGroup(
@@ -130,10 +147,33 @@ export function addTickerToGroup(
   groupName: string,
   symbol: string,
 ): TickerGroup[] {
-  const ticker: TrackedTicker = { symbol, priority: TickerPriority.Normal };
-  return groups.map(g =>
-    g.name === groupName && !g.tickers.some(t => t.symbol === symbol)
-      ? { ...g, tickers: [...g.tickers, ticker] }
-      : g,
+  const ticker: TrackedTicker = { symbol, priority: TickerPriority.None };
+  return updateGroup(groups, groupName, g =>
+    g.tickers.some(t => t.symbol === symbol)
+      ? g
+      : { ...g, tickers: [...g.tickers, ticker] },
   );
+}
+
+export function removeTickerFromGroup(
+  groups: TickerGroup[],
+  groupName: string,
+  symbol: string,
+): TickerGroup[] {
+  return updateGroup(groups, groupName, g => ({
+    ...g,
+    tickers: g.tickers.filter(t => t.symbol !== symbol),
+  }));
+}
+
+export function setTickerPriority(
+  groups: TickerGroup[],
+  groupName: string,
+  symbol: string,
+  priority: TickerPriority,
+): TickerGroup[] {
+  return updateGroup(groups, groupName, g => ({
+    ...g,
+    tickers: g.tickers.map(t => (t.symbol === symbol ? { ...t, priority } : t)),
+  }));
 }

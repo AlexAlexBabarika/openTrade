@@ -1,7 +1,16 @@
 <script lang="ts">
   import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
   import Plus from '@lucide/svelte/icons/plus';
+  import Flag from '@lucide/svelte/icons/flag';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
+  import Check from '@lucide/svelte/icons/check';
+  import { ContextMenu } from 'bits-ui';
   import GroupSelector from './GroupSelector.svelte';
+  import {
+    TickerPriority,
+    PRIORITY_COLOURS,
+    PRIORITY_OPTIONS,
+  } from '../lib/tickers';
   import type { TickerGroup, TrackedTicker, GroupActions } from '../lib/tickers';
   import type { TickerQuote } from '../lib/tickerQuotes';
 
@@ -15,6 +24,8 @@
     groupActions,
     onaddticker,
     onselectticker,
+    ondeleteticker,
+    onsetpriority,
     onhide = () => {},
   }: {
     symbol?: string;
@@ -26,6 +37,8 @@
     groupActions: GroupActions;
     onaddticker: () => void;
     onselectticker: (symbol: string) => void;
+    ondeleteticker: (symbol: string) => void;
+    onsetpriority: (symbol: string, priority: TickerPriority) => void;
     onhide?: () => void;
   } = $props();
 
@@ -82,21 +95,73 @@
     {:else}
       <div class="py-1">
         {#each tickers as ticker (ticker.symbol)}
-          <button
-            type="button"
-            class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
-            onclick={() => onselectticker(ticker.symbol)}
-          >
-            <span class="truncate">{ticker.symbol}</span>
-            <span
-              class="font-mono tabular-nums text-muted-foreground shrink-0"
-              title={quotes[ticker.symbol]?.status === 'error'
-                ? 'Failed to fetch — will retry when group or source changes'
-                : undefined}
-            >
-              {formatQuote(quotes[ticker.symbol])}
-            </span>
-          </button>
+          <ContextMenu.Root>
+            <ContextMenu.Trigger class="block w-full">
+              <button
+                type="button"
+                class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
+                onclick={() => onselectticker(ticker.symbol)}
+              >
+                <span class="flex items-center gap-1.5 min-w-0">
+                  {#if ticker.priority !== TickerPriority.None}
+                    {@const colour = PRIORITY_COLOURS[ticker.priority]}
+                    <Flag
+                      class="h-3 w-3 shrink-0"
+                      style="color: {colour}; fill: {colour};"
+                    />
+                  {/if}
+                  <span class="truncate">{ticker.symbol}</span>
+                </span>
+                <span
+                  class="font-mono tabular-nums text-muted-foreground shrink-0"
+                  title={quotes[ticker.symbol]?.status === 'error'
+                    ? 'Failed to fetch — will retry when group or source changes'
+                    : undefined}
+                >
+                  {formatQuote(quotes[ticker.symbol])}
+                </span>
+              </button>
+            </ContextMenu.Trigger>
+            <ContextMenu.Portal>
+              <ContextMenu.Content
+                class="z-50 w-44 rounded-md border border-border bg-popover text-popover-foreground shadow-md py-1 outline-none"
+              >
+                <ContextMenu.Item
+                  onSelect={() => ondeleteticker(ticker.symbol)}
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-destructive data-[highlighted]:bg-destructive/10 cursor-default outline-none"
+                >
+                  <Trash2 class="h-3.5 w-3.5" /> Delete ticker
+                </ContextMenu.Item>
+                <ContextMenu.Separator class="my-1 h-px bg-border" />
+                <div
+                  class="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                >
+                  Priority
+                </div>
+                {#each PRIORITY_OPTIONS as p (p)}
+                  <ContextMenu.Item
+                    onSelect={() => onsetpriority(ticker.symbol, p)}
+                    class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none"
+                  >
+                    {#if p === TickerPriority.None}
+                      <span
+                        class="h-2 w-2 rounded-full border border-muted-foreground/40 shrink-0"
+                      ></span>
+                    {:else}
+                      <span
+                        class="h-2 w-2 rounded-full shrink-0"
+                        style="background: {PRIORITY_COLOURS[p]};"
+                      ></span>
+                    {/if}
+                    <span class="flex-1 text-left capitalize">{p}</span>
+                    {#if p === ticker.priority}
+                      <Check class="h-3.5 w-3.5" />
+                    {/if}
+                  </ContextMenu.Item>
+                {/each}
+              </ContextMenu.Content>
+            </ContextMenu.Portal>
+          </ContextMenu.Root>
         {/each}
       </div>
     {/if}
