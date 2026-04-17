@@ -97,12 +97,14 @@
     bind:this={fileInput}
     onchange={handleFileChange}
   />
-  <Button onclick={handleLoad} disabled={isLoading}>
-    {#if isLoading}
-      <LoaderCircle class="mr-1 h-4 w-4 animate-spin" />
-    {/if}
-    {isLoading ? 'Loading…' : source === 'csv' ? fileName : 'Load'}
-  </Button>
+  {#if source === 'csv'}
+    <Button onclick={handleLoad} disabled={isLoading}>
+      {#if isLoading}
+        <LoaderCircle class="mr-1 h-4 w-4 animate-spin" />
+      {/if}
+      {isLoading ? 'Loading…' : 'Upload CSV'}
+    </Button>
+  {/if}
 
   <Button
     variant="secondary"
