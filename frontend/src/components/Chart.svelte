@@ -74,6 +74,7 @@
   let bbandsMiddleSeries: ISeriesApi<'Line'> | null = null;
   let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let themeObserver: MutationObserver | null = null;
+  let resizeObserver: ResizeObserver | null = null;
 
   let legendName = $state('');
   let legendPrice = $state('');
@@ -260,6 +261,11 @@
     api = { appendCandle };
     window.addEventListener('resize', handleResize);
 
+    if (containerEl) {
+      resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(containerEl);
+    }
+
     themeObserver = new MutationObserver(() => {
       if (chart) {
         invalidateCssVarCache();
@@ -287,6 +293,10 @@
   onDestroy(() => {
     api = null;
     window.removeEventListener('resize', handleResize);
+    if (resizeObserver) {
+      resizeObserver.disconnect();
+      resizeObserver = null;
+    }
     if (themeObserver) {
       themeObserver.disconnect();
     }
