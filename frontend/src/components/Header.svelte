@@ -10,10 +10,8 @@
     MARKET_DATA_PROVIDERS,
     type MarketDataProviderValue,
   } from '$lib/marketDataProviders';
-  import {
-    DEFAULT_MARKET_INTERVAL,
-    MARKET_INTERVAL_OPTIONS,
-  } from '$lib/marketIntervals';
+  import { DEFAULT_MARKET_INTERVAL } from '$lib/marketIntervals';
+  import IntervalPicker from './IntervalPicker.svelte';
   import {
     DEFAULT_MARKET_PERIOD,
     MARKET_PERIOD_OPTIONS,
@@ -95,16 +93,7 @@
     </Select.Content>
   </Select.Root>
 
-  <Select.Root type="single" bind:value={interval}>
-    <Select.Trigger class="w-20">
-      {MARKET_INTERVAL_OPTIONS.find(i => i.value === interval)?.label ?? interval}
-    </Select.Trigger>
-    <Select.Content>
-      {#each MARKET_INTERVAL_OPTIONS as i (i.value)}
-        <Select.Item value={i.value}>{i.label}</Select.Item>
-      {/each}
-    </Select.Content>
-  </Select.Root>
+  <IntervalPicker bind:value={interval} />
 
   <Select.Root type="single" bind:value={source}>
     <Select.Trigger class="w-36">

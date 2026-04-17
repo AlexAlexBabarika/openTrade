@@ -447,6 +447,8 @@
     });
   }
 
+  let initialLoadDone = $state(false);
+
   onMount(async () => {
     window.addEventListener('beforeunload', persistOnUnload);
     try {
@@ -454,6 +456,15 @@
     } catch (err) {
       console.warn('Session fetch failed:', err);
     }
+    await loadMarketData();
+    initialLoadDone = true;
+  });
+
+  $effect(() => {
+    period;
+    interval;
+    if (!initialLoadDone) return;
+    if (source === 'csv') return;
     void loadMarketData();
   });
 
