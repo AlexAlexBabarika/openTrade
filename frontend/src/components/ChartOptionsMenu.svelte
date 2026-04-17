@@ -141,8 +141,8 @@
 </script>
 
 <Button
-  variant="secondary"
-  class="fixed bottom-10 left-2 z-40"
+  variant="outline"
+  size="sm"
   onclick={() => (open = true)}
 >
   Chart Options

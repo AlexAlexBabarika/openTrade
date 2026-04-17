@@ -1,5 +1,4 @@
 <script lang="ts">
-  import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
   import Plus from '@lucide/svelte/icons/plus';
   import Flag from '@lucide/svelte/icons/flag';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -34,7 +33,6 @@
     onselectticker,
     ondeleteticker,
     onsetpriority,
-    onhide = () => {},
   }: {
     symbol?: string;
     closePrice?: number | null;
@@ -50,7 +48,6 @@
     onselectticker: (symbol: string) => void;
     ondeleteticker: (symbol: string) => void;
     onsetpriority: (symbol: string, priority: TickerPriority) => void;
-    onhide?: () => void;
   } = $props();
 
   function formatPrice(value: number | null | undefined): string {
@@ -93,14 +90,6 @@
         onclick={onaddticker}
       >
         <Plus class="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        class="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-accent hover:text-accent-foreground text-muted-foreground transition-colors"
-        aria-label="Hide sidebar"
-        onclick={onhide}
-      >
-        <PanelRightClose class="h-4 w-4" />
       </button>
     </div>
   </div>

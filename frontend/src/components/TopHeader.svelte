@@ -49,7 +49,6 @@
   }
 
   let fileInput: HTMLInputElement | undefined = $state();
-  let fileName = $state('Choose file');
 
   function handleLoad() {
     if (source === 'csv') {
@@ -62,7 +61,6 @@
   function handleFileChange() {
     const file = fileInput?.files?.[0];
     if (!file) return;
-    fileName = file.name;
     oncsvupload(file);
   }
 </script>
