@@ -75,7 +75,11 @@ function isValidGroup(value: unknown): value is TickerGroup {
 
 export function loadGroupsFromStorage(): TickerGroup[] {
   const groups = safeLocalStorageGet<unknown>(GROUPS_STORAGE_KEY);
-  if (!Array.isArray(groups) || groups.length === 0 || !groups.every(isValidGroup)) {
+  if (
+    !Array.isArray(groups) ||
+    groups.length === 0 ||
+    !groups.every(isValidGroup)
+  ) {
     return [{ name: 'All', tickers: [] }];
   }
   return groups as TickerGroup[];
@@ -288,10 +292,7 @@ export function findPriorityConflict(
     if (g.name === excludeGroup) continue;
     for (const t of g.tickers) {
       if (t.symbol !== symbol) continue;
-      if (
-        t.priority !== TickerPriority.None &&
-        t.priority !== desired
-      ) {
+      if (t.priority !== TickerPriority.None && t.priority !== desired) {
         if (existing === null) existing = t.priority as FlaggedPriority;
         if (t.priority === existing) conflictingGroups.push(g.name);
       }
