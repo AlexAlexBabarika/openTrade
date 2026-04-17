@@ -4,6 +4,8 @@
   import ErrorMessage from './components/ErrorMessage.svelte';
   import Chart from './components/Chart.svelte';
   import type { ChartApi } from './components/Chart.svelte';
+  import Sidebar from './components/Sidebar.svelte';
+  import PanelRight from '@lucide/svelte/icons/panel-right';
   import ChartOptionsMenu from './components/ChartOptionsMenu.svelte';
   import type {
     MovingAverageConfig,
@@ -70,6 +72,10 @@
   let hasCandles = $derived(candles.length > 0);
   let marketDataVersion = $state(0);
   let isLoading = $state(false);
+  let sidebarVisible = $state(true);
+  let lastClose = $derived(
+    candles.length > 0 ? candles[candles.length - 1].close : null,
+  );
   let wsClient: WSClient | null = null;
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -272,21 +278,42 @@
     oncsvupload={handleCsvUpload}
   />
   <ErrorMessage bind:message={errorMessage} />
-  <Chart
-    {candles}
-    {symbol}
-    {chartType}
-    {showArea}
-    {showVolume}
-    {smaPoints}
-    {emaPoints}
-    {bbandsPoints}
-    smaLineWidth={smaConfig.lineWidth}
-    emaLineWidth={emaConfig.lineWidth}
-    bbandsLineWidth={bbandsConfig.lineWidth}
-    {colours}
-    bind:api={chartApi}
-  />
+  <div class="flex flex-1 min-h-0">
+    <div class="flex-1 min-w-0 min-h-0 flex flex-col">
+      <Chart
+        {candles}
+        {symbol}
+        {chartType}
+        {showArea}
+        {showVolume}
+        {smaPoints}
+        {emaPoints}
+        {bbandsPoints}
+        smaLineWidth={smaConfig.lineWidth}
+        emaLineWidth={emaConfig.lineWidth}
+        bbandsLineWidth={bbandsConfig.lineWidth}
+        {colours}
+        bind:api={chartApi}
+      />
+    </div>
+    {#if sidebarVisible}
+      <Sidebar
+        symbol={loadedSymbol}
+        closePrice={lastClose}
+        onhide={() => (sidebarVisible = false)}
+      />
+    {/if}
+  </div>
+  {#if !sidebarVisible}
+    <button
+      type="button"
+      class="fixed bottom-10 right-18 z-40 inline-flex items-center justify-center h-9 w-9 rounded-md border border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors shadow"
+      aria-label="Show sidebar"
+      onclick={() => (sidebarVisible = true)}
+    >
+      <PanelRight class="h-4 w-4" />
+    </button>
+  {/if}
   <ChartOptionsMenu
     bind:chartType
     bind:showArea
