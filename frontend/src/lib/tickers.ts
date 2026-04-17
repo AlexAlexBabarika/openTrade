@@ -1,6 +1,7 @@
 import { safeLocalStorageGet, safeLocalStorageSet } from './storage';
 
 export enum TickerPriority {
+  None = 'none',
   Ignore = 'ignore',
   Low = 'low',
   Normal = 'normal',
@@ -8,12 +9,14 @@ export enum TickerPriority {
   Critical = 'critical',
 }
 
+export type FlaggedPriority = Exclude<TickerPriority, TickerPriority.None>;
+
 export interface TrackedTicker {
   symbol: string;
   priority: TickerPriority;
 }
 
-export const PRIORITY_COLOURS: Record<TickerPriority, string> = {
+export const PRIORITY_COLOURS: Record<FlaggedPriority, string> = {
   [TickerPriority.Ignore]: '#6b7280',
   [TickerPriority.Low]: '#60a5fa',
   [TickerPriority.Normal]: '#22c55e',
@@ -21,7 +24,7 @@ export const PRIORITY_COLOURS: Record<TickerPriority, string> = {
   [TickerPriority.Critical]: '#ef4444',
 };
 
-export function getPriorityColour(priority: TickerPriority): string {
+export function getPriorityColour(priority: FlaggedPriority): string {
   return PRIORITY_COLOURS[priority];
 }
 
@@ -41,6 +44,7 @@ export interface GroupActions {
 
 const GROUPS_STORAGE_KEY = 'opentrade:groups';
 const SELECTED_GROUP_STORAGE_KEY = 'opentrade:selectedGroup';
+const PRIORITY_NONE_MIGRATION_KEY = 'opentrade:priorityNoneMigration.v1';
 
 function isValidGroup(value: unknown): value is TickerGroup {
   if (!value || typeof value !== 'object') return false;
@@ -48,12 +52,32 @@ function isValidGroup(value: unknown): value is TickerGroup {
   return typeof g.name === 'string' && Array.isArray(g.tickers);
 }
 
+// One-shot: pre-existing tickers defaulted to `Normal` back when that was the
+// "no explicit priority" value. New default is `None`. Migrate once so legacy
+// tickers don't suddenly show green flags; after this runs, explicit `Normal`
+// selections made via the menu are preserved across reloads.
+function migrateLegacyNormalToNone(groups: TickerGroup[]): TickerGroup[] {
+  if (safeLocalStorageGet<boolean>(PRIORITY_NONE_MIGRATION_KEY) === true) {
+    return groups;
+  }
+  const migrated = groups.map(g => ({
+    ...g,
+    tickers: g.tickers.map(t =>
+      t.priority === TickerPriority.Normal
+        ? { ...t, priority: TickerPriority.None }
+        : t,
+    ),
+  }));
+  safeLocalStorageSet(PRIORITY_NONE_MIGRATION_KEY, true);
+  return migrated;
+}
+
 export function loadGroupsFromStorage(): TickerGroup[] {
   const raw = safeLocalStorageGet<unknown>(GROUPS_STORAGE_KEY);
   if (!Array.isArray(raw) || raw.length === 0 || !raw.every(isValidGroup)) {
     return [{ name: 'All', tickers: [] }];
   }
-  return raw;
+  return migrateLegacyNormalToNone(raw);
 }
 
 export function persistGroups(groups: TickerGroup[]): void {
@@ -130,10 +154,40 @@ export function addTickerToGroup(
   groupName: string,
   symbol: string,
 ): TickerGroup[] {
-  const ticker: TrackedTicker = { symbol, priority: TickerPriority.Normal };
+  const ticker: TrackedTicker = { symbol, priority: TickerPriority.None };
   return groups.map(g =>
     g.name === groupName && !g.tickers.some(t => t.symbol === symbol)
       ? { ...g, tickers: [...g.tickers, ticker] }
+      : g,
+  );
+}
+
+export function removeTickerFromGroup(
+  groups: TickerGroup[],
+  groupName: string,
+  symbol: string,
+): TickerGroup[] {
+  return groups.map(g =>
+    g.name === groupName
+      ? { ...g, tickers: g.tickers.filter(t => t.symbol !== symbol) }
+      : g,
+  );
+}
+
+export function setTickerPriority(
+  groups: TickerGroup[],
+  groupName: string,
+  symbol: string,
+  priority: TickerPriority,
+): TickerGroup[] {
+  return groups.map(g =>
+    g.name === groupName
+      ? {
+          ...g,
+          tickers: g.tickers.map(t =>
+            t.symbol === symbol ? { ...t, priority } : t,
+          ),
+        }
       : g,
   );
 }

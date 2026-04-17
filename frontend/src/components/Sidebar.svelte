@@ -1,7 +1,15 @@
 <script lang="ts">
   import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
   import Plus from '@lucide/svelte/icons/plus';
+  import Flag from '@lucide/svelte/icons/flag';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
+  import Check from '@lucide/svelte/icons/check';
   import GroupSelector from './GroupSelector.svelte';
+  import {
+    TickerPriority,
+    PRIORITY_COLOURS,
+    getPriorityColour,
+  } from '../lib/tickers';
   import type { TickerGroup, TrackedTicker, GroupActions } from '../lib/tickers';
   import type { TickerQuote } from '../lib/tickerQuotes';
 
@@ -15,6 +23,8 @@
     groupActions,
     onaddticker,
     onselectticker,
+    ondeleteticker,
+    onsetpriority,
     onhide = () => {},
   }: {
     symbol?: string;
@@ -26,8 +36,49 @@
     groupActions: GroupActions;
     onaddticker: () => void;
     onselectticker: (symbol: string) => void;
+    ondeleteticker: (symbol: string) => void;
+    onsetpriority: (symbol: string, priority: TickerPriority) => void;
     onhide?: () => void;
   } = $props();
+
+  const PRIORITY_OPTIONS: TickerPriority[] = [
+    TickerPriority.None,
+    TickerPriority.Ignore,
+    TickerPriority.Low,
+    TickerPriority.Normal,
+    TickerPriority.High,
+    TickerPriority.Critical,
+  ];
+
+  let contextMenu = $state<{ symbol: string; x: number; y: number } | null>(null);
+  let menuEl: HTMLDivElement | undefined = $state();
+
+  function openContextMenu(e: MouseEvent, sym: string) {
+    e.preventDefault();
+    const menuWidth = 180;
+    const menuHeight = 260;
+    contextMenu = {
+      symbol: sym,
+      x: Math.min(e.clientX, window.innerWidth - menuWidth - 8),
+      y: Math.min(e.clientY, window.innerHeight - menuHeight - 8),
+    };
+  }
+
+  $effect(() => {
+    if (!contextMenu) return;
+    const handleDown = (e: PointerEvent) => {
+      if (menuEl && !menuEl.contains(e.target as Node)) contextMenu = null;
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') contextMenu = null;
+    };
+    document.addEventListener('pointerdown', handleDown, { capture: true });
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('pointerdown', handleDown, { capture: true });
+      document.removeEventListener('keydown', handleKey);
+    };
+  });
 
   function formatPrice(value: number | null | undefined): string {
     if (value == null || !Number.isFinite(value)) return '—';
@@ -86,8 +137,18 @@
             type="button"
             class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
             onclick={() => onselectticker(ticker.symbol)}
+            oncontextmenu={e => openContextMenu(e, ticker.symbol)}
           >
-            <span class="truncate">{ticker.symbol}</span>
+            <span class="flex items-center gap-1.5 min-w-0">
+              {#if ticker.priority !== TickerPriority.None}
+                {@const colour = getPriorityColour(ticker.priority)}
+                <Flag
+                  class="h-3 w-3 shrink-0"
+                  style="color: {colour}; fill: {colour};"
+                />
+              {/if}
+              <span class="truncate">{ticker.symbol}</span>
+            </span>
             <span
               class="font-mono tabular-nums text-muted-foreground shrink-0"
               title={quotes[ticker.symbol]?.status === 'error'
@@ -116,3 +177,62 @@
     </div>
   </div>
 </aside>
+
+{#if contextMenu}
+  <!-- All reads go through contextMenu?. so nothing throws during the brief
+       reactive re-evaluation that happens when the block is transitioning from
+       non-null to null (click handler sets contextMenu = null synchronously,
+       but Svelte re-runs these expressions once before unmounting). -->
+  {@const menuSymbol = contextMenu?.symbol ?? ''}
+  {@const menuX = contextMenu?.x ?? 0}
+  {@const menuY = contextMenu?.y ?? 0}
+  {@const currentPriority =
+    tickers.find(t => t.symbol === menuSymbol)?.priority ??
+    TickerPriority.None}
+  <div
+    bind:this={menuEl}
+    class="fixed z-50 w-44 rounded-md border border-border bg-popover text-popover-foreground shadow-md py-1"
+    style="left: {menuX}px; top: {menuY}px;"
+    role="menu"
+  >
+    <button
+      type="button"
+      class="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+      onclick={() => {
+        const sym = menuSymbol;
+        contextMenu = null;
+        ondeleteticker(sym);
+      }}
+    >
+      <Trash2 class="h-3.5 w-3.5" /> Delete ticker
+    </button>
+    <div class="my-1 h-px bg-border"></div>
+    <div class="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      Priority
+    </div>
+    {#each PRIORITY_OPTIONS as p (p)}
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+        onclick={() => {
+          const sym = menuSymbol;
+          contextMenu = null;
+          onsetpriority(sym, p);
+        }}
+      >
+        {#if p === TickerPriority.None}
+          <span class="h-2 w-2 rounded-full border border-muted-foreground/40 shrink-0"></span>
+        {:else}
+          <span
+            class="h-2 w-2 rounded-full shrink-0"
+            style="background: {PRIORITY_COLOURS[p]};"
+          ></span>
+        {/if}
+        <span class="flex-1 text-left capitalize">{p}</span>
+        {#if p === currentPriority}
+          <Check class="h-3.5 w-3.5" />
+        {/if}
+      </button>
+    {/each}
+  </div>
+{/if}

@@ -43,6 +43,8 @@
     deleteGroup,
     clearGroup,
     addTickerToGroup,
+    removeTickerFromGroup,
+    setTickerPriority,
   } from './lib/tickers';
   import { fetchLastClose, type TickerQuote } from './lib/tickerQuotes';
   import { untrack } from 'svelte';
@@ -435,6 +437,12 @@
         onselectticker={sym => {
           symbol = sym;
           void loadMarketData();
+        }}
+        ondeleteticker={sym => {
+          groups = removeTickerFromGroup(groups, selectedGroupName, sym);
+        }}
+        onsetpriority={(sym, priority) => {
+          groups = setTickerPriority(groups, selectedGroupName, sym, priority);
         }}
         onhide={() => (sidebarVisible = false)}
       />
