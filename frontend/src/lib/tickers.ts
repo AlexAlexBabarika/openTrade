@@ -57,32 +57,12 @@ function isValidGroup(value: unknown): value is TickerGroup {
   return typeof g.name === 'string' && Array.isArray(g.tickers);
 }
 
-// One-shot: pre-existing tickers defaulted to `Normal` back when that was the
-// "no explicit priority" value. New default is `None`. Migrate once so legacy
-// tickers don't suddenly show green flags; after this runs, explicit `Normal`
-// selections made via the menu are preserved across reloads.
-function migrateLegacyNormalToNone(groups: TickerGroup[]): TickerGroup[] {
-  if (safeLocalStorageGet<boolean>(PRIORITY_NONE_MIGRATION_KEY) === true) {
-    return groups;
-  }
-  const migrated = groups.map(g => ({
-    ...g,
-    tickers: g.tickers.map(t =>
-      t.priority === TickerPriority.Normal
-        ? { ...t, priority: TickerPriority.None }
-        : t,
-    ),
-  }));
-  safeLocalStorageSet(PRIORITY_NONE_MIGRATION_KEY, true);
-  return migrated;
-}
-
 export function loadGroupsFromStorage(): TickerGroup[] {
-  const raw = safeLocalStorageGet<unknown>(GROUPS_STORAGE_KEY);
-  if (!Array.isArray(raw) || raw.length === 0 || !raw.every(isValidGroup)) {
+  const groups = safeLocalStorageGet<unknown>(GROUPS_STORAGE_KEY);
+  if (!Array.isArray(groups) || groups.length === 0 || !groups.every(isValidGroup)) {
     return [{ name: 'All', tickers: [] }];
   }
-  return migrateLegacyNormalToNone(raw);
+  return groups as TickerGroup[];
 }
 
 export function persistGroups(groups: TickerGroup[]): void {
