@@ -303,7 +303,7 @@
                           ...smaConfig,
                           lineWidth: intOr(e, 2),
                         })}
-                      class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                      class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground font-mono"
                     />
                   </label>
                   <label
@@ -320,7 +320,7 @@
                           ...smaConfig,
                           period: intOr(e, 20),
                         })}
-                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground font-mono"
                     />
                   </label>
                   <ColourSwatch bind:colour={colours.smaLine} label="Line" />
@@ -363,7 +363,7 @@
                           ...bbandsConfig,
                           lineWidth: intOr(e, 1),
                         })}
-                      class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                      class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground font-mono"
                     />
                   </label>
                   <label
@@ -380,7 +380,7 @@
                           ...bbandsConfig,
                           period: intOr(e, 20),
                         })}
-                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground font-mono"
                     />
                   </label>
                   <label
@@ -398,7 +398,7 @@
                           ...bbandsConfig,
                           stdDev: floatOr(e, 2),
                         })}
-                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground font-mono"
                     />
                   </label>
                   <ColourSwatch bind:colour={colours.bbandsUpper} label="Upper" />
@@ -443,7 +443,7 @@
                           ...emaConfig,
                           lineWidth: intOr(e, 2),
                         })}
-                      class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                      class="w-14 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground font-mono"
                     />
                   </label>
                   <label
@@ -460,7 +460,7 @@
                           ...emaConfig,
                           period: intOr(e, 20),
                         })}
-                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+                      class="w-16 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground font-mono"
                     />
                   </label>
                   <ColourSwatch bind:colour={colours.emaLine} label="Line" />

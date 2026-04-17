@@ -131,6 +131,17 @@ export function resolveGridLineColour(colours?: ChartColours): string {
   return computeGridLineColor(getCssVarColor('--border', DEFAULT_BORDER));
 }
 
+const DEFAULT_MONO_FONT =
+  "'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+
+function getMonoFontFamily(): string {
+  if (typeof window === 'undefined') return DEFAULT_MONO_FONT;
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue('--font-mono')
+    .trim();
+  return value || DEFAULT_MONO_FONT;
+}
+
 export function createChartContainer(
   parent: HTMLElement,
   colours?: ChartColours,
@@ -146,6 +157,7 @@ export function createChartContainer(
         color: resolveColour(colours, 'chartBackground'),
       },
       textColor: resolveColour(colours, 'textColour'),
+      fontFamily: getMonoFontFamily(),
     },
     grid: {
       vertLines: { color: gridLineColor },
