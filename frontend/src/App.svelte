@@ -31,6 +31,7 @@
   } from './lib/chartColours';
 
   let symbol = $state('AAPL');
+  let loadedSymbol = $state('');
   let period = $state(DEFAULT_MARKET_PERIOD);
   let interval = $state(DEFAULT_MARKET_INTERVAL);
   let source = $state<MarketDataProviderValue>('yfinance');
@@ -82,6 +83,7 @@
     try {
       const data = await fetchMarketOHLCV(symbol, source, period, interval);
       candles = data.candles ?? [];
+      loadedSymbol = symbol;
       marketDataVersion += 1;
     } catch (e) {
       errorMessage = e instanceof Error ? e.message : 'Failed to load';
@@ -166,7 +168,7 @@
   $effect(() => {
     const enabled = smaConfig.enabled;
     const period = smaConfig.period;
-    const sym = symbol;
+    const sym = loadedSymbol;
     marketDataVersion;
     if (!enabled || !hasCandles) {
       smaPoints = [];
@@ -186,7 +188,7 @@
   $effect(() => {
     const enabled = emaConfig.enabled;
     const period = emaConfig.period;
-    const sym = symbol;
+    const sym = loadedSymbol;
     marketDataVersion;
     if (!enabled || !hasCandles) {
       emaPoints = [];
@@ -207,7 +209,7 @@
     const enabled = bbandsConfig.enabled;
     const period = bbandsConfig.period;
     const stdDev = bbandsConfig.stdDev;
-    const sym = symbol;
+    const sym = loadedSymbol;
     marketDataVersion;
     if (!enabled || !hasCandles) {
       bbandsPoints = [];
