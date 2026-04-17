@@ -33,6 +33,21 @@ export const PRIORITY_OPTIONS: readonly TickerPriority[] = [
   TickerPriority.Critical,
 ];
 
+export const FLAGGED_PRIORITIES: readonly FlaggedPriority[] = [
+  TickerPriority.Ignore,
+  TickerPriority.Low,
+  TickerPriority.Normal,
+  TickerPriority.High,
+  TickerPriority.Critical,
+];
+
+function isFlaggedPriority(value: unknown): value is FlaggedPriority {
+  return (
+    typeof value === 'string' &&
+    (FLAGGED_PRIORITIES as readonly string[]).includes(value)
+  );
+}
+
 export interface TickerGroup {
   name: string;
   tickers: TrackedTicker[];
@@ -49,6 +64,7 @@ export interface GroupActions {
 
 const GROUPS_STORAGE_KEY = 'opentrade:groups';
 const SELECTED_GROUP_STORAGE_KEY = 'opentrade:selectedGroup';
+const SELECTED_PRIORITY_STORAGE_KEY = 'opentrade:selectedPriority';
 const PRIORITY_NONE_MIGRATION_KEY = 'opentrade:priorityNoneMigration.v1';
 
 function isValidGroup(value: unknown): value is TickerGroup {
@@ -79,6 +95,17 @@ export function loadSelectedGroupName(groups: TickerGroup[]): string {
 
 export function persistSelectedGroupName(name: string): void {
   safeLocalStorageSet(SELECTED_GROUP_STORAGE_KEY, name);
+}
+
+export function loadSelectedPriority(): FlaggedPriority | null {
+  const stored = safeLocalStorageGet<unknown>(SELECTED_PRIORITY_STORAGE_KEY);
+  return isFlaggedPriority(stored) ? stored : null;
+}
+
+export function persistSelectedPriority(
+  priority: FlaggedPriority | null,
+): void {
+  safeLocalStorageSet(SELECTED_PRIORITY_STORAGE_KEY, priority);
 }
 
 function uniqueDuplicateName(groups: TickerGroup[], base: string): string {
@@ -176,4 +203,100 @@ export function setTickerPriority(
     ...g,
     tickers: g.tickers.map(t => (t.symbol === symbol ? { ...t, priority } : t)),
   }));
+}
+
+export function collectTickersByPriority(
+  groups: TickerGroup[],
+  priority: FlaggedPriority,
+): TrackedTicker[] {
+  const seen = new Set<string>();
+  const out: TrackedTicker[] = [];
+  for (const g of groups) {
+    for (const t of g.tickers) {
+      if (t.priority === priority && !seen.has(t.symbol)) {
+        seen.add(t.symbol);
+        out.push({ symbol: t.symbol, priority });
+      }
+    }
+  }
+  return out;
+}
+
+export function priorityCounts(
+  groups: TickerGroup[],
+): Record<FlaggedPriority, number> {
+  const seen: Record<FlaggedPriority, Set<string>> = {
+    [TickerPriority.Ignore]: new Set(),
+    [TickerPriority.Low]: new Set(),
+    [TickerPriority.Normal]: new Set(),
+    [TickerPriority.High]: new Set(),
+    [TickerPriority.Critical]: new Set(),
+  };
+  for (const g of groups) {
+    for (const t of g.tickers) {
+      if (t.priority !== TickerPriority.None) {
+        seen[t.priority as FlaggedPriority].add(t.symbol);
+      }
+    }
+  }
+  return {
+    [TickerPriority.Ignore]: seen[TickerPriority.Ignore].size,
+    [TickerPriority.Low]: seen[TickerPriority.Low].size,
+    [TickerPriority.Normal]: seen[TickerPriority.Normal].size,
+    [TickerPriority.High]: seen[TickerPriority.High].size,
+    [TickerPriority.Critical]: seen[TickerPriority.Critical].size,
+  };
+}
+
+export function setPriorityEverywhere(
+  groups: TickerGroup[],
+  symbol: string,
+  priority: TickerPriority,
+): TickerGroup[] {
+  return groups.map(g => ({
+    ...g,
+    tickers: g.tickers.map(t => (t.symbol === symbol ? { ...t, priority } : t)),
+  }));
+}
+
+export function removeTickerEverywhere(
+  groups: TickerGroup[],
+  symbol: string,
+): TickerGroup[] {
+  return groups.map(g => ({
+    ...g,
+    tickers: g.tickers.filter(t => t.symbol !== symbol),
+  }));
+}
+
+export interface PriorityConflict {
+  symbol: string;
+  existingPriority: FlaggedPriority;
+  groups: string[];
+}
+
+export function findPriorityConflict(
+  groups: TickerGroup[],
+  symbol: string,
+  desired: TickerPriority,
+  excludeGroup: string,
+): PriorityConflict | null {
+  if (desired === TickerPriority.None) return null;
+  let existing: FlaggedPriority | null = null;
+  const conflictingGroups: string[] = [];
+  for (const g of groups) {
+    if (g.name === excludeGroup) continue;
+    for (const t of g.tickers) {
+      if (t.symbol !== symbol) continue;
+      if (
+        t.priority !== TickerPriority.None &&
+        t.priority !== desired
+      ) {
+        if (existing === null) existing = t.priority as FlaggedPriority;
+        if (t.priority === existing) conflictingGroups.push(g.name);
+      }
+    }
+  }
+  if (existing === null) return null;
+  return { symbol, existingPriority: existing, groups: conflictingGroups };
 }

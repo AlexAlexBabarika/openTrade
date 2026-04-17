@@ -11,7 +11,12 @@
     PRIORITY_COLOURS,
     PRIORITY_OPTIONS,
   } from '../lib/tickers';
-  import type { TickerGroup, TrackedTicker, GroupActions } from '../lib/tickers';
+  import type {
+    TickerGroup,
+    TrackedTicker,
+    GroupActions,
+    FlaggedPriority,
+  } from '../lib/tickers';
   import type { TickerQuote } from '../lib/tickerQuotes';
 
   let {
@@ -19,10 +24,13 @@
     closePrice = null as number | null,
     groups,
     selectedGroupName,
+    selectedPriority,
+    priorityCounts,
     tickers,
     quotes,
     groupActions,
     onaddticker,
+    onselectpriority,
     onselectticker,
     ondeleteticker,
     onsetpriority,
@@ -32,10 +40,13 @@
     closePrice?: number | null;
     groups: TickerGroup[];
     selectedGroupName: string;
+    selectedPriority: FlaggedPriority | null;
+    priorityCounts: Record<FlaggedPriority, number>;
     tickers: TrackedTicker[];
     quotes: Record<string, TickerQuote>;
     groupActions: GroupActions;
     onaddticker: () => void;
+    onselectpriority: (p: FlaggedPriority) => void;
     onselectticker: (symbol: string) => void;
     ondeleteticker: (symbol: string) => void;
     onsetpriority: (symbol: string, priority: TickerPriority) => void;
@@ -65,13 +76,20 @@
     <GroupSelector
       {groups}
       selectedName={selectedGroupName}
+      {selectedPriority}
+      {priorityCounts}
       actions={groupActions}
+      {onselectpriority}
     />
     <div class="flex items-center gap-1">
       <button
         type="button"
-        class="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-accent hover:text-accent-foreground text-muted-foreground transition-colors"
+        class="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-accent hover:text-accent-foreground text-muted-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
         aria-label="Add symbol"
+        disabled={selectedPriority !== null}
+        title={selectedPriority !== null
+          ? 'Switch to a group to add symbols'
+          : undefined}
         onclick={onaddticker}
       >
         <Plus class="h-4 w-4" />
@@ -90,7 +108,9 @@
   <div class="flex-1 min-h-0 overflow-y-auto">
     {#if tickers.length === 0}
       <div class="px-3 py-4 text-xs text-muted-foreground">
-        No symbols yet. Click + to add one.
+        {selectedPriority
+          ? 'No tickers with this priority.'
+          : 'No symbols yet. Click + to add one.'}
       </div>
     {:else}
       <div class="py-1">
