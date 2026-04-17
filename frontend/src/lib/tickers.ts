@@ -24,6 +24,15 @@ export const PRIORITY_COLOURS: Record<FlaggedPriority, string> = {
   [TickerPriority.Critical]: '#ef4444',
 };
 
+export const PRIORITY_OPTIONS: readonly TickerPriority[] = [
+  TickerPriority.None,
+  TickerPriority.Ignore,
+  TickerPriority.Low,
+  TickerPriority.Normal,
+  TickerPriority.High,
+  TickerPriority.Critical,
+];
+
 export interface TickerGroup {
   name: string;
   tickers: TrackedTicker[];
@@ -138,11 +147,19 @@ export function deleteGroup(
   return next.length === groups.length ? null : next;
 }
 
+function updateGroup(
+  groups: TickerGroup[],
+  groupName: string,
+  update: (g: TickerGroup) => TickerGroup,
+): TickerGroup[] {
+  return groups.map(g => (g.name === groupName ? update(g) : g));
+}
+
 export function clearGroup(
   groups: TickerGroup[],
   target: string,
 ): TickerGroup[] {
-  return groups.map(g => (g.name === target ? { ...g, tickers: [] } : g));
+  return updateGroup(groups, target, g => ({ ...g, tickers: [] }));
 }
 
 export function addTickerToGroup(
@@ -151,10 +168,10 @@ export function addTickerToGroup(
   symbol: string,
 ): TickerGroup[] {
   const ticker: TrackedTicker = { symbol, priority: TickerPriority.None };
-  return groups.map(g =>
-    g.name === groupName && !g.tickers.some(t => t.symbol === symbol)
-      ? { ...g, tickers: [...g.tickers, ticker] }
-      : g,
+  return updateGroup(groups, groupName, g =>
+    g.tickers.some(t => t.symbol === symbol)
+      ? g
+      : { ...g, tickers: [...g.tickers, ticker] },
   );
 }
 
@@ -163,11 +180,10 @@ export function removeTickerFromGroup(
   groupName: string,
   symbol: string,
 ): TickerGroup[] {
-  return groups.map(g =>
-    g.name === groupName
-      ? { ...g, tickers: g.tickers.filter(t => t.symbol !== symbol) }
-      : g,
-  );
+  return updateGroup(groups, groupName, g => ({
+    ...g,
+    tickers: g.tickers.filter(t => t.symbol !== symbol),
+  }));
 }
 
 export function setTickerPriority(
@@ -176,14 +192,8 @@ export function setTickerPriority(
   symbol: string,
   priority: TickerPriority,
 ): TickerGroup[] {
-  return groups.map(g =>
-    g.name === groupName
-      ? {
-          ...g,
-          tickers: g.tickers.map(t =>
-            t.symbol === symbol ? { ...t, priority } : t,
-          ),
-        }
-      : g,
-  );
+  return updateGroup(groups, groupName, g => ({
+    ...g,
+    tickers: g.tickers.map(t => (t.symbol === symbol ? { ...t, priority } : t)),
+  }));
 }

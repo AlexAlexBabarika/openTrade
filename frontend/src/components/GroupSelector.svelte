@@ -5,6 +5,7 @@
   import Eraser from '@lucide/svelte/icons/eraser';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
+  import { DropdownMenu } from 'bits-ui';
   import type { TickerGroup, GroupActions } from '../lib/tickers';
 
   let {
@@ -16,112 +17,69 @@
     selectedName: string;
     actions: GroupActions;
   } = $props();
-
-  let open = $state(false);
-  let rootEl: HTMLDivElement | undefined = $state();
-
-  function close() {
-    open = false;
-  }
-
-  $effect(() => {
-    if (!open) return;
-    const handleDown = (e: PointerEvent) => {
-      if (rootEl && !rootEl.contains(e.target as Node)) close();
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
-    };
-    document.addEventListener('pointerdown', handleDown, { capture: true });
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('pointerdown', handleDown, { capture: true });
-      document.removeEventListener('keydown', handleKey);
-    };
-  });
-
-  function runAction(fn: () => void) {
-    close();
-    fn();
-  }
-
-  function pickGroup(name: string) {
-    actions.select(name);
-    close();
-  }
 </script>
 
-<div bind:this={rootEl} class="relative">
-  <button
-    type="button"
-    class="inline-flex items-center gap-1 rounded h-7 px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors max-w-[140px]"
-    aria-haspopup="menu"
-    aria-expanded={open}
-    onclick={() => (open = !open)}
+<DropdownMenu.Root>
+  <DropdownMenu.Trigger
+    class="inline-flex items-center gap-1 rounded h-7 px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors max-w-[140px] outline-none"
   >
     <span class="truncate">{selectedName}</span>
     <ChevronDown class="h-3.5 w-3.5 shrink-0" />
-  </button>
-
-  {#if open}
-    <div
-      class="absolute left-0 top-full mt-1 z-50 w-56 rounded-md border border-border bg-popover text-popover-foreground shadow-md py-1"
-      role="menu"
+  </DropdownMenu.Trigger>
+  <DropdownMenu.Portal>
+    <DropdownMenu.Content
+      align="start"
+      sideOffset={4}
+      class="z-50 w-56 rounded-md border border-border bg-popover text-popover-foreground shadow-md py-1 outline-none"
     >
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-        onclick={() => runAction(actions.rename)}
+      <DropdownMenu.Item
+        onSelect={actions.rename}
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none"
       >
         <Pencil class="h-3.5 w-3.5" /> Rename current
-      </button>
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-        onclick={() => runAction(actions.duplicate)}
+      </DropdownMenu.Item>
+      <DropdownMenu.Item
+        onSelect={actions.duplicate}
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none"
       >
         <Copy class="h-3.5 w-3.5" /> Duplicate current
-      </button>
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-        onclick={() => runAction(actions.clear)}
+      </DropdownMenu.Item>
+      <DropdownMenu.Item
+        onSelect={actions.clear}
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none"
       >
         <Eraser class="h-3.5 w-3.5" /> Clear current
-      </button>
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-        onclick={() => runAction(actions.add)}
+      </DropdownMenu.Item>
+      <DropdownMenu.Item
+        onSelect={actions.add}
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none"
       >
         <Plus class="h-3.5 w-3.5" /> Add new group
-      </button>
+      </DropdownMenu.Item>
       {#if groups.length > 1}
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10"
-          onclick={() => runAction(actions.delete)}
+        <DropdownMenu.Item
+          onSelect={actions.delete}
+          class="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-destructive data-[highlighted]:bg-destructive/10 cursor-default outline-none"
         >
           <Trash2 class="h-3.5 w-3.5" /> Delete current
-        </button>
+        </DropdownMenu.Item>
       {/if}
 
-      <div class="my-1 h-px bg-border"></div>
+      <DropdownMenu.Separator class="my-1 h-px bg-border" />
 
       <div class="max-h-60 overflow-y-auto">
         {#each groups as group (group.name)}
-          <button
-            type="button"
-            class="flex w-full items-center px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground {group.name ===
+          <DropdownMenu.Item
+            onSelect={() => actions.select(group.name)}
+            class="flex w-full items-center px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none {group.name ===
             selectedName
               ? 'bg-accent/60 text-accent-foreground'
               : ''}"
-            onclick={() => pickGroup(group.name)}
           >
             <span class="truncate">{group.name}</span>
-          </button>
+          </DropdownMenu.Item>
         {/each}
       </div>
-    </div>
-  {/if}
-</div>
+    </DropdownMenu.Content>
+  </DropdownMenu.Portal>
+</DropdownMenu.Root>
