@@ -71,6 +71,7 @@
     updateNote,
     deleteNote,
   } from './lib/notes';
+  import ToolboxPanel from './components/ToolboxPanel.svelte';
 
   let symbol = $state('AAPL');
   let loadedSymbol = $state('');
@@ -159,6 +160,7 @@
       notes = updateNote(notes, noteDialogState.note.id, { title, body });
     }
   }
+  let toolboxOpen = $state(false);
 
   $effect(() => {
     persistGroups(groups);
@@ -595,6 +597,7 @@
     {sidebarVisible}
     ontogglesidebar={() => (sidebarVisible = !sidebarVisible)}
   />
+  <ToolboxPanel bind:open={toolboxOpen} />
   <TextPromptDialog
     open={groupDialogMode !== null}
     onopenchange={v => {
