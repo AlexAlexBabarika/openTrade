@@ -2,15 +2,19 @@
   import { Popover } from 'bits-ui';
   import Crosshair from '@lucide/svelte/icons/crosshair';
   import Check from '@lucide/svelte/icons/check';
+  import Ruler from '@lucide/svelte/icons/ruler';
   import {
     CROSSHAIR_MODES,
     type CrosshairModeName,
   } from '../lib/crosshair';
+  import type { ChartTool } from '../lib/ruler';
 
   let {
     crosshairMode = $bindable<CrosshairModeName>('magnet'),
+    activeTool = $bindable<ChartTool>('cursor'),
   }: {
     crosshairMode: CrosshairModeName;
+    activeTool: ChartTool;
   } = $props();
 
   let open = $state(false);
@@ -18,6 +22,10 @@
   function select(mode: CrosshairModeName) {
     crosshairMode = mode;
     open = false;
+  }
+
+  function toggleRuler() {
+    activeTool = activeTool === 'ruler' ? 'cursor' : 'ruler';
   }
 </script>
 
@@ -55,4 +63,17 @@
       </Popover.Content>
     </Popover.Portal>
   </Popover.Root>
+
+  <button
+    type="button"
+    class="flex items-center justify-center w-8 h-8 rounded hover:bg-accent transition-colors outline-none"
+    class:bg-accent={activeTool === 'ruler'}
+    class:text-foreground={activeTool === 'ruler'}
+    class:text-muted-foreground={activeTool !== 'ruler'}
+    aria-label="Ruler"
+    aria-pressed={activeTool === 'ruler'}
+    onclick={toggleRuler}
+  >
+    <Ruler class="h-4 w-4" />
+  </button>
 </div>

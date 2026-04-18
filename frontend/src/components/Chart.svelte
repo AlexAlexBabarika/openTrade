@@ -32,6 +32,14 @@
     toCrosshairMode,
     type CrosshairModeName,
   } from '../lib/crosshair';
+  import {
+    computeStats,
+    formatPct,
+    formatPriceDelta,
+    formatVolume,
+    type ChartTool,
+    type Measurement,
+  } from '../lib/ruler';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
 
@@ -49,6 +57,7 @@
     bbandsLineWidth = 1,
     colours = undefined as ChartColours | undefined,
     crosshairMode = 'magnet' as CrosshairModeName,
+    activeTool = 'cursor' as ChartTool,
     api = $bindable<ChartApi | null>(null),
   }: {
     candles: OHLCVCandle[];
@@ -64,6 +73,7 @@
     bbandsLineWidth?: number;
     colours?: ChartColours;
     crosshairMode?: CrosshairModeName;
+    activeTool?: ChartTool;
     api?: ChartApi | null;
   } = $props();
 
@@ -79,6 +89,10 @@
   let bbandsMiddleSeries: ISeriesApi<'Line'> | null = null;
   let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let resizeObserver: ResizeObserver | null = null;
+
+  let measurement = $state<Measurement | null>(null);
+  // Bumped whenever pan/zoom/resize invalidates our cached pixel coords.
+  let coordVersion = $state(0);
 
   let legendName = $state('');
   let legendPrice = $state('');
@@ -257,8 +271,74 @@
         width: containerEl.clientWidth,
         height: containerEl.clientHeight,
       });
+      coordVersion += 1;
     }
   }
+
+  function priceSeries(): ISeriesApi<'Candlestick' | 'Line'> | null {
+    return candleSeries ?? lineSeries;
+  }
+
+  function pointerToChart(
+    clientX: number,
+    clientY: number,
+  ): { time: number; price: number } | null {
+    if (!chart || !containerEl) return null;
+    const series = priceSeries();
+    if (!series) return null;
+    const rect = containerEl.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const time = chart.timeScale().coordinateToTime(x);
+    const price = series.coordinateToPrice(y);
+    if (time == null || price == null) return null;
+    return { time: time as number, price };
+  }
+
+  function onRulerPointerDown(e: PointerEvent) {
+    if (activeTool !== 'ruler') return;
+    const pt = pointerToChart(e.clientX, e.clientY);
+    if (!pt) return;
+    measurement = {
+      startTime: pt.time,
+      endTime: pt.time,
+      startPrice: pt.price,
+      endPrice: pt.price,
+      dragging: true,
+    };
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+  }
+
+  function onRulerPointerMove(e: PointerEvent) {
+    if (!measurement?.dragging) return;
+    const pt = pointerToChart(e.clientX, e.clientY);
+    if (!pt) return;
+    measurement = {
+      ...measurement,
+      endTime: pt.time,
+      endPrice: pt.price,
+    };
+  }
+
+  function onRulerPointerUp(e: PointerEvent) {
+    if (!measurement?.dragging) return;
+    (e.target as Element).releasePointerCapture?.(e.pointerId);
+    measurement = { ...measurement, dragging: false };
+  }
+
+  // Clear and suspend chart interactions while the ruler tool is active.
+  $effect(() => {
+    const tool = activeTool;
+    if (!chart) return;
+    untrack(() => {
+      chart?.applyOptions({
+        handleScroll: tool !== 'ruler',
+        handleScale: tool !== 'ruler',
+      });
+      if (tool !== 'ruler') measurement = null;
+    });
+  });
 
   onMount(() => {
     initChart();
@@ -269,6 +349,10 @@
       resizeObserver = new ResizeObserver(handleResize);
       resizeObserver.observe(containerEl);
     }
+
+    chart?.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      coordVersion += 1;
+    });
   });
 
   onDestroy(() => {
@@ -424,6 +508,38 @@
     });
   });
 
+  let rulerBox = $derived.by(() => {
+    if (!measurement || !chart) return null;
+    coordVersion;
+    const series = priceSeries();
+    if (!series) return null;
+    const x1 = chart.timeScale().timeToCoordinate(measurement.startTime as Time);
+    const x2 = chart.timeScale().timeToCoordinate(measurement.endTime as Time);
+    const y1 = series.priceToCoordinate(measurement.startPrice);
+    const y2 = series.priceToCoordinate(measurement.endPrice);
+    if (x1 == null || x2 == null || y1 == null || y2 == null) return null;
+    const left = Math.min(x1, x2);
+    const top = Math.min(y1, y2);
+    const width = Math.abs(x2 - x1);
+    const height = Math.abs(y2 - y1);
+    return {
+      left,
+      top,
+      width,
+      height,
+      x1,
+      y1,
+      x2,
+      y2,
+      endX: x2,
+      endY: y2,
+    };
+  });
+
+  let rulerStats = $derived(
+    measurement ? computeStats(measurement, candles) : null,
+  );
+
   $effect(() => {
     if (!chart || !colours || !volumeSeries) return;
     colours.volumeUp;
@@ -438,7 +554,13 @@
 
 <div
   class="flex-1 min-h-[400px] relative w-full z-0 overflow-hidden"
+  class:cursor-crosshair={activeTool === 'ruler'}
   bind:this={containerEl}
+  role="presentation"
+  onpointerdown={onRulerPointerDown}
+  onpointermove={onRulerPointerMove}
+  onpointerup={onRulerPointerUp}
+  onpointercancel={onRulerPointerUp}
 >
   {#if showLegend}
     <div
@@ -449,6 +571,82 @@
       <div class="text-[22px] my-1 font-semibold font-mono">{legendPrice}</div>
       <div style:opacity="0.7" class="font-mono">{legendDate}</div>
       <div style:opacity="0.7" class="font-mono">Volume: {legendVolume}</div>
+    </div>
+  {/if}
+
+  {#if rulerBox && rulerStats}
+    {@const up = rulerStats.isUp}
+    {@const fill = up ? 'rgba(38, 166, 154, 0.18)' : 'rgba(239, 83, 80, 0.18)'}
+    {@const stroke = up ? 'rgb(38, 166, 154)' : 'rgb(239, 83, 80)'}
+    <svg
+      class="absolute inset-0 w-full h-full pointer-events-none z-10"
+      style="overflow: visible;"
+    >
+      <rect
+        x={rulerBox.left}
+        y={rulerBox.top}
+        width={rulerBox.width}
+        height={rulerBox.height}
+        fill={fill}
+        stroke={stroke}
+        stroke-width="1"
+      />
+      <line
+        x1={rulerBox.x1}
+        y1={rulerBox.y1}
+        x2={rulerBox.x2}
+        y2={rulerBox.y1}
+        stroke={stroke}
+        stroke-width="1.5"
+        marker-end="url(#ruler-arrow-{up ? 'up' : 'down'})"
+      />
+      <line
+        x1={rulerBox.x1}
+        y1={rulerBox.y1}
+        x2={rulerBox.x1}
+        y2={rulerBox.y2}
+        stroke={stroke}
+        stroke-width="1.5"
+        marker-end="url(#ruler-arrow-{up ? 'up' : 'down'})"
+      />
+      <defs>
+        <marker
+          id="ruler-arrow-{up ? 'up' : 'down'}"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="8"
+          markerHeight="8"
+          orient="auto"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={stroke} />
+        </marker>
+      </defs>
+    </svg>
+    <div
+      class="absolute z-10 pointer-events-none rounded-md px-3 py-2 text-xs font-mono text-white shadow-lg whitespace-nowrap"
+      style:left="{rulerBox.endX}px"
+      style:top="{rulerBox.y1}px"
+      style:transform={up
+        ? 'translate(-50%, 8px)'
+        : 'translate(-50%, calc(-100% - 8px))'}
+      style:background-color={up
+        ? 'rgba(38, 166, 154, 0.95)'
+        : 'rgba(239, 83, 80, 0.95)'}
+    >
+      <div class="text-center leading-tight">
+        {formatPriceDelta(rulerStats.priceDelta)} ({formatPct(
+          rulerStats.pctDelta,
+        )})
+      </div>
+      <div class="text-center leading-tight opacity-90">
+        {rulerStats.barCount} bars{rulerStats.spanLabel
+          ? `, ${rulerStats.spanLabel}`
+          : ''}
+      </div>
+      <div class="text-center leading-tight opacity-90">
+        Vol {formatVolume(rulerStats.volumeSum)}
+      </div>
     </div>
   {/if}
 </div>
