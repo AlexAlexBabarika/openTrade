@@ -78,6 +78,7 @@
     deleteNote,
   } from './lib/notes';
   import ToolboxPanel from './components/ToolboxPanel.svelte';
+  import LeftToolbar from './components/LeftToolbar.svelte';
 
   let symbol = $state('AAPL');
   let loadedSymbol = $state('');
@@ -580,6 +581,7 @@
   />
   <ErrorMessage bind:message={errorMessage} />
   <div class="flex flex-1 min-h-0">
+    <LeftToolbar />
     <div class="flex-1 min-w-0 min-h-0 flex flex-col">
       <Chart
         {candles}
