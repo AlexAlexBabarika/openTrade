@@ -118,7 +118,9 @@ def _resolve_exchanges(codes: set[str]) -> dict[str, int]:
 
     missing = sorted(c for c in codes if c not in mapping)
     if missing:
-        logger.info("Inserting %d new exchange(s): %s", len(missing), ", ".join(missing))
+        logger.info(
+            "Inserting %d new exchange(s): %s", len(missing), ", ".join(missing)
+        )
         inserted = (
             db.from_("exchanges")
             .upsert([{"code": c} for c in missing], on_conflict="code")
@@ -157,9 +159,7 @@ def _seed_provider(provider: str) -> None:
             seen[key] = r
     deduped = list(seen.values())
 
-    codes = {
-        r.exchange.strip() for r in deduped if r.exchange and r.exchange.strip()
-    }
+    codes = {r.exchange.strip() for r in deduped if r.exchange and r.exchange.strip()}
     exchange_ids = _resolve_exchanges(codes)
 
     total = 0

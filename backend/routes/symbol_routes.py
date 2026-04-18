@@ -26,9 +26,7 @@ router = APIRouter(prefix="/symbols", tags=["symbols"])
 _MAX_LIMIT = 50
 # ``exchange:exchanges(code)`` embeds the FK-joined row as {"code": "NASDAQ"}
 # under the alias "exchange", so the API response shape matches pre-lookup.
-_COLUMNS = (
-    "symbol,name,asset_type,twelvedata,yfinance,binance,exchange:exchanges(code)"
-)
+_COLUMNS = "symbol,name,asset_type,twelvedata,yfinance,binance,exchange:exchanges(code)"
 
 
 def _to_result(row: dict) -> SymbolSearchResult:
