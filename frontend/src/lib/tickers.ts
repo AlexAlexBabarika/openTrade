@@ -210,13 +210,13 @@ export function setTickerProvidersEverywhere(
 export function findTickerProviders(
   groups: TickerGroup[],
   symbol: string,
-): SymbolProviders | null | undefined {
+): SymbolProviders | null {
   for (const g of groups) {
     for (const t of g.tickers) {
-      if (t.symbol === symbol) return t.providers;
+      if (t.symbol === symbol) return t.providers ?? null;
     }
   }
-  return undefined;
+  return null;
 }
 
 export function removeTickerFromGroup(

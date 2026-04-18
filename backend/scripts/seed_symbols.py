@@ -161,11 +161,16 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("Unknown provider(s): %s", ", ".join(unknown))
         return 2
 
+    failed: list[str] = []
     for provider in providers:
         try:
             _seed_provider(provider)
         except Exception as e:
             logger.exception("Failed seeding %s: %s", provider, e)
+            failed.append(provider)
+    if failed:
+        logger.error("Seed failed for: %s", ", ".join(failed))
+        return 1
     return 0
 
 

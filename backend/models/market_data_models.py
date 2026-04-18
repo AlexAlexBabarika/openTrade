@@ -43,11 +43,7 @@ class SymbolProviders(BaseModel):
     binance: bool
 
 
-class SymbolSearchResult(BaseModel):
-    symbol: str
-    name: str
-    asset_type: AssetType | None = None
-    exchange: str | None = None
+class SymbolSearchResult(SymbolRecord):
     providers: SymbolProviders
 
 

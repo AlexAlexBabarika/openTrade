@@ -45,7 +45,10 @@ class TwelveDataProvider(MarketDataProvider):
     def _api_key(self) -> str:
         if self._direct_api_key:
             return self._direct_api_key
-        assert self._user_id is not None
+        if self._user_id is None:
+            # Shouldn't happen — the ctor enforces at least one — but guard for
+            # `python -O` where asserts are stripped.
+            raise RuntimeError("TwelveDataProvider has no credentials")
         return fetch_api_key(self._user_id, "twelvedata").strip()
 
     def get_ohlcv(

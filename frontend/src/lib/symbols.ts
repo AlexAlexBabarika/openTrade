@@ -6,6 +6,12 @@ export interface SymbolProviders {
   binance: boolean;
 }
 
+export const DEFAULT_PROVIDERS: SymbolProviders = {
+  twelvedata: false,
+  yfinance: false,
+  binance: false,
+};
+
 export interface SymbolSearchResult {
   symbol: string;
   name: string;

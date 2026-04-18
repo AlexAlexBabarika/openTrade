@@ -77,7 +77,6 @@ def _search_blocking(q: str, limit: int) -> list[SymbolSearchResult]:
         db.from_("symbols")
         .select(_COLUMNS)
         .ilike("name", f"%{safe}%")
-        .order("symbol")
         .limit(remaining + len(seen))
         .execute()
     )

@@ -60,7 +60,7 @@
     findTickerProviders,
   } from './lib/tickers';
   import type { SymbolProviders } from './lib/symbols';
-  import { markYFinanceSupported } from './lib/symbols';
+  import { markYFinanceSupported, DEFAULT_PROVIDERS } from './lib/symbols';
   import { fetchLastClose, type TickerQuote } from './lib/tickerQuotes';
   import { untrack } from 'svelte';
   import TextPromptDialog from './components/TextPromptDialog.svelte';
@@ -354,20 +354,28 @@
   }
 
   // A successful yfinance fetch is the cheapest proof that yfinance supports
-  // this symbol. Only fire when the cached providers.yfinance isn't already
-  // true — avoids hammering the endpoint on every chart reload.
+  // this symbol. Once marked, we remember per-session so chart reloads and
+  // untracked symbols don't keep re-POSTing.
+  const markedThisSession = new Set<string>();
+
   function maybeMarkYFinance(
     sym: string,
     src: MarketDataProviderValue,
     candleCount: number,
   ): void {
     if (src !== 'yfinance' || candleCount === 0) return;
+    if (markedThisSession.has(sym)) return;
     const cached = findTickerProviders(groups, sym);
-    if (cached && cached.yfinance) return;
+    if (cached?.yfinance) {
+      markedThisSession.add(sym);
+      return;
+    }
+    markedThisSession.add(sym);
     markYFinanceSupported(sym);
-    const nextProviders: SymbolProviders = cached
-      ? { ...cached, yfinance: true }
-      : { twelvedata: false, yfinance: true, binance: false };
+    const nextProviders: SymbolProviders = {
+      ...(cached ?? DEFAULT_PROVIDERS),
+      yfinance: true,
+    };
     groups = setTickerProvidersEverywhere(groups, sym, nextProviders);
   }
 
