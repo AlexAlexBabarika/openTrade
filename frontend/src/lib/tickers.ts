@@ -65,7 +65,6 @@ export interface GroupActions {
 const GROUPS_STORAGE_KEY = 'opentrade:groups';
 const SELECTED_GROUP_STORAGE_KEY = 'opentrade:selectedGroup';
 const SELECTED_PRIORITY_STORAGE_KEY = 'opentrade:selectedPriority';
-const PRIORITY_NONE_MIGRATION_KEY = 'opentrade:priorityNoneMigration.v1';
 
 function isValidGroup(value: unknown): value is TickerGroup {
   if (!value || typeof value !== 'object') return false;

@@ -280,7 +280,4 @@
   .pull-handle:hover {
     color: var(--foreground);
   }
-  .label {
-    color: color-mix(in oklab, var(--foreground) 38%, transparent);
-  }
 </style>
