@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from backend.market.models import OHLCVCandle
+from backend.models.market_data_models import SymbolRecord
 
 
 class MarketDataProvider(ABC):
@@ -22,3 +23,7 @@ class MarketDataProvider(ABC):
     ) -> list[OHLCVCandle]:
         """Get OHLCV candles for a given symbol and period."""
         ...
+
+    def list_symbols(self) -> list[SymbolRecord]:
+        """Enumerate all symbols this provider supports. Optional."""
+        raise NotImplementedError
