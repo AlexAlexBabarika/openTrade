@@ -24,23 +24,23 @@ A fully functional trading charter web-app created for financial instrument anal
   FastAPI server (asynchronous)
 
   ├── REST API for data loading
-  
+
   ├── WebSocket for direct streaming
-  
+
   ├── Authentication via Supabase
-  
+
   ├── API key encryption
-  
+
   ├── In-memory data caching
-  
+
   └── Data providers:
-  
+
       ├── yfinance (Python library)
-  
+
       ├── python-binance (Binance API client)
-  
+
       ├── requests (HTTP for Twelve Data)
-  
+
       └── pandas (CSV parsing)
 
 ### **Frontend** (Svelte 5 / TypeScript)
@@ -87,7 +87,7 @@ A fully functional trading charter web-app created for financial instrument anal
 
 1. *Supabase account*
 
-   - database, auth and key encryption.  
+   - database, auth and key encryption.
 
 2. *API keys*
 
