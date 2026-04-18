@@ -3,8 +3,10 @@
   import Flag from '@lucide/svelte/icons/flag';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Check from '@lucide/svelte/icons/check';
+  import NotebookPen from '@lucide/svelte/icons/notebook-pen';
   import { ContextMenu } from 'bits-ui';
   import GroupSelector from './GroupSelector.svelte';
+  import NotesPanel from './NotesPanel.svelte';
   import {
     TickerPriority,
     PRIORITY_COLOURS,
@@ -17,6 +19,7 @@
     FlaggedPriority,
   } from '../lib/tickers';
   import type { TickerQuote } from '../lib/tickerQuotes';
+  import type { TickerNote } from '../lib/notes';
 
   let {
     symbol = '',
@@ -33,6 +36,10 @@
     onselectticker,
     ondeleteticker,
     onsetpriority,
+    notes = [],
+    onaddnote,
+    oneditnote,
+    ondeletenote,
   }: {
     symbol?: string;
     closePrice?: number | null;
@@ -48,6 +55,10 @@
     onselectticker: (symbol: string) => void;
     ondeleteticker: (symbol: string) => void;
     onsetpriority: (symbol: string, priority: TickerPriority) => void;
+    notes?: TickerNote[];
+    onaddnote: (symbol: string) => void;
+    oneditnote: (note: TickerNote) => void;
+    ondeletenote: (id: string) => void;
   } = $props();
 
   function formatPrice(value: number | null | undefined): string {
@@ -136,6 +147,12 @@
                 class="z-50 w-44 rounded-md border border-border bg-popover text-popover-foreground shadow-md py-1 outline-none"
               >
                 <ContextMenu.Item
+                  onSelect={() => onaddnote(ticker.symbol)}
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none"
+                >
+                  <NotebookPen class="h-3.5 w-3.5" /> Add note
+                </ContextMenu.Item>
+                <ContextMenu.Item
                   onSelect={() => ondeleteticker(ticker.symbol)}
                   class="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-destructive data-[highlighted]:bg-destructive/10 cursor-default outline-none"
                 >
@@ -188,5 +205,8 @@
         {formatPrice(closePrice)}
       </span>
     </div>
+    {#if symbol}
+      <NotesPanel {notes} onedit={oneditnote} ondelete={ondeletenote} />
+    {/if}
   </div>
 </aside>

@@ -61,6 +61,16 @@
   import { untrack } from 'svelte';
   import TextPromptDialog from './components/TextPromptDialog.svelte';
   import PriorityConflictDialog from './components/PriorityConflictDialog.svelte';
+  import NoteDialog from './components/NoteDialog.svelte';
+  import type { TickerNote, NotesBySymbol } from './lib/notes';
+  import {
+    loadNotesFromStorage,
+    persistNotes,
+    notesForSymbol,
+    addNote,
+    updateNote,
+    deleteNote,
+  } from './lib/notes';
 
   let symbol = $state('AAPL');
   let loadedSymbol = $state('');
@@ -115,6 +125,40 @@
     desired: TickerPriority;
     conflict: PriorityConflict;
   } | null>(null);
+
+  let notes = $state<NotesBySymbol>(loadNotesFromStorage());
+  let noteDialogState = $state<{
+    mode: 'create' | 'edit';
+    symbol: string;
+    note?: TickerNote;
+  } | null>(null);
+
+  $effect(() => {
+    persistNotes(notes);
+  });
+
+  let currentNotes = $derived(notesForSymbol(notes, loadedSymbol));
+
+  function handleAddNote(sym: string) {
+    noteDialogState = { mode: 'create', symbol: sym };
+  }
+
+  function handleEditNote(note: TickerNote) {
+    noteDialogState = { mode: 'edit', symbol: note.symbol, note };
+  }
+
+  function handleDeleteNote(id: string) {
+    notes = deleteNote(notes, id);
+  }
+
+  function handleNoteSubmit(title: string | undefined, body: string) {
+    if (!noteDialogState) return;
+    if (noteDialogState.mode === 'create') {
+      notes = addNote(notes, noteDialogState.symbol, body, title);
+    } else if (noteDialogState.note) {
+      notes = updateNote(notes, noteDialogState.note.id, { title, body });
+    }
+  }
 
   $effect(() => {
     persistGroups(groups);
@@ -533,6 +577,10 @@
         }}
         ondeleteticker={handleDeleteTicker}
         onsetpriority={handleSetPriority}
+        notes={currentNotes}
+        onaddnote={handleAddNote}
+        oneditnote={handleEditNote}
+        ondeletenote={handleDeleteNote}
       />
     {/if}
   </div>
@@ -578,5 +626,16 @@
     duplicateMessage="This symbol is already in the group."
     normalize={s => s.toUpperCase()}
     onsubmit={handleAddSymbolSubmit}
+  />
+  <NoteDialog
+    open={noteDialogState !== null}
+    onopenchange={v => {
+      if (!v) noteDialogState = null;
+    }}
+    mode={noteDialogState?.mode ?? 'create'}
+    symbol={noteDialogState?.symbol ?? ''}
+    initialTitle={noteDialogState?.note?.title ?? ''}
+    initialBody={noteDialogState?.note?.body ?? ''}
+    onsubmit={handleNoteSubmit}
   />
 </div>
