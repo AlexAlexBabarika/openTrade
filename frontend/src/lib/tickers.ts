@@ -1,4 +1,5 @@
 import { safeLocalStorageGet, safeLocalStorageSet } from './storage';
+import type { SymbolProviders } from './symbols';
 
 export enum TickerPriority {
   None = 'none',
@@ -14,6 +15,9 @@ export type FlaggedPriority = Exclude<TickerPriority, TickerPriority.None>;
 export interface TrackedTicker {
   symbol: string;
   priority: TickerPriority;
+  /** Cached provider-support flags from the symbol directory. ``null`` means
+   *  unlisted (user added an unknown symbol) — sidebar renders no badges. */
+  providers?: SymbolProviders | null;
 }
 
 export const PRIORITY_COLOURS: Record<FlaggedPriority, string> = {
@@ -176,13 +180,43 @@ export function addTickerToGroup(
   groups: TickerGroup[],
   groupName: string,
   symbol: string,
+  providers: SymbolProviders | null = null,
 ): TickerGroup[] {
-  const ticker: TrackedTicker = { symbol, priority: TickerPriority.None };
+  const ticker: TrackedTicker = {
+    symbol,
+    priority: TickerPriority.None,
+    providers,
+  };
   return updateGroup(groups, groupName, g =>
     g.tickers.some(t => t.symbol === symbol)
       ? g
       : { ...g, tickers: [...g.tickers, ticker] },
   );
+}
+
+export function setTickerProvidersEverywhere(
+  groups: TickerGroup[],
+  symbol: string,
+  providers: SymbolProviders,
+): TickerGroup[] {
+  return groups.map(g => ({
+    ...g,
+    tickers: g.tickers.map(t =>
+      t.symbol === symbol ? { ...t, providers } : t,
+    ),
+  }));
+}
+
+export function findTickerProviders(
+  groups: TickerGroup[],
+  symbol: string,
+): SymbolProviders | null | undefined {
+  for (const g of groups) {
+    for (const t of g.tickers) {
+      if (t.symbol === symbol) return t.providers;
+    }
+  }
+  return undefined;
 }
 
 export function removeTickerFromGroup(
