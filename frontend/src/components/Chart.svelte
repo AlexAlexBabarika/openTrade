@@ -28,6 +28,10 @@
   } from '../lib/types';
   import type { ChartColours, ChartType } from '../lib/chartColours';
   import { linePoint } from '../lib/chart';
+  import {
+    toCrosshairMode,
+    type CrosshairModeName,
+  } from '../lib/crosshair';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
 
@@ -44,6 +48,7 @@
     emaLineWidth = 2,
     bbandsLineWidth = 1,
     colours = undefined as ChartColours | undefined,
+    crosshairMode = 'magnet' as CrosshairModeName,
     api = $bindable<ChartApi | null>(null),
   }: {
     candles: OHLCVCandle[];
@@ -58,6 +63,7 @@
     emaLineWidth?: number;
     bbandsLineWidth?: number;
     colours?: ChartColours;
+    crosshairMode?: CrosshairModeName;
     api?: ChartApi | null;
   } = $props();
 
@@ -391,6 +397,14 @@
           bbandsLowerSeries = null;
         }
       }
+    });
+  });
+
+  $effect(() => {
+    if (!chart) return;
+    const mode = crosshairMode;
+    untrack(() => {
+      chart?.applyOptions({ crosshair: { mode: toCrosshairMode(mode) } });
     });
   });
 
