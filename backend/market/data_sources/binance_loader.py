@@ -9,6 +9,7 @@ from backend.core.api_key_store import fetch_api_key
 from backend.market.data_sources.marketdataprovider import MarketDataProvider
 from backend.market.models import OHLCVCandle
 from backend.market.time_utils import period_to_startdate
+from backend.models.market_data_models import AssetType, SymbolRecord
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,29 @@ class BinanceProvider(MarketDataProvider):
         if not klines:
             return []
         return [_parse_kline(k, symbol) for k in klines]
+
+    def list_symbols(self) -> list[SymbolRecord]:
+        client = self._make_client()
+        info = client.get_exchange_info()
+        out: list[SymbolRecord] = []
+        for s in info.get("symbols", []):
+            if s.get("status") != "TRADING":
+                continue
+            sym = str(s.get("symbol", "")).strip().upper()
+            if not sym:
+                continue
+            base = s.get("baseAsset") or ""
+            quote = s.get("quoteAsset") or ""
+            name = f"{base}/{quote}" if base and quote else sym
+            out.append(
+                SymbolRecord(
+                    symbol=sym,
+                    name=name,
+                    asset_type=AssetType.crypto,
+                    exchange="BINANCE",
+                )
+            )
+        return out
 
 
 _provider = BinanceProvider()

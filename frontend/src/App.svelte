@@ -56,10 +56,15 @@
     setPriorityEverywhere,
     removeTickerEverywhere,
     findPriorityConflict,
+    setTickerProvidersEverywhere,
+    findTickerProviders,
   } from './lib/tickers';
+  import type { SymbolProviders } from './lib/symbols';
+  import { markYFinanceSupported, DEFAULT_PROVIDERS } from './lib/symbols';
   import { fetchLastClose, type TickerQuote } from './lib/tickerQuotes';
   import { untrack } from 'svelte';
   import TextPromptDialog from './components/TextPromptDialog.svelte';
+  import SymbolSearchDialog from './components/SymbolSearchDialog.svelte';
   import PriorityConflictDialog from './components/PriorityConflictDialog.svelte';
   import NoteDialog from './components/NoteDialog.svelte';
   import type { TickerNote, NotesBySymbol } from './lib/notes';
@@ -211,8 +216,11 @@
     }
   }
 
-  function handleAddSymbolSubmit(sym: string) {
-    groups = addTickerToGroup(groups, selectedGroupName, sym);
+  function handleAddSymbolSubmit(
+    sym: string,
+    providers: SymbolProviders | null,
+  ) {
+    groups = addTickerToGroup(groups, selectedGroupName, sym, providers);
   }
 
   function handleSelectGroup(name: string) {
@@ -337,11 +345,38 @@
       candles = data.candles ?? [];
       loadedSymbol = symbol;
       marketDataVersion += 1;
+      maybeMarkYFinance(symbol, source, data.candles?.length ?? 0);
     } catch (e) {
       errorMessage = e instanceof Error ? e.message : 'Failed to load';
     } finally {
       isLoading = false;
     }
+  }
+
+  // A successful yfinance fetch is the cheapest proof that yfinance supports
+  // this symbol. Once marked, we remember per-session so chart reloads and
+  // untracked symbols don't keep re-POSTing.
+  const markedThisSession = new Set<string>();
+
+  function maybeMarkYFinance(
+    sym: string,
+    src: MarketDataProviderValue,
+    candleCount: number,
+  ): void {
+    if (src !== 'yfinance' || candleCount === 0) return;
+    if (markedThisSession.has(sym)) return;
+    const cached = findTickerProviders(groups, sym);
+    if (cached?.yfinance) {
+      markedThisSession.add(sym);
+      return;
+    }
+    markedThisSession.add(sym);
+    markYFinanceSupported(sym);
+    const nextProviders: SymbolProviders = {
+      ...(cached ?? DEFAULT_PROVIDERS),
+      yfinance: true,
+    };
+    groups = setTickerProvidersEverywhere(groups, sym, nextProviders);
   }
 
   function startWsStream(
@@ -620,14 +655,10 @@
     onkeepexisting={resolveConflictKeepExisting}
     onswitchgroup={resolveConflictSwitchGroup}
   />
-  <TextPromptDialog
+  <SymbolSearchDialog
     open={addSymbolDialogOpen}
     onopenchange={v => (addSymbolDialogOpen = v)}
-    title="Add symbol"
-    placeholder="Symbol (e.g. AAPL)"
-    existingNames={currentTickerSymbols}
-    duplicateMessage="This symbol is already in the group."
-    normalize={s => s.toUpperCase()}
+    existingSymbols={currentTickerSymbols}
     onsubmit={handleAddSymbolSubmit}
   />
   <NoteDialog

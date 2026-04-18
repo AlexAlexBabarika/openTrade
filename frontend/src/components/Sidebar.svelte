@@ -7,6 +7,7 @@
   import { ContextMenu } from 'bits-ui';
   import GroupSelector from './GroupSelector.svelte';
   import NotesPanel from './NotesPanel.svelte';
+  import ProviderBadges from './ProviderBadges.svelte';
   import {
     TickerPriority,
     PRIORITY_COLOURS,
@@ -131,6 +132,9 @@
                     />
                   {/if}
                   <span class="truncate">{ticker.symbol}</span>
+                  {#if ticker.providers}
+                    <ProviderBadges providers={ticker.providers} size="xs" />
+                  {/if}
                 </span>
                 <span
                   class="font-mono tabular-nums text-muted-foreground shrink-0"
