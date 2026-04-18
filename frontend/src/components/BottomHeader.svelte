@@ -8,6 +8,7 @@
     BollingerBandsConfig,
   } from './ChartOptionsMenu.svelte';
   import type { ChartColours, ChartType } from '../lib/chartColours';
+  import type { Theme } from '../lib/theme';
 
   let {
     chartType = $bindable(),
@@ -17,6 +18,8 @@
     emaConfig = $bindable(),
     bbandsConfig = $bindable(),
     colours = $bindable(),
+    theme,
+    onthemechange,
     sidebarVisible,
     ontogglesidebar,
   }: {
@@ -27,6 +30,8 @@
     emaConfig: MovingAverageConfig;
     bbandsConfig: BollingerBandsConfig;
     colours: ChartColours;
+    theme: Theme;
+    onthemechange: (theme: Theme) => void;
     sidebarVisible: boolean;
     ontogglesidebar: () => void;
   } = $props();
@@ -44,6 +49,8 @@
       bind:emaConfig
       bind:bbandsConfig
       bind:colours
+      {theme}
+      {onthemechange}
     />
   </div>
 

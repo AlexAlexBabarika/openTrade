@@ -8,6 +8,9 @@
   import AreaChart from '@lucide/svelte/icons/area-chart';
   import BarChart3 from '@lucide/svelte/icons/bar-chart-3';
   import TrendingUp from '@lucide/svelte/icons/trending-up';
+  import Moon from '@lucide/svelte/icons/moon';
+  import Sun from '@lucide/svelte/icons/sun';
+  import type { Theme } from '../lib/theme';
   import ColourSwatch from './ColourSwatch.svelte';
   import type {
     ChartColours,
@@ -42,6 +45,8 @@
     emaConfig = $bindable({ enabled: false, period: 20, lineWidth: 2 }),
     bbandsConfig = $bindable({ enabled: false, period: 20, stdDev: 2, lineWidth: 1 }),
     colours = $bindable({} as ChartColours),
+    theme,
+    onthemechange,
   }: {
     chartType: ChartType;
     showArea: boolean;
@@ -50,6 +55,8 @@
     emaConfig: MovingAverageConfig;
     bbandsConfig: BollingerBandsConfig;
     colours: ChartColours;
+    theme: Theme;
+    onthemechange: (theme: Theme) => void;
   } = $props();
 
   let open = $state(false);
@@ -155,6 +162,36 @@
     </Dialog.Header>
 
       <div class="flex flex-col gap-4">
+        <fieldset>
+          <legend class="text-sm font-medium text-card-foreground mb-2"
+            >Theme</legend
+          >
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {theme ===
+              'dark'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-muted-foreground hover:text-foreground'}"
+              onclick={() => onthemechange('dark')}
+            >
+              <Moon class="size-4" />
+              Dark
+            </button>
+            <button
+              type="button"
+              class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors {theme ===
+              'light'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-muted-foreground hover:text-foreground'}"
+              onclick={() => onthemechange('light')}
+            >
+              <Sun class="size-4" />
+              White
+            </button>
+          </div>
+        </fieldset>
+
         <!-- Row 1: Chart Type + Overlay -->
         <div class="flex items-end justify-between gap-4">
           <fieldset>

@@ -30,6 +30,7 @@
     loadChartSettingsFromStorage,
     persistChartSettings,
   } from './lib/chartColours';
+  import { loadTheme, persistTheme, applyTheme, type Theme } from './lib/theme';
   import type {
     TickerGroup,
     FlaggedPriority,
@@ -115,6 +116,14 @@
   let colours = $state<ChartColours>(
     loadChartColoursFromStorage() ?? defaultChartColours(),
   );
+  let theme = $state<Theme>(loadTheme());
+
+  function setTheme(next: Theme) {
+    if (next === theme) return;
+    applyTheme(next);
+    theme = next;
+    persistTheme(next);
+  }
   let hasCandles = $derived(candles.length > 0);
   let marketDataVersion = $state(0);
   let isLoading = $state(false);
@@ -629,10 +638,12 @@
     bind:emaConfig
     bind:bbandsConfig
     bind:colours
+    {theme}
+    onthemechange={setTheme}
     {sidebarVisible}
     ontogglesidebar={() => (sidebarVisible = !sidebarVisible)}
   />
-  <ToolboxPanel bind:open={toolboxOpen} />
+  <ToolboxPanel bind:open={toolboxOpen} {theme} />
   <TextPromptDialog
     open={groupDialogMode !== null}
     onopenchange={v => {

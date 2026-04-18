@@ -20,7 +20,6 @@
     addLineSeries,
     syncChartTheme,
     resolveColour,
-    invalidateCssVarCache,
   } from '../lib/chart';
   import type {
     OHLCVCandle,
@@ -73,7 +72,6 @@
   let bbandsUpperSeries: ISeriesApi<'Line'> | null = null;
   let bbandsMiddleSeries: ISeriesApi<'Line'> | null = null;
   let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
-  let themeObserver: MutationObserver | null = null;
   let resizeObserver: ResizeObserver | null = null;
 
   let legendName = $state('');
@@ -265,29 +263,6 @@
       resizeObserver = new ResizeObserver(handleResize);
       resizeObserver.observe(containerEl);
     }
-
-    themeObserver = new MutationObserver(() => {
-      if (chart) {
-        invalidateCssVarCache();
-        syncChartTheme({
-          chart,
-          candleSeries,
-          areaSeries,
-          lineSeries,
-          smaSeries,
-          emaSeries,
-          bbandsUpperSeries,
-          bbandsMiddleSeries,
-          bbandsLowerSeries,
-          colours,
-        });
-      }
-    });
-
-    themeObserver.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    });
   });
 
   onDestroy(() => {
@@ -296,9 +271,6 @@
     if (resizeObserver) {
       resizeObserver.disconnect();
       resizeObserver = null;
-    }
-    if (themeObserver) {
-      themeObserver.disconnect();
     }
     if (chart) {
       chart.remove();
