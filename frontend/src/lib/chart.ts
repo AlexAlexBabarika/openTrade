@@ -1,4 +1,12 @@
-import { createChart, CrosshairMode, ColorType } from 'lightweight-charts';
+import {
+  createChart,
+  CrosshairMode,
+  ColorType,
+  CandlestickSeries,
+  HistogramSeries,
+  AreaSeries,
+  LineSeries,
+} from 'lightweight-charts';
 import type { IChartApi, ISeriesApi, LineData } from 'lightweight-charts';
 import { isoToChartTime } from './chartAdapters';
 import { formatRgb, parse } from 'culori';
@@ -179,7 +187,7 @@ export function createChartContainer(
 }
 
 export function addVolumeSeries(chart: IChartApi): ISeriesApi<'Histogram'> {
-  const series = chart.addHistogramSeries({
+  const series = chart.addSeries(HistogramSeries, {
     priceFormat: {
       type: 'volume',
     },
@@ -200,7 +208,7 @@ export function addCandlestickSeries(
 ): ISeriesApi<'Candlestick'> {
   const upColor = resolveColour(colours, 'candleUpBody');
   const downColor = resolveColour(colours, 'candleDownBody');
-  return chart.addCandlestickSeries({
+  return chart.addSeries(CandlestickSeries, {
     upColor,
     downColor,
     borderUpColor: colours?.candleUpBorder ?? upColor,
@@ -214,7 +222,7 @@ export function addAreaSeries(
   chart: IChartApi,
   colours?: ChartColours,
 ): ISeriesApi<'Area'> {
-  return chart.addAreaSeries({
+  return chart.addSeries(AreaSeries, {
     lastValueVisible: false,
     crosshairMarkerVisible: false,
     lineColor: 'transparent',
@@ -314,7 +322,7 @@ export function addLineSeries(
   chart: IChartApi,
   color: string,
 ): ISeriesApi<'Line'> {
-  return chart.addLineSeries({ color });
+  return chart.addSeries(LineSeries, { color });
 }
 
 export function linePoint(time: string, value: number): LineData {

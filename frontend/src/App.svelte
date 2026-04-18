@@ -79,6 +79,7 @@
   } from './lib/notes';
   import ToolboxPanel from './components/ToolboxPanel.svelte';
   import LeftToolbar from './components/LeftToolbar.svelte';
+  import type { CrosshairModeName } from './lib/crosshair';
 
   let symbol = $state('AAPL');
   let loadedSymbol = $state('');
@@ -129,6 +130,7 @@
   let marketDataVersion = $state(0);
   let isLoading = $state(false);
   let sidebarVisible = $state(true);
+  let crosshairMode = $state<CrosshairModeName>('magnet');
 
   const initialGroups = loadGroupsFromStorage();
   let groups = $state<TickerGroup[]>(initialGroups);
@@ -581,7 +583,7 @@
   />
   <ErrorMessage bind:message={errorMessage} />
   <div class="flex flex-1 min-h-0">
-    <LeftToolbar />
+    <LeftToolbar bind:crosshairMode />
     <div class="flex-1 min-w-0 min-h-0 flex flex-col">
       <Chart
         {candles}
@@ -596,6 +598,7 @@
         emaLineWidth={emaConfig.lineWidth}
         bbandsLineWidth={bbandsConfig.lineWidth}
         {colours}
+        {crosshairMode}
         bind:api={chartApi}
       />
     </div>
