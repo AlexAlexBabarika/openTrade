@@ -80,6 +80,7 @@
   import ToolboxPanel from './components/ToolboxPanel.svelte';
   import LeftToolbar from './components/LeftToolbar.svelte';
   import type { CrosshairModeName } from './lib/crosshair';
+  import type { ChartTool } from './lib/ruler';
 
   let symbol = $state('AAPL');
   let loadedSymbol = $state('');
@@ -131,6 +132,7 @@
   let isLoading = $state(false);
   let sidebarVisible = $state(true);
   let crosshairMode = $state<CrosshairModeName>('magnet');
+  let activeTool = $state<ChartTool>('cursor');
 
   const initialGroups = loadGroupsFromStorage();
   let groups = $state<TickerGroup[]>(initialGroups);
@@ -583,7 +585,7 @@
   />
   <ErrorMessage bind:message={errorMessage} />
   <div class="flex flex-1 min-h-0">
-    <LeftToolbar bind:crosshairMode />
+    <LeftToolbar bind:crosshairMode bind:activeTool />
     <div class="flex-1 min-w-0 min-h-0 flex flex-col">
       <Chart
         {candles}
@@ -599,6 +601,7 @@
         bbandsLineWidth={bbandsConfig.lineWidth}
         {colours}
         {crosshairMode}
+        {activeTool}
         bind:api={chartApi}
       />
     </div>
