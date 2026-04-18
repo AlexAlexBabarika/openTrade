@@ -12,13 +12,16 @@
   import ChartCandlestick from '@lucide/svelte/icons/chart-candlestick';
   import ChevronUp from '@lucide/svelte/icons/chevron-up';
   import ToolboxWidget from './ToolboxWidget.svelte';
+  import type { Theme } from '../lib/theme';
 
   let {
     open = $bindable(false),
     api = $bindable<ToolboxPanelApi | null>(null),
+    theme,
   }: {
     open?: boolean;
     api?: ToolboxPanelApi | null;
+    theme: Theme;
   } = $props();
 
   // 0 = closed, 1 = open. May briefly overshoot for the bounce.
@@ -241,7 +244,7 @@
 
   <div
     bind:this={panelEl}
-    class="absolute left-0 right-0 bottom-0 h-[80vh] bg-black text-white rounded-t-2xl shadow-2xl border-t border-white/10 overflow-hidden"
+    class="absolute left-0 right-0 bottom-0 h-[80vh] bg-popover text-popover-foreground rounded-t-2xl shadow-2xl border-t border-border overflow-hidden"
     style:transform="translateY({translatePct}%)"
     style:pointer-events={interactive ? 'auto' : 'none'}
     role="dialog"
@@ -265,6 +268,7 @@
             colors={card.colors}
             rotation={30 * i}
             autoRotate={3 + i * 2}
+            showBends={theme !== 'light'}
           />
         {/each}
       </div>
