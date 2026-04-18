@@ -24,15 +24,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/symbols", tags=["symbols"])
 
 _MAX_LIMIT = 50
-_COLUMNS = "symbol,name,asset_type,exchange,twelvedata,yfinance,binance"
+# ``exchange:exchanges(code)`` embeds the FK-joined row as {"code": "NASDAQ"}
+# under the alias "exchange", so the API response shape matches pre-lookup.
+_COLUMNS = (
+    "symbol,name,asset_type,twelvedata,yfinance,binance,exchange:exchanges(code)"
+)
 
 
 def _to_result(row: dict) -> SymbolSearchResult:
+    exchange_embed = row.get("exchange")
+    exchange_code = (
+        exchange_embed.get("code") if isinstance(exchange_embed, dict) else None
+    )
     return SymbolSearchResult(
         symbol=row["symbol"],
         name=row["name"],
         asset_type=row.get("asset_type"),
-        exchange=row.get("exchange"),
+        exchange=exchange_code,
         providers=SymbolProviders(
             twelvedata=bool(row.get("twelvedata")),
             yfinance=bool(row.get("yfinance")),

@@ -85,22 +85,60 @@ _LOADERS: dict[str, ProviderLoader] = {
 }
 
 
-def _row(record: SymbolRecord, provider: str) -> dict:
+def _row(record: SymbolRecord, provider: str, exchange_id: int | None) -> dict:
     return {
         "symbol": record.symbol.strip().upper(),
         "name": record.name,
         "asset_type": record.asset_type.value if record.asset_type else None,
-        "exchange": record.exchange,
+        "exchange_id": exchange_id,
         provider: True,
     }
 
 
-def _upsert_batch(provider: str, rows: list[dict]) -> int:
+def _upsert_batch(rows: list[dict]) -> int:
     db = get_service_postgrest()
     # ``on_conflict=symbol`` + default Prefer: resolution=merge-duplicates means
     # unspecified columns (other provider flags) are preserved on conflict.
     resp = db.from_("symbols").upsert(rows, on_conflict="symbol").execute()
     return len(resp.data) if resp.data else len(rows)
+
+
+def _resolve_exchanges(codes: set[str]) -> dict[str, int]:
+    """Return ``{code: id}`` for every code in ``codes``, inserting missing ones.
+
+    Two-step so we only pay the insert round-trip for genuinely new codes —
+    after the first seed run this becomes one read.
+    """
+    if not codes:
+        return {}
+    db = get_service_postgrest()
+
+    existing = db.from_("exchanges").select("id,code").execute()
+    mapping = {row["code"]: row["id"] for row in (existing.data or [])}
+
+    missing = sorted(c for c in codes if c not in mapping)
+    if missing:
+        logger.info("Inserting %d new exchange(s): %s", len(missing), ", ".join(missing))
+        inserted = (
+            db.from_("exchanges")
+            .upsert([{"code": c} for c in missing], on_conflict="code")
+            .execute()
+        )
+        for row in inserted.data or []:
+            mapping[row["code"]] = row["id"]
+        # Upsert may not return rows for unchanged conflicts on older PostgREST;
+        # re-read any still-missing codes to be safe.
+        still_missing = [c for c in missing if c not in mapping]
+        if still_missing:
+            refetch = (
+                db.from_("exchanges")
+                .select("id,code")
+                .in_("code", still_missing)
+                .execute()
+            )
+            for row in refetch.data or []:
+                mapping[row["code"]] = row["id"]
+    return mapping
 
 
 def _seed_provider(provider: str) -> None:
@@ -119,11 +157,23 @@ def _seed_provider(provider: str) -> None:
             seen[key] = r
     deduped = list(seen.values())
 
+    codes = {
+        r.exchange.strip() for r in deduped if r.exchange and r.exchange.strip()
+    }
+    exchange_ids = _resolve_exchanges(codes)
+
     total = 0
     for i in range(0, len(deduped), _BATCH_SIZE):
         chunk = deduped[i : i + _BATCH_SIZE]
-        rows = [_row(r, provider) for r in chunk]
-        written = _upsert_batch(provider, rows)
+        rows = [
+            _row(
+                r,
+                provider,
+                exchange_ids.get(r.exchange.strip()) if r.exchange else None,
+            )
+            for r in chunk
+        ]
+        written = _upsert_batch(rows)
         total += written
         logger.info(
             "%s: upserted %d/%d (batch %d)",
