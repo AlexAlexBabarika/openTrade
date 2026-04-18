@@ -40,6 +40,7 @@ from backend.routes.user_routes import router as user_router
 from backend.routes.api_key_routes import router as api_key_router
 from backend.routes.market_routes import router as market_router
 from backend.routes.indicator_routes import router as indicator_router
+from backend.routes.symbol_routes import router as symbol_router
 from backend.core.rate_limit import allow, client_key, retry_after_seconds
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,7 @@ app.include_router(user_router)
 app.include_router(api_key_router)
 app.include_router(market_router)
 app.include_router(indicator_router)
+app.include_router(symbol_router)
 
 
 @app.get("/health")
