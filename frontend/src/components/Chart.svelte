@@ -500,6 +500,11 @@
       if (!liveIds.has(id)) {
         ctl.abort();
         computeControllers.delete(id);
+        if (computedData.has(id)) {
+          const next = new Map(computedData);
+          next.delete(id);
+          computedData = next;
+        }
       }
     }
 
@@ -583,6 +588,11 @@
       chart.remove();
       chart = null;
     }
+  });
+
+  onDestroy(() => {
+    for (const ctl of computeControllers.values()) ctl.abort();
+    computeControllers.clear();
   });
 
   let prevCandles: OHLCVCandle[] | undefined;
