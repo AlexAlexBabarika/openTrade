@@ -6,6 +6,7 @@ export * from './types';
 export { drawables, createDrawablesStore } from './store.svelte';
 export { loadAll, saveAll, DRAWABLES_STORAGE_KEY } from './persistence';
 export { registerTool, getTool, listTools } from './registry';
+export { DEFAULT_POPUP_ACTIONS, resolvePopupActions } from './popupActions';
 export type { ActiveTool } from './activeTool';
 export { CURSOR } from './activeTool';
 export { buildCoordMap } from './coordMap';
