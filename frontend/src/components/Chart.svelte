@@ -44,7 +44,10 @@
     type PlacementMachine,
     type Drawable,
     type ScreenPoint,
+    resolvePopupActions,
   } from '../lib/drawables';
+  import type { PopupAction } from '../lib/drawables';
+  import DrawablePopup from './DrawablePopup.svelte';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
 
@@ -127,6 +130,37 @@
       anchorPointsMap.set(id, pt);
     }
     anchorTick += 1;
+  }
+
+  let popupAnchor = $derived.by(() => {
+    anchorTick; // re-run when anchors change
+    const sel = drawables.selected;
+    if (!sel) return null;
+    const pt = anchorPointsMap.get(sel.id);
+    return pt ?? null;
+  });
+
+  let popupActions = $derived.by(() => {
+    const sel = drawables.selected;
+    if (!sel) return [] as PopupAction[];
+    const tool = getTool(sel.type);
+    return tool ? resolvePopupActions(tool) : [];
+  });
+
+  function onPopupAction(id: PopupAction['id'], action: PopupAction): void {
+    const sel = drawables.selected;
+    if (!sel) return;
+    if (id === 'delete') {
+      drawables.remove(sel.id);
+      return;
+    }
+    if (id === 'settings') {
+      // Phase 2b: open settings modal. For now, no-op.
+      return;
+    }
+    if (id === 'custom' && action.id === 'custom') {
+      action.handler(sel);
+    }
   }
 
   let legendName = $state('');
@@ -734,6 +768,14 @@
         {/if}
       {/if}
     </svg>
+
+    {#if popupAnchor && popupActions.length > 0}
+      <DrawablePopup
+        anchor={popupAnchor}
+        actions={popupActions}
+        onAction={onPopupAction}
+      />
+    {/if}
   {/if}
 </div>
 
