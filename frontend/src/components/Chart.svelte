@@ -33,13 +33,18 @@
     type CrosshairModeName,
   } from '../lib/crosshair';
   import {
-    computeStats,
-    formatPct,
-    formatPriceDelta,
-    formatVolume,
-    type ChartTool,
-    type Measurement,
-  } from '../lib/ruler';
+    drawables,
+    ensureToolsRegistered,
+    getTool,
+    buildCoordMap,
+    CURSOR,
+    type ActiveTool,
+    type CoordMap,
+    type ChartPoint,
+    type PlacementMachine,
+    type Drawable,
+    type ScreenPoint,
+  } from '../lib/drawables';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
 
@@ -57,7 +62,7 @@
     bbandsLineWidth = 1,
     colours = undefined as ChartColours | undefined,
     crosshairMode = 'magnet' as CrosshairModeName,
-    activeTool = 'cursor' as ChartTool,
+    activeTool = $bindable<ActiveTool>(CURSOR),
     api = $bindable<ChartApi | null>(null),
   }: {
     candles: OHLCVCandle[];
@@ -73,7 +78,7 @@
     bbandsLineWidth?: number;
     colours?: ChartColours;
     crosshairMode?: CrosshairModeName;
-    activeTool?: ChartTool;
+    activeTool: ActiveTool;
     api?: ChartApi | null;
   } = $props();
 
@@ -90,9 +95,39 @@
   let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let resizeObserver: ResizeObserver | null = null;
 
-  let measurement = $state<Measurement | null>(null);
   // Bumped whenever pan/zoom/resize invalidates our cached pixel coords.
   let coordVersion = $state(0);
+
+  ensureToolsRegistered();
+
+  let coordMap = $state<CoordMap | null>(null);
+
+  let placement = $state<{
+    type: string;
+    machine: PlacementMachine<unknown>;
+    preview: Drawable | null;
+  } | null>(null);
+
+  // Computed data per drawable. Synchronous for Phase 1; async in later phases.
+  let computedData = $state<Map<string, unknown>>(new Map());
+
+  // Anchor points are updated by Renderers via onAnchorPoint. We store the
+  // Map outside reactivity to avoid feedback loops — `anchorTick` is the
+  // reactive read used by the popup's position derivation.
+  const anchorPointsMap = new Map<string, ScreenPoint>();
+  let anchorTick = $state(0);
+
+  function setAnchorPoint(id: string, pt: ScreenPoint | null): void {
+    const prev = anchorPointsMap.get(id);
+    if (pt === null) {
+      if (prev === undefined) return;
+      anchorPointsMap.delete(id);
+    } else {
+      if (prev && prev.x === pt.x && prev.y === pt.y) return;
+      anchorPointsMap.set(id, pt);
+    }
+    anchorTick += 1;
+  }
 
   let legendName = $state('');
   let legendPrice = $state('');
@@ -295,48 +330,159 @@
     return { time: time as number, price };
   }
 
-  function onRulerPointerDown(e: PointerEvent) {
-    if (activeTool !== 'ruler') return;
+  function toChartPoint(e: PointerEvent): ChartPoint | null {
     const pt = pointerToChart(e.clientX, e.clientY);
-    if (!pt) return;
-    measurement = {
-      startTime: pt.time,
-      endTime: pt.time,
-      startPrice: pt.price,
-      endPrice: pt.price,
-      dragging: true,
-    };
-    (e.target as Element).setPointerCapture?.(e.pointerId);
+    return pt ? { time: pt.time, price: pt.price } : null;
+  }
+
+  function onChartPointerDown(e: PointerEvent) {
+    // Selection path: cursor mode, click on chart background deselects.
+    if (activeTool === CURSOR) {
+      const target = e.target as Element | null;
+      const hitId = target
+        ?.closest('[data-drawable-id]')
+        ?.getAttribute('data-drawable-id');
+      if (hitId) {
+        drawables.select(hitId);
+      } else {
+        drawables.select(null);
+      }
+      return;
+    }
+
+    // Placement path.
+    const pt = toChartPoint(e);
+    if (!pt || !coordMap) return;
+    if (!placement) {
+      const tool = getTool(activeTool);
+      if (!tool) return;
+      const machine = tool.createPlacement({ coordMap, symbol });
+      const toolType = tool.type;
+      machine.onComplete((geometry: unknown) => {
+        drawables.add({
+          id: crypto.randomUUID(),
+          type: toolType,
+          symbol,
+          geometry,
+          params: tool.defaults.params,
+          style: tool.defaults.style,
+          createdAt: Date.now(),
+        });
+        placement = null;
+        activeTool = CURSOR;
+      });
+      placement = { type: toolType, machine, preview: null };
+    }
+    placement.machine.onPointerDown(pt);
+    containerEl?.setPointerCapture?.(e.pointerId);
     e.preventDefault();
+    refreshPlacementPreview();
   }
 
-  function onRulerPointerMove(e: PointerEvent) {
-    if (!measurement?.dragging) return;
-    const pt = pointerToChart(e.clientX, e.clientY);
+  function onChartPointerMove(e: PointerEvent) {
+    if (!placement) return;
+    const pt = toChartPoint(e);
     if (!pt) return;
-    measurement = {
-      ...measurement,
-      endTime: pt.time,
-      endPrice: pt.price,
+    placement.machine.onPointerMove(pt);
+    refreshPlacementPreview();
+  }
+
+  function onChartPointerUp(e: PointerEvent) {
+    if (!placement) return;
+    const pt = toChartPoint(e);
+    if (pt) placement.machine.onPointerUp(pt);
+    if (containerEl?.hasPointerCapture?.(e.pointerId)) {
+      containerEl.releasePointerCapture(e.pointerId);
+    }
+    refreshPlacementPreview();
+  }
+
+  function refreshPlacementPreview() {
+    if (!placement) return;
+    const prev = placement.machine.preview;
+    const tool = getTool(placement.type);
+    if (!prev || !tool) {
+      placement = { ...placement, preview: null };
+      return;
+    }
+    const previewDrawable: Drawable = {
+      id: '__preview__',
+      type: placement.type,
+      symbol,
+      geometry: prev.geometry,
+      params: tool.defaults.params,
+      style: tool.defaults.style,
+      createdAt: 0,
     };
+    placement = { ...placement, preview: previewDrawable };
   }
 
-  function onRulerPointerUp(e: PointerEvent) {
-    if (!measurement?.dragging) return;
-    (e.target as Element).releasePointerCapture?.(e.pointerId);
-    measurement = { ...measurement, dragging: false };
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      if (placement) {
+        placement.machine.cancel();
+        placement = null;
+        activeTool = CURSOR;
+        return;
+      }
+      if (drawables.selected) {
+        drawables.select(null);
+      }
+      return;
+    }
+    if (
+      (e.key === 'Delete' || e.key === 'Backspace') &&
+      drawables.selected
+    ) {
+      drawables.remove(drawables.selected.id);
+    }
   }
 
-  // Clear and suspend chart interactions while the ruler tool is active.
   $effect(() => {
-    const tool = activeTool;
+    const version = coordVersion;
+    if (!chart) {
+      coordMap = null;
+      return;
+    }
+    const series = priceSeries();
+    if (!series) {
+      coordMap = null;
+      return;
+    }
+    coordMap = buildCoordMap(chart, series, version);
+  });
+
+  $effect(() => {
+    const sym = symbol;
+    const cs = candles;
+    const items = drawables.forSymbol(sym);
+    const next = new Map<string, unknown>();
+    for (const d of items) {
+      const tool = getTool(d.type);
+      if (!tool?.compute) continue;
+      try {
+        const res = tool.compute(d, { candles: cs });
+        if (res instanceof Promise) {
+          // Phase 1 tools are synchronous. Ignore async results for now.
+          continue;
+        }
+        next.set(d.id, res);
+      } catch (err) {
+        console.warn(`compute failed for drawable ${d.id}`, err);
+      }
+    }
+    computedData = next;
+  });
+
+  // Suspend chart scroll/scale while placing a drawable.
+  $effect(() => {
+    const placing = placement !== null;
     if (!chart) return;
     untrack(() => {
       chart?.applyOptions({
-        handleScroll: tool !== 'ruler',
-        handleScale: tool !== 'ruler',
+        handleScroll: !placing,
+        handleScale: !placing,
       });
-      if (tool !== 'ruler') measurement = null;
     });
   });
 
@@ -350,7 +496,14 @@
       resizeObserver.observe(containerEl);
     }
 
-    chart?.timeScale().subscribeVisibleLogicalRangeChange(() => {
+    let lastFrom: number | null = null;
+    let lastTo: number | null = null;
+    chart?.timeScale().subscribeVisibleLogicalRangeChange(range => {
+      const from = range?.from ?? null;
+      const to = range?.to ?? null;
+      if (from === lastFrom && to === lastTo) return;
+      lastFrom = from;
+      lastTo = to;
       coordVersion += 1;
     });
   });
@@ -508,38 +661,6 @@
     });
   });
 
-  let rulerBox = $derived.by(() => {
-    if (!measurement || !chart) return null;
-    coordVersion;
-    const series = priceSeries();
-    if (!series) return null;
-    const x1 = chart.timeScale().timeToCoordinate(measurement.startTime as Time);
-    const x2 = chart.timeScale().timeToCoordinate(measurement.endTime as Time);
-    const y1 = series.priceToCoordinate(measurement.startPrice);
-    const y2 = series.priceToCoordinate(measurement.endPrice);
-    if (x1 == null || x2 == null || y1 == null || y2 == null) return null;
-    const left = Math.min(x1, x2);
-    const top = Math.min(y1, y2);
-    const width = Math.abs(x2 - x1);
-    const height = Math.abs(y2 - y1);
-    return {
-      left,
-      top,
-      width,
-      height,
-      x1,
-      y1,
-      x2,
-      y2,
-      endX: x2,
-      endY: y2,
-    };
-  });
-
-  let rulerStats = $derived(
-    measurement ? computeStats(measurement, candles) : null,
-  );
-
   $effect(() => {
     if (!chart || !colours || !volumeSeries) return;
     colours.volumeUp;
@@ -554,13 +675,15 @@
 
 <div
   class="flex-1 min-h-[400px] relative w-full z-0 overflow-hidden"
-  class:cursor-crosshair={activeTool === 'ruler'}
+  class:cursor-crosshair={activeTool !== CURSOR}
   bind:this={containerEl}
   role="presentation"
-  onpointerdown={onRulerPointerDown}
-  onpointermove={onRulerPointerMove}
-  onpointerup={onRulerPointerUp}
-  onpointercancel={onRulerPointerUp}
+  tabindex="0"
+  onpointerdown={onChartPointerDown}
+  onpointermove={onChartPointerMove}
+  onpointerup={onChartPointerUp}
+  onpointercancel={onChartPointerUp}
+  onkeydown={onKeyDown}
 >
   {#if showLegend}
     <div
@@ -574,80 +697,43 @@
     </div>
   {/if}
 
-  {#if rulerBox && rulerStats}
-    {@const up = rulerStats.isUp}
-    {@const fill = up ? 'rgba(38, 166, 154, 0.18)' : 'rgba(239, 83, 80, 0.18)'}
-    {@const stroke = up ? 'rgb(38, 166, 154)' : 'rgb(239, 83, 80)'}
+  {#if coordMap}
     <svg
-      class="absolute inset-0 w-full h-full pointer-events-none z-10"
+      class="absolute inset-0 w-full h-full z-10 pointer-events-none"
       style="overflow: visible;"
     >
-      <rect
-        x={rulerBox.left}
-        y={rulerBox.top}
-        width={rulerBox.width}
-        height={rulerBox.height}
-        fill={fill}
-        stroke={stroke}
-        stroke-width="1"
-      />
-      <line
-        x1={rulerBox.x1}
-        y1={rulerBox.y1}
-        x2={rulerBox.x2}
-        y2={rulerBox.y1}
-        stroke={stroke}
-        stroke-width="1.5"
-        marker-end="url(#ruler-arrow-{up ? 'up' : 'down'})"
-      />
-      <line
-        x1={rulerBox.x1}
-        y1={rulerBox.y1}
-        x2={rulerBox.x1}
-        y2={rulerBox.y2}
-        stroke={stroke}
-        stroke-width="1.5"
-        marker-end="url(#ruler-arrow-{up ? 'up' : 'down'})"
-      />
-      <defs>
-        <marker
-          id="ruler-arrow-{up ? 'up' : 'down'}"
-          viewBox="0 0 10 10"
-          refX="8"
-          refY="5"
-          markerWidth="8"
-          markerHeight="8"
-          orient="auto"
-        >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill={stroke} />
-        </marker>
-      </defs>
+      {#each drawables.forSymbol(symbol) as d (d.id)}
+        {@const tool = getTool(d.type)}
+        {#if tool}
+          {@const RendererCmp = tool.Renderer}
+          <RendererCmp
+            drawable={d}
+            data={computedData.get(d.id)}
+            selected={drawables.selected?.id === d.id}
+            coordMap={coordMap}
+            onGeometryChange={geo => drawables.update(d.id, { geometry: geo })}
+            onRequestSelect={() => drawables.select(d.id)}
+            onAnchorPoint={(pt) => setAnchorPoint(d.id, pt)}
+          />
+        {/if}
+      {/each}
+
+      {#if placement?.preview}
+        {@const previewTool = getTool(placement.type)}
+        {#if previewTool}
+          {@const PreviewCmp = previewTool.Renderer}
+          <PreviewCmp
+            drawable={placement.preview}
+            data={undefined}
+            selected={false}
+            coordMap={coordMap}
+            onGeometryChange={() => {}}
+            onRequestSelect={() => {}}
+            onAnchorPoint={() => {}}
+          />
+        {/if}
+      {/if}
     </svg>
-    <div
-      class="absolute z-10 pointer-events-none rounded-md px-3 py-2 text-xs font-mono text-white shadow-lg whitespace-nowrap"
-      style:left="{rulerBox.endX}px"
-      style:top="{rulerBox.y1}px"
-      style:transform={up
-        ? 'translate(-50%, 8px)'
-        : 'translate(-50%, calc(-100% - 8px))'}
-      style:background-color={up
-        ? 'rgba(38, 166, 154, 0.95)'
-        : 'rgba(239, 83, 80, 0.95)'}
-    >
-      <div class="text-center leading-tight">
-        {formatPriceDelta(rulerStats.priceDelta)} ({formatPct(
-          rulerStats.pctDelta,
-        )})
-      </div>
-      <div class="text-center leading-tight opacity-90">
-        {rulerStats.barCount} bars{rulerStats.spanLabel
-          ? `, ${rulerStats.spanLabel}`
-          : ''}
-      </div>
-      <div class="text-center leading-tight opacity-90">
-        Vol {formatVolume(rulerStats.volumeSum)}
-      </div>
-    </div>
   {/if}
 </div>
 
