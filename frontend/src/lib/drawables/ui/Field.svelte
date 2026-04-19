@@ -13,7 +13,7 @@
 
 <div class="flex items-center justify-between gap-4 py-1.5">
   <label for={id} class="text-sm text-muted-foreground">{label}</label>
-  <div class="flex w-10 items-center justify-center">
+  <div class="flex min-w-10 items-center justify-end">
     {@render children()}
   </div>
 </div>
