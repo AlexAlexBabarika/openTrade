@@ -1,6 +1,7 @@
 // frontend/src/lib/drawables/index.ts
 import { registerTool, getTool } from './registry';
 import { rulerTool } from './tools/ruler/tool';
+import { avpTool } from './tools/volume-profile/avp/tool';
 import { loadToolDefaults } from './toolDefaults';
 
 export * from './types';
@@ -23,8 +24,9 @@ let registered = false;
 export function ensureToolsRegistered(): void {
   if (registered) return;
   registerTool(rulerTool);
+  registerTool(avpTool);
   // Apply persisted per-tool default overrides.
-  for (const type of [rulerTool.type]) {
+  for (const type of [rulerTool.type, avpTool.type]) {
     const stored = loadToolDefaults(type);
     const tool = getTool(type);
     if (stored && tool) {
