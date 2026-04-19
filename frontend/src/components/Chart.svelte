@@ -65,6 +65,8 @@
     bbandsLineWidth = 1,
     colours = undefined as ChartColours | undefined,
     crosshairMode = 'magnet' as CrosshairModeName,
+    provider = 'yfinance' as string,
+    interval = '1d' as string,
     activeTool = $bindable<ActiveTool>(CURSOR),
     api = $bindable<ChartApi | null>(null),
   }: {
@@ -81,6 +83,8 @@
     bbandsLineWidth?: number;
     colours?: ChartColours;
     crosshairMode?: CrosshairModeName;
+    provider: string;
+    interval: string;
     activeTool: ActiveTool;
     api?: ChartApi | null;
   } = $props();
@@ -482,26 +486,56 @@
     coordMap = buildCoordMap(chart, series, version);
   });
 
+  const computeControllers = new Map<string, AbortController>();
+
   $effect(() => {
     const sym = symbol;
     const cs = candles;
+    const prov = provider;
+    const iv = interval;
     const items = drawables.forSymbol(sym);
-    const next = new Map<string, unknown>();
+
+    const liveIds = new Set(items.map(d => d.id));
+    for (const [id, ctl] of computeControllers) {
+      if (!liveIds.has(id)) {
+        ctl.abort();
+        computeControllers.delete(id);
+      }
+    }
+
     for (const d of items) {
       const tool = getTool(d.type);
       if (!tool?.compute) continue;
+
+      computeControllers.get(d.id)?.abort();
+      const ctl = new AbortController();
+      computeControllers.set(d.id, ctl);
+
       try {
-        const res = tool.compute(d, { candles: cs });
+        const res = tool.compute(d, {
+          candles: cs,
+          provider: prov,
+          symbol: sym,
+          interval: iv,
+          signal: ctl.signal,
+        });
         if (res instanceof Promise) {
-          // Phase 1 tools are synchronous. Ignore async results for now.
-          continue;
+          res
+            .then(value => {
+              if (ctl.signal.aborted) return;
+              computedData = new Map(computedData).set(d.id, value);
+            })
+            .catch(err => {
+              if (ctl.signal.aborted) return;
+              console.warn(`compute failed for drawable ${d.id}`, err);
+            });
+        } else {
+          computedData = new Map(computedData).set(d.id, res);
         }
-        next.set(d.id, res);
       } catch (err) {
         console.warn(`compute failed for drawable ${d.id}`, err);
       }
     }
-    computedData = next;
   });
 
   // Suspend chart scroll/scale while placing a drawable.

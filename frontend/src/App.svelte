@@ -635,6 +635,8 @@
         bbandsLineWidth={bbandsConfig.lineWidth}
         {colours}
         {crosshairMode}
+        provider={source}
+        {interval}
         bind:activeTool
         bind:api={chartApi}
       />

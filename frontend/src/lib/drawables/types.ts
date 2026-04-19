@@ -67,12 +67,12 @@ export interface PlacementMachine<Geo> {
   readonly done: boolean;
 }
 
-/**
- * Context passed to `compute`. Phase 1 exposes only what Ruler needs (candles).
- * Later phases will extend this with an HTTP client and interval.
- */
 export interface ComputeCtx {
   candles: readonly import('../types').OHLCVCandle[];
+  provider: string;
+  symbol: string;
+  interval: string;
+  signal: AbortSignal;
 }
 
 /** The contract every registered tool must satisfy. */
