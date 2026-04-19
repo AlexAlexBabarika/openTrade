@@ -30,10 +30,7 @@ describe('resolvePopupActions', () => {
     expect(resolvePopupActions(tool)).toBe(custom);
   });
 
-  it('DEFAULT_POPUP_ACTIONS contains settings then delete in that order', () => {
-    expect(DEFAULT_POPUP_ACTIONS.map(a => a.id)).toEqual([
-      'settings',
-      'delete',
-    ]);
+  it('DEFAULT_POPUP_ACTIONS contains only delete', () => {
+    expect(DEFAULT_POPUP_ACTIONS.map(a => a.id)).toEqual(['delete']);
   });
 });

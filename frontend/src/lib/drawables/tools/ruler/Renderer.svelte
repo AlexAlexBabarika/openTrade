@@ -131,9 +131,7 @@
       >
         <div
           class="rounded-md px-2 py-1 text-[10px] font-mono text-white shadow-lg whitespace-nowrap text-center leading-tight"
-          style:background-color={up
-            ? 'rgba(38, 166, 154, 0.95)'
-            : 'rgba(239, 83, 80, 0.95)'}
+          style:background-color={fill}
         >
           <div>
             {formatPriceDelta(stats.priceDelta)} ({formatPct(stats.pctDelta)})

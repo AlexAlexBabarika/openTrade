@@ -38,7 +38,7 @@
       class="flex items-center justify-center w-7 h-7 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors outline-none"
       aria-label={action.label}
       title={action.label}
-      onclick={() => onAction(action.id, action)}
+      onclick={(e) => { e.stopPropagation(); onAction(action.id, action); }}
     >
       <Icon class="h-4 w-4" />
     </button>

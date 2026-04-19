@@ -112,9 +112,13 @@ export interface RendererProps<Geo, Params, Style, Data> {
   onAnchorPoint: (pt: ScreenPoint | null) => void;
 }
 
-/** Settings prop shape — enforced by `DrawableTool.Settings` typing above. */
-export interface SettingsProps<Geo, Params, Style> {
-  drawable: Drawable<Geo, Params, Style>;
-  onChange: (patch: { params?: Params; style?: Style }) => void;
-  onClose: () => void;
+/**
+ * Settings prop shape — enforced by `DrawableTool.Settings` typing above.
+ * The modal owns staged copies of `params` and `style`; the component mutates
+ * their properties in place via `bind:`. No live-apply — the modal commits
+ * on Ok.
+ */
+export interface SettingsProps<_Geo, Params, Style> {
+  params: Params;
+  style: Style;
 }

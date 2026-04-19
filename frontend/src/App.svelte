@@ -79,8 +79,19 @@
   } from './lib/notes';
   import ToolboxPanel from './components/ToolboxPanel.svelte';
   import LeftToolbar from './components/LeftToolbar.svelte';
+  import ToolSettingsModal from './components/ToolSettingsModal.svelte';
   import type { CrosshairModeName } from './lib/crosshair';
-  import type { ChartTool } from './lib/ruler';
+  import {
+    drawables,
+    ensureToolsRegistered,
+    loadAll,
+    saveAll,
+    CURSOR,
+    type ActiveTool,
+  } from './lib/drawables';
+
+  ensureToolsRegistered();
+  drawables.replaceAll(loadAll());
 
   let symbol = $state('AAPL');
   let loadedSymbol = $state('');
@@ -132,7 +143,14 @@
   let isLoading = $state(false);
   let sidebarVisible = $state(true);
   let crosshairMode = $state<CrosshairModeName>('magnet');
-  let activeTool = $state<ChartTool>('cursor');
+  let activeTool = $state<ActiveTool>(CURSOR);
+  let toolSettingsOpen = $state(false);
+  let toolSettingsType = $state<string | null>(null);
+
+  function openToolSettings(type: string): void {
+    toolSettingsType = type;
+    toolSettingsOpen = true;
+  }
 
   const initialGroups = loadGroupsFromStorage();
   let groups = $state<TickerGroup[]>(initialGroups);
@@ -555,6 +573,14 @@
   });
 
   $effect(() => {
+    const items = drawables.items;
+    const id = setTimeout(() => {
+      saveAll(items);
+    }, 500);
+    return () => clearTimeout(id);
+  });
+
+  $effect(() => {
     period;
     interval;
     if (!initialLoadDone) return;
@@ -585,7 +611,15 @@
   />
   <ErrorMessage bind:message={errorMessage} />
   <div class="flex flex-1 min-h-0">
-    <LeftToolbar bind:crosshairMode bind:activeTool />
+    <LeftToolbar
+      bind:crosshairMode
+      bind:activeTool
+      onToolSettings={openToolSettings}
+    />
+    <ToolSettingsModal
+      toolType={toolSettingsType}
+      bind:open={toolSettingsOpen}
+    />
     <div class="flex-1 min-w-0 min-h-0 flex flex-col">
       <Chart
         {candles}
@@ -601,7 +635,7 @@
         bbandsLineWidth={bbandsConfig.lineWidth}
         {colours}
         {crosshairMode}
-        {activeTool}
+        bind:activeTool
         bind:api={chartApi}
       />
     </div>
