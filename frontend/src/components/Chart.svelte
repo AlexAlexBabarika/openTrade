@@ -48,6 +48,7 @@
   } from '../lib/drawables';
   import type { PopupAction } from '../lib/drawables';
   import DrawablePopup from './DrawablePopup.svelte';
+  import DrawableSettingsModal from './DrawableSettingsModal.svelte';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
 
@@ -155,12 +156,53 @@
       return;
     }
     if (id === 'settings') {
-      // Phase 2b: open settings modal. For now, no-op.
+      openSettingsForSelected();
       return;
     }
     if (id === 'custom' && action.id === 'custom') {
       action.handler(sel);
     }
+  }
+
+  let settingsOpen = $state(false);
+  let settingsDrawableId = $state<string | null>(null);
+  let settingsSnapshot = $state<{ params: unknown; style: unknown } | null>(null);
+
+  let settingsDrawable = $derived.by(() => {
+    if (!settingsDrawableId) return null;
+    return drawables.items.find(d => d.id === settingsDrawableId) ?? null;
+  });
+
+  function openSettingsForSelected(): void {
+    const sel = drawables.selected;
+    if (!sel) return;
+    settingsDrawableId = sel.id;
+    settingsSnapshot = {
+      params: structuredClone(sel.params),
+      style: structuredClone(sel.style),
+    };
+    settingsOpen = true;
+  }
+
+  function onSettingsChange(patch: { params?: unknown; style?: unknown }): void {
+    if (!settingsDrawableId) return;
+    drawables.update(settingsDrawableId, patch as Partial<Drawable>);
+  }
+
+  function closeSettings(): void {
+    settingsOpen = false;
+    settingsDrawableId = null;
+    settingsSnapshot = null;
+  }
+
+  function cancelSettings(): void {
+    if (settingsDrawableId && settingsSnapshot) {
+      drawables.update(settingsDrawableId, {
+        params: settingsSnapshot.params,
+        style: settingsSnapshot.style,
+      } as Partial<Drawable>);
+    }
+    closeSettings();
   }
 
   let legendName = $state('');
@@ -777,6 +819,14 @@
       />
     {/if}
   {/if}
+
+  <DrawableSettingsModal
+    bind:open={settingsOpen}
+    drawable={settingsDrawable}
+    onChange={onSettingsChange}
+    onCancel={cancelSettings}
+    onOk={closeSettings}
+  />
 </div>
 
 <style>
