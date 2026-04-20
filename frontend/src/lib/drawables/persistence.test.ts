@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { loadAll, saveAll, DRAWABLES_STORAGE_KEY } from './persistence';
 import { registerTool, _resetRegistry } from './registry';
+import type { RulerDrawable } from './tools/ruler/tool';
 import type { DrawableTool, Drawable } from './types';
 
 // Minimal in-memory localStorage shim: vitest defaults to the node environment
@@ -39,14 +40,18 @@ function tool(
   };
 }
 
-function drawable(id: string, type: string): Drawable {
+function rulerDrawable(id: string): RulerDrawable {
   return {
     id,
-    type,
+    type: 'ruler',
     symbol: 'AAPL',
-    geometry: { x: 1 },
+    geometry: { startTime: 0, endTime: 1, startPrice: 1, endPrice: 2 },
     params: {},
-    style: {},
+    style: {
+      upColor: 'rgb(0,0,0)',
+      downColor: 'rgb(1,1,1)',
+      showStats: true,
+    },
     createdAt: 0,
   };
 }
@@ -68,44 +73,73 @@ describe('persistence', () => {
 
   it('saves items stamped with each tool schemaVersion', () => {
     registerTool(tool('ruler', 3));
-    saveAll([drawable('a', 'ruler')]);
+    saveAll([rulerDrawable('a')]);
     const raw = JSON.parse(localStorage.getItem(DRAWABLES_STORAGE_KEY)!);
     expect(raw[0].schemaVersion).toBe(3);
   });
 
   it('loads matching schemaVersion unchanged', () => {
     registerTool(tool('ruler', 1));
-    saveAll([drawable('a', 'ruler')]);
+    saveAll([rulerDrawable('a')]);
     const loaded = loadAll();
     expect(loaded.map(d => d.id)).toEqual(['a']);
   });
 
   it('drops drawables whose tool is not registered', () => {
     registerTool(tool('ruler', 1));
-    saveAll([drawable('a', 'ruler'), drawable('b', 'ghost')]);
+    saveAll([rulerDrawable('a')]);
+    const raw = JSON.parse(
+      localStorage.getItem(DRAWABLES_STORAGE_KEY)!,
+    ) as unknown[];
+    raw.push({
+      ...rulerDrawable('b'),
+      id: 'b',
+      type: 'ghost',
+    });
+    localStorage.setItem(DRAWABLES_STORAGE_KEY, JSON.stringify(raw));
     expect(loadAll().map(d => d.id)).toEqual(['a']);
   });
 
   it('runs migrate when schemaVersion mismatches', () => {
     registerTool(
-      tool('ruler', 2, raw => ({
-        ...(raw as Drawable),
-        geometry: { migrated: true },
-      })),
+      tool('ruler', 2, raw => {
+        const base = raw as Drawable;
+        return {
+          ...base,
+          type: 'ruler' as const,
+          geometry: {
+            startTime: 0,
+            endTime: 2,
+            startPrice: 1,
+            endPrice: 3,
+          },
+          params: {},
+          style: {
+            upColor: 'rgb(0,0,0)',
+            downColor: 'rgb(1,1,1)',
+            showStats: false,
+          },
+        } satisfies RulerDrawable;
+      }),
     );
     localStorage.setItem(
       DRAWABLES_STORAGE_KEY,
-      JSON.stringify([{ ...drawable('a', 'ruler'), schemaVersion: 1 }]),
+      JSON.stringify([{ ...rulerDrawable('a'), schemaVersion: 1 }]),
     );
     const loaded = loadAll();
-    expect(loaded[0].geometry).toEqual({ migrated: true });
+    expect(loaded[0].geometry).toEqual({
+      startTime: 0,
+      endTime: 2,
+      startPrice: 1,
+      endPrice: 3,
+    });
   });
 
   it('drops drawables where migrate returns null', () => {
     registerTool(tool('ruler', 2, () => null));
     localStorage.setItem(
       DRAWABLES_STORAGE_KEY,
-      JSON.stringify([{ ...drawable('a', 'ruler'), schemaVersion: 1 }]),
+      JSON.stringify([{ ...rulerDrawable('a'), schemaVersion: 1 }]),
     );
     expect(loadAll()).toEqual([]);
   });
@@ -114,7 +148,22 @@ describe('persistence', () => {
     registerTool(tool('ruler', 2));
     localStorage.setItem(
       DRAWABLES_STORAGE_KEY,
-      JSON.stringify([{ ...drawable('a', 'ruler'), schemaVersion: 1 }]),
+      JSON.stringify([{ ...rulerDrawable('a'), schemaVersion: 1 }]),
+    );
+    expect(loadAll()).toEqual([]);
+  });
+
+  it('drops bundled entries that fail shape validation', () => {
+    registerTool(tool('ruler', 1));
+    localStorage.setItem(
+      DRAWABLES_STORAGE_KEY,
+      JSON.stringify([
+        {
+          ...rulerDrawable('a'),
+          geometry: { invalid: true },
+          schemaVersion: 1,
+        },
+      ]),
     );
     expect(loadAll()).toEqual([]);
   });

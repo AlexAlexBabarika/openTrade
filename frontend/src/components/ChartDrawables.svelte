@@ -7,6 +7,7 @@
     getTool,
     CURSOR,
     previewPlacementRendererProps,
+    type BundledDrawable,
     type ActiveTool,
     type CoordMap,
     type ChartPoint,
@@ -157,7 +158,7 @@
           params: structuredClone(tool.defaults.params),
           style: structuredClone(tool.defaults.style),
           createdAt: Date.now(),
-        });
+        } as BundledDrawable);
         placement = null;
         setActiveTool(CURSOR);
       });

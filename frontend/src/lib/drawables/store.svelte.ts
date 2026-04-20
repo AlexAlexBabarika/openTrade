@@ -1,8 +1,9 @@
 // frontend/src/lib/drawables/store.svelte.ts
+import type { BundledDrawable } from './bundledDrawable';
 import type { Drawable } from './types';
 
 export function createDrawablesStore() {
-  let items = $state<Drawable[]>([]);
+  let items = $state<BundledDrawable[]>([]);
   let selectedId = $state<string | null>(null);
 
   return {
@@ -15,11 +16,13 @@ export function createDrawablesStore() {
     forSymbol(symbol: string) {
       return items.filter(d => d.symbol === symbol);
     },
-    add(d: Drawable) {
+    add(d: BundledDrawable) {
       items = [...items, d];
     },
     update(id: string, patch: Partial<Drawable>) {
-      items = items.map(d => (d.id === id ? { ...d, ...patch } : d));
+      items = items.map(d =>
+        d.id === id ? ({ ...d, ...patch } as BundledDrawable) : d,
+      );
     },
     remove(id: string) {
       items = items.filter(d => d.id !== id);
@@ -35,7 +38,7 @@ export function createDrawablesStore() {
         selectedId = null;
       }
     },
-    replaceAll(next: Drawable[]) {
+    replaceAll(next: BundledDrawable[]) {
       items = [...next];
       selectedId = null;
     },
