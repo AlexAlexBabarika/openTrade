@@ -1,16 +1,20 @@
 // frontend/src/lib/drawables/store.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createDrawablesStore } from './store.svelte';
-import type { Drawable } from './types';
+import type { RulerDrawable } from './tools/ruler/tool';
 
-function d(id: string, symbol = 'AAPL'): Drawable {
+function d(id: string, symbol = 'AAPL'): RulerDrawable {
   return {
     id,
     type: 'ruler',
     symbol,
-    geometry: {},
+    geometry: { startTime: 0, endTime: 1, startPrice: 1, endPrice: 2 },
     params: {},
-    style: {},
+    style: {
+      upColor: 'rgb(0,0,0)',
+      downColor: 'rgb(1,1,1)',
+      showStats: true,
+    },
     createdAt: 0,
   };
 }

@@ -1,5 +1,6 @@
 import TrendingUp from '@lucide/svelte/icons/trending-up';
 import type {
+  Drawable,
   DrawableTool,
   PlacementMachine,
   ChartPoint,
@@ -12,6 +13,7 @@ import Renderer from './Renderer.svelte';
 import Settings from './Settings.svelte';
 
 export type { AvpGeo, AvpParams, AvpStyle };
+export type AvpDrawable = Drawable<AvpGeo, AvpParams, AvpStyle>;
 
 function avpPlacement(): PlacementMachine<AvpGeo> {
   const inner = pointPlacement();

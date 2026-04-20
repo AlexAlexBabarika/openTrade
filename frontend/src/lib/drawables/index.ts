@@ -5,10 +5,15 @@ import { loadToolDefaults } from './toolDefaults';
 
 export * from './types';
 export type { BundledTool, BundledToolType } from './toolCatalog';
-export { BUNDLED_TOOLS, isBundledToolType } from './toolCatalog';
+export {
+  BUNDLED_TOOLS,
+  BUNDLED_TOOLS_BY_TYPE,
+  isBundledToolType,
+} from './toolCatalog';
+export type { BundledDrawable } from './bundledDrawable';
 export { drawables, createDrawablesStore } from './store.svelte';
 export { loadAll, saveAll, DRAWABLES_STORAGE_KEY } from './persistence';
-export { registerTool, getTool, listTools } from './registry';
+export { registerTool, getTool, getBundledTool, listTools } from './registry';
 export { DEFAULT_POPUP_ACTIONS, resolvePopupActions } from './popupActions';
 export {
   loadToolDefaults,

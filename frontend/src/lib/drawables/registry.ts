@@ -1,10 +1,13 @@
 // frontend/src/lib/drawables/registry.ts
 import type { DrawableTool } from './types';
+import { BUNDLED_TOOLS_BY_TYPE, type BundledToolType } from './toolCatalog';
 
-// Registry is heterogeneous — each tool narrows <Geo,Params,Style,Data> to its
-// own types. A typed registry would fight Svelte's invariant Component<Props>.
-// Bundled tools use concrete types in `toolCatalog.ts`; this map stays widened
-// so tests can register minimal `DrawableTool` fakes.
+/**
+ * Registry is heterogeneous — each tool narrows Geo/Params/Style/Data. Values
+ * are `AnyTool` so tests can register minimal fakes and Svelte `Component`
+ * props stay ergonomic. For **bundled** tools, prefer `getBundledTool(type)` for
+ * a `BundledTool` return type; `getTool` remains the generic lookup.
+ */
 type AnyTool = DrawableTool<any, any, any, any>;
 
 const tools = new Map<string, AnyTool>();
@@ -20,6 +23,12 @@ export function registerTool(tool: AnyTool): void {
 
 export function getTool(type: string): AnyTool | undefined {
   return tools.get(type);
+}
+
+export function getBundledTool<T extends BundledToolType>(
+  type: T,
+): (typeof BUNDLED_TOOLS_BY_TYPE)[T] | undefined {
+  return BUNDLED_TOOLS_BY_TYPE[type];
 }
 
 export function listTools(): AnyTool[] {
