@@ -49,10 +49,7 @@
     onActiveToolChange(t);
   }
 
-  /** Subscribe via `drawables.items` so the list reactively updates when `add()` runs. */
-  let drawablesForSymbol = $derived.by(() =>
-    drawables.items.filter(d => d.symbol === symbol),
-  );
+  let itemsForSymbol = $derived.by(() => drawables.forSymbol(symbol));
 
   let placement = $state<{
     type: string;
@@ -211,24 +208,30 @@
 
   const computeControllers = new Map<string, AbortController>();
 
+  function setComputedIfChanged(id: string, value: unknown): void {
+    if (Object.is(computedData.get(id), value)) return;
+    computedData = new Map(computedData).set(id, value);
+  }
+
   $effect(() => {
     const sym = symbol;
     const cs = candles;
     const prov = provider;
     const iv = interval;
-    const items = drawables.items.filter(d => d.symbol === sym);
+    const items = drawables.forSymbol(sym);
 
     const liveIds = new Set(items.map(d => d.id));
     untrack(() => {
-      for (const [id, ctl] of computeControllers) {
+      let pruned = false;
+      const nextMap = new Map(computedData);
+      for (const id of [...computeControllers.keys()]) {
         if (!liveIds.has(id)) {
-          ctl.abort();
+          computeControllers.get(id)?.abort();
           computeControllers.delete(id);
-          const nextMap = new Map(computedData);
-          nextMap.delete(id);
-          computedData = nextMap;
+          if (nextMap.delete(id)) pruned = true;
         }
       }
+      if (pruned) computedData = nextMap;
 
       for (const d of items) {
         const tool = getTool(d.type);
@@ -250,14 +253,14 @@
             res
               .then(value => {
                 if (ctl.signal.aborted) return;
-                computedData = new Map(computedData).set(d.id, value);
+                setComputedIfChanged(d.id, value);
               })
               .catch(err => {
                 if (ctl.signal.aborted) return;
                 console.warn(`compute failed for drawable ${d.id}`, err);
               });
           } else {
-            computedData = new Map(computedData).set(d.id, res);
+            setComputedIfChanged(d.id, res);
           }
         } catch (err) {
           console.warn(`compute failed for drawable ${d.id}`, err);
@@ -277,7 +280,7 @@
     class="absolute inset-0 w-full h-full z-10 pointer-events-none"
     style="overflow: visible;"
   >
-    {#each drawablesForSymbol as d (d.id)}
+    {#each itemsForSymbol as d (d.id)}
       {@const tool = getTool(d.type)}
       {#if tool}
         {@const RendererCmp = tool.Renderer}

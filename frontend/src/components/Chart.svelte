@@ -95,7 +95,12 @@
   let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let resizeObserver: ResizeObserver | null = null;
 
-  // Bumped whenever pan/zoom/resize invalidates our cached pixel coords.
+  /**
+   * Incremented when pan/zoom/resize (or container size) invalidates chart pixel
+   * mapping. Fed into `buildCoordMap(..., version)` → `coordMap.version`.
+   * Depend on `coordMap` / `coordMap.version` in overlays for transforms; this
+   * counter is the chart shell’s upstream invalidation signal only.
+   */
   let coordVersion = $state(0);
 
   let coordMap = $state<CoordMap | null>(null);
