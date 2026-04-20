@@ -40,7 +40,7 @@
     type ChartPoint,
     type DrawableSurface,
   } from '../lib/drawables';
-  import ChartDrawables from './ChartDrawables.svelte';
+  import ChartViewport from './ChartViewport.svelte';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
 
@@ -548,53 +548,25 @@
   });
 </script>
 
-<!-- Hit target for chart + drawables: lightweight-charts canvas is not focusable; we need tabindex and keyboard handlers here. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<div
-  class="flex-1 min-h-[400px] relative w-full z-0 overflow-hidden"
-  class:cursor-crosshair={activeTool !== CURSOR}
-  bind:this={containerEl}
-  role="region"
-  aria-label="Chart"
-  tabindex="0"
-  onpointerdown={onChartPointerDown}
-  onpointermove={onChartPointerMove}
-  onpointerup={onChartPointerUp}
-  onpointercancel={onChartPointerUp}
-  onkeydown={onChartKeyDown}
->
-  {#if showLegend}
-    <div
-      class="absolute left-4 top-4 z-10 text-sm font-light pointer-events-none font-mono leading-[18px]"
-      style:color={colours?.textColour}
-    >
-      <div class="text-2xl my-1 font-medium">{legendName}</div>
-      <div class="text-[22px] my-1 font-semibold font-mono">{legendPrice}</div>
-      <div style:opacity="0.7" class="font-mono">{legendDate}</div>
-      <div style:opacity="0.7" class="font-mono">Volume: {legendVolume}</div>
-    </div>
-  {/if}
-
-  <ChartDrawables
-    bind:this={chartDrawables}
-    activeTool={activeTool}
-    onActiveToolChange={t => (activeTool = t)}
-    {coordMap}
-    {symbol}
-    {candles}
-    {provider}
-    {interval}
-    toChartPoint={toChartPoint}
-    containerEl={containerEl}
-    onPlacementActiveChange={onDrawablePlacementActiveChange}
-  />
-</div>
-
-<style>
-  /* lightweight-charts injects canvas elements that need full sizing */
-  div :global(canvas) {
-    width: 100% !important;
-    height: 100% !important;
-  }
-</style>
+<ChartViewport
+  bind:containerEl
+  bind:chartDrawables
+  bind:activeTool
+  {coordMap}
+  {symbol}
+  {candles}
+  {provider}
+  {interval}
+  toChartPoint={toChartPoint}
+  onPlacementActiveChange={onDrawablePlacementActiveChange}
+  onChartPointerDown={onChartPointerDown}
+  onChartPointerMove={onChartPointerMove}
+  onChartPointerUp={onChartPointerUp}
+  onChartKeyDown={onChartKeyDown}
+  showLegend={showLegend}
+  legendTitle={legendName}
+  legendPrice={legendPrice}
+  legendDate={legendDate}
+  legendVolume={legendVolume}
+  legendTextColour={colours?.textColour}
+/>
