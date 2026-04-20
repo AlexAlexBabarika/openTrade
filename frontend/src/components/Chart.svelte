@@ -38,6 +38,7 @@
     type ActiveTool,
     type CoordMap,
     type ChartPoint,
+    type DrawableSurface,
   } from '../lib/drawables';
   import ChartDrawables from './ChartDrawables.svelte';
 
@@ -106,15 +107,7 @@
     drawablePlacing = active;
   }
 
-  let chartDrawables = $state<
-    | {
-        handlePointerDown: (e: PointerEvent) => void;
-        handlePointerMove: (e: PointerEvent) => void;
-        handlePointerUp: (e: PointerEvent) => void;
-        handleKeyDown: (e: KeyboardEvent) => void;
-      }
-    | undefined
-  >(undefined);
+  let chartDrawables = $state<DrawableSurface | undefined>(undefined);
 
   let legendName = $state('');
   let legendPrice = $state('');

@@ -87,7 +87,8 @@ def _search_blocking(q: str, limit: int) -> list[SymbolSearchResult]:
         .execute()
     )
     for row in name_resp.data or []:
-        if row["symbol"] in seen:
+        sym = row.get("symbol")
+        if not isinstance(sym, str) or sym in seen:
             continue
         out.append(_to_result(row))
         if len(out) >= limit:

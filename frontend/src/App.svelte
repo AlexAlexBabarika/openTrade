@@ -80,18 +80,9 @@
   import ToolboxPanel from './components/ToolboxPanel.svelte';
   import LeftToolbar from './components/LeftToolbar.svelte';
   import ToolSettingsModal from './components/ToolSettingsModal.svelte';
+  import DrawablesPersistence from './lib/drawables/DrawablesPersistence.svelte';
   import type { CrosshairModeName } from './lib/crosshair';
-  import {
-    drawables,
-    ensureToolsRegistered,
-    loadAll,
-    saveAll,
-    CURSOR,
-    type ActiveTool,
-  } from './lib/drawables';
-
-  ensureToolsRegistered();
-  drawables.replaceAll(loadAll());
+  import { CURSOR, type ActiveTool } from './lib/drawables';
 
   let symbol = $state('AAPL');
   let loadedSymbol = $state('');
@@ -573,14 +564,6 @@
   });
 
   $effect(() => {
-    const items = drawables.items;
-    const id = setTimeout(() => {
-      saveAll(items);
-    }, 500);
-    return () => clearTimeout(id);
-  });
-
-  $effect(() => {
     period;
     interval;
     if (!initialLoadDone) return;
@@ -597,6 +580,7 @@
 </script>
 
 <div class="flex flex-col h-screen bg-background">
+  <DrawablesPersistence />
   <TopHeader
     bind:symbol
     bind:period

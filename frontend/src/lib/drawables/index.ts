@@ -18,6 +18,7 @@ export {
 export type { ActiveTool } from './activeTool';
 export { CURSOR } from './activeTool';
 export { buildCoordMap } from './coordMap';
+export type { DrawableSurface } from './drawableSurface';
 
 let registered = false;
 
@@ -32,7 +33,11 @@ function applyPersistedToolDefaults(): void {
   }
 }
 
-/** Idempotent. Call once from app bootstrap. */
+/**
+ * Idempotent. Bundled tools register when this package is first imported
+ * (`index.ts` runs `ensureToolsRegistered()` at module load). Exported for
+ * tests or callers that import submodules without loading this entry.
+ */
 export function ensureToolsRegistered(): void {
   if (registered) return;
   for (const tool of BUNDLED_TOOLS) {
