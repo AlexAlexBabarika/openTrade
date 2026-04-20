@@ -21,7 +21,8 @@ class AssetType(str, Enum):
     crypto = "crypto"
     forex = "forex"
     commodity = "commodity"
-    index = "index"
+    # Not named ``index`` — that name shadows ``str.index`` on str enums.
+    market_index = "index"
     bond = "bond"
     etf = "etf"
     mutual_fund = "mutual_fund"

@@ -22,6 +22,16 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+from backend.core.supabase_client import (
+    get_service_postgrest,
+    is_supabase_configured,
+)
+from backend.market.data_sources.binance_loader import BinanceProvider
+from backend.market.data_sources.twelvedataprovider import (
+    TwelveDataProvider,
+)
+from backend.models.market_data_models import SymbolRecord
+
 
 def _load_dotenv() -> None:
     """Populate os.environ from ``.env`` at the repo root if present.
@@ -45,16 +55,6 @@ def _load_dotenv() -> None:
 
 
 _load_dotenv()
-
-from backend.core.supabase_client import (  # noqa: E402
-    get_service_postgrest,
-    is_supabase_configured,
-)
-from backend.market.data_sources.binance_loader import BinanceProvider  # noqa: E402
-from backend.market.data_sources.twelvedataprovider import (
-    TwelveDataProvider,
-)  # noqa: E402
-from backend.models.market_data_models import SymbolRecord  # noqa: E402
 
 logger = logging.getLogger("seed_symbols")
 
