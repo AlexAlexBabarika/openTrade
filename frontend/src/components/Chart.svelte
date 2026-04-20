@@ -33,13 +33,13 @@
     type CrosshairModeName,
   } from '../lib/crosshair';
   import {
-    computeStats,
-    formatPct,
-    formatPriceDelta,
-    formatVolume,
-    type ChartTool,
-    type Measurement,
-  } from '../lib/ruler';
+    buildCoordMap,
+    CURSOR,
+    type ActiveTool,
+    type CoordMap,
+    type ChartPoint,
+  } from '../lib/drawables';
+  import ChartDrawables from './ChartDrawables.svelte';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
 
@@ -57,7 +57,9 @@
     bbandsLineWidth = 1,
     colours = undefined as ChartColours | undefined,
     crosshairMode = 'magnet' as CrosshairModeName,
-    activeTool = 'cursor' as ChartTool,
+    provider = 'yfinance' as string,
+    interval = '1d' as string,
+    activeTool = $bindable<ActiveTool>(CURSOR),
     api = $bindable<ChartApi | null>(null),
   }: {
     candles: OHLCVCandle[];
@@ -73,11 +75,13 @@
     bbandsLineWidth?: number;
     colours?: ChartColours;
     crosshairMode?: CrosshairModeName;
-    activeTool?: ChartTool;
+    provider: string;
+    interval: string;
+    activeTool: ActiveTool;
     api?: ChartApi | null;
   } = $props();
 
-  let containerEl: HTMLDivElement;
+  let containerEl = $state<HTMLDivElement | null>(null);
   let chart: IChartApi | null = null;
   let candleSeries: ISeriesApi<'Candlestick'> | null = null;
   let lineSeries: ISeriesApi<'Line'> | null = null;
@@ -90,9 +94,27 @@
   let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let resizeObserver: ResizeObserver | null = null;
 
-  let measurement = $state<Measurement | null>(null);
   // Bumped whenever pan/zoom/resize invalidates our cached pixel coords.
   let coordVersion = $state(0);
+
+  let coordMap = $state<CoordMap | null>(null);
+
+  /** True while the user is dragging out a new drawable (disables chart pan/zoom). */
+  let drawablePlacing = $state(false);
+
+  function onDrawablePlacementActiveChange(active: boolean): void {
+    drawablePlacing = active;
+  }
+
+  let chartDrawables = $state<
+    | {
+        handlePointerDown: (e: PointerEvent) => void;
+        handlePointerMove: (e: PointerEvent) => void;
+        handlePointerUp: (e: PointerEvent) => void;
+        handleKeyDown: (e: KeyboardEvent) => void;
+      }
+    | undefined
+  >(undefined);
 
   let legendName = $state('');
   let legendPrice = $state('');
@@ -203,6 +225,10 @@
   function applySeries(type: ChartType): void {
     if (!chart) return;
 
+    const needCandle = type === 'candlestick';
+    if (needCandle && candleSeries) return;
+    if (!needCandle && lineSeries) return;
+
     if (candleSeries) {
       chart.removeSeries(candleSeries);
       candleSeries = null;
@@ -212,7 +238,7 @@
       lineSeries = null;
     }
 
-    if (type === 'candlestick') {
+    if (needCandle) {
       candleSeries = addCandlestickSeries(chart, colours);
     } else {
       lineSeries = addLineSeries(chart, resolveColour(colours, 'lineColour'));
@@ -295,48 +321,50 @@
     return { time: time as number, price };
   }
 
-  function onRulerPointerDown(e: PointerEvent) {
-    if (activeTool !== 'ruler') return;
+  function toChartPoint(e: PointerEvent): ChartPoint | null {
     const pt = pointerToChart(e.clientX, e.clientY);
-    if (!pt) return;
-    measurement = {
-      startTime: pt.time,
-      endTime: pt.time,
-      startPrice: pt.price,
-      endPrice: pt.price,
-      dragging: true,
-    };
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-    e.preventDefault();
+    return pt ? { time: pt.time, price: pt.price } : null;
   }
 
-  function onRulerPointerMove(e: PointerEvent) {
-    if (!measurement?.dragging) return;
-    const pt = pointerToChart(e.clientX, e.clientY);
-    if (!pt) return;
-    measurement = {
-      ...measurement,
-      endTime: pt.time,
-      endPrice: pt.price,
-    };
+  function onChartPointerDown(e: PointerEvent) {
+    chartDrawables?.handlePointerDown(e);
   }
 
-  function onRulerPointerUp(e: PointerEvent) {
-    if (!measurement?.dragging) return;
-    (e.target as Element).releasePointerCapture?.(e.pointerId);
-    measurement = { ...measurement, dragging: false };
+  function onChartPointerMove(e: PointerEvent) {
+    chartDrawables?.handlePointerMove(e);
   }
 
-  // Clear and suspend chart interactions while the ruler tool is active.
+  function onChartPointerUp(e: PointerEvent) {
+    chartDrawables?.handlePointerUp(e);
+  }
+
+  function onChartKeyDown(e: KeyboardEvent) {
+    chartDrawables?.handleKeyDown(e);
+  }
+
   $effect(() => {
-    const tool = activeTool;
+    const version = coordVersion;
+    if (!chart) {
+      coordMap = null;
+      return;
+    }
+    const series = priceSeries();
+    if (!series) {
+      coordMap = null;
+      return;
+    }
+    coordMap = buildCoordMap(chart, series, version);
+  });
+
+  // Suspend chart pan/zoom while the user is placing a drawable (see ChartDrawables).
+  $effect(() => {
+    const placing = drawablePlacing;
     if (!chart) return;
     untrack(() => {
       chart?.applyOptions({
-        handleScroll: tool !== 'ruler',
-        handleScale: tool !== 'ruler',
+        handleScroll: !placing,
+        handleScale: !placing,
       });
-      if (tool !== 'ruler') measurement = null;
     });
   });
 
@@ -350,7 +378,14 @@
       resizeObserver.observe(containerEl);
     }
 
-    chart?.timeScale().subscribeVisibleLogicalRangeChange(() => {
+    let lastFrom: number | null = null;
+    let lastTo: number | null = null;
+    chart?.timeScale().subscribeVisibleLogicalRangeChange(range => {
+      const from = range?.from ?? null;
+      const to = range?.to ?? null;
+      if (from === lastFrom && to === lastTo) return;
+      lastFrom = from;
+      lastTo = to;
       coordVersion += 1;
     });
   });
@@ -508,38 +543,6 @@
     });
   });
 
-  let rulerBox = $derived.by(() => {
-    if (!measurement || !chart) return null;
-    coordVersion;
-    const series = priceSeries();
-    if (!series) return null;
-    const x1 = chart.timeScale().timeToCoordinate(measurement.startTime as Time);
-    const x2 = chart.timeScale().timeToCoordinate(measurement.endTime as Time);
-    const y1 = series.priceToCoordinate(measurement.startPrice);
-    const y2 = series.priceToCoordinate(measurement.endPrice);
-    if (x1 == null || x2 == null || y1 == null || y2 == null) return null;
-    const left = Math.min(x1, x2);
-    const top = Math.min(y1, y2);
-    const width = Math.abs(x2 - x1);
-    const height = Math.abs(y2 - y1);
-    return {
-      left,
-      top,
-      width,
-      height,
-      x1,
-      y1,
-      x2,
-      y2,
-      endX: x2,
-      endY: y2,
-    };
-  });
-
-  let rulerStats = $derived(
-    measurement ? computeStats(measurement, candles) : null,
-  );
-
   $effect(() => {
     if (!chart || !colours || !volumeSeries) return;
     colours.volumeUp;
@@ -552,15 +555,21 @@
   });
 </script>
 
+<!-- Hit target for chart + drawables: lightweight-charts canvas is not focusable; we need tabindex and keyboard handlers here. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
   class="flex-1 min-h-[400px] relative w-full z-0 overflow-hidden"
-  class:cursor-crosshair={activeTool === 'ruler'}
+  class:cursor-crosshair={activeTool !== CURSOR}
   bind:this={containerEl}
-  role="presentation"
-  onpointerdown={onRulerPointerDown}
-  onpointermove={onRulerPointerMove}
-  onpointerup={onRulerPointerUp}
-  onpointercancel={onRulerPointerUp}
+  role="region"
+  aria-label="Chart"
+  tabindex="0"
+  onpointerdown={onChartPointerDown}
+  onpointermove={onChartPointerMove}
+  onpointerup={onChartPointerUp}
+  onpointercancel={onChartPointerUp}
+  onkeydown={onChartKeyDown}
 >
   {#if showLegend}
     <div
@@ -574,81 +583,19 @@
     </div>
   {/if}
 
-  {#if rulerBox && rulerStats}
-    {@const up = rulerStats.isUp}
-    {@const fill = up ? 'rgba(38, 166, 154, 0.18)' : 'rgba(239, 83, 80, 0.18)'}
-    {@const stroke = up ? 'rgb(38, 166, 154)' : 'rgb(239, 83, 80)'}
-    <svg
-      class="absolute inset-0 w-full h-full pointer-events-none z-10"
-      style="overflow: visible;"
-    >
-      <rect
-        x={rulerBox.left}
-        y={rulerBox.top}
-        width={rulerBox.width}
-        height={rulerBox.height}
-        fill={fill}
-        stroke={stroke}
-        stroke-width="1"
-      />
-      <line
-        x1={rulerBox.x1}
-        y1={rulerBox.y1}
-        x2={rulerBox.x2}
-        y2={rulerBox.y1}
-        stroke={stroke}
-        stroke-width="1.5"
-        marker-end="url(#ruler-arrow-{up ? 'up' : 'down'})"
-      />
-      <line
-        x1={rulerBox.x1}
-        y1={rulerBox.y1}
-        x2={rulerBox.x1}
-        y2={rulerBox.y2}
-        stroke={stroke}
-        stroke-width="1.5"
-        marker-end="url(#ruler-arrow-{up ? 'up' : 'down'})"
-      />
-      <defs>
-        <marker
-          id="ruler-arrow-{up ? 'up' : 'down'}"
-          viewBox="0 0 10 10"
-          refX="8"
-          refY="5"
-          markerWidth="8"
-          markerHeight="8"
-          orient="auto"
-        >
-          <path d="M 0 0 L 10 5 L 0 10 z" fill={stroke} />
-        </marker>
-      </defs>
-    </svg>
-    <div
-      class="absolute z-10 pointer-events-none rounded-md px-3 py-2 text-xs font-mono text-white shadow-lg whitespace-nowrap"
-      style:left="{rulerBox.endX}px"
-      style:top="{rulerBox.y1}px"
-      style:transform={up
-        ? 'translate(-50%, 8px)'
-        : 'translate(-50%, calc(-100% - 8px))'}
-      style:background-color={up
-        ? 'rgba(38, 166, 154, 0.95)'
-        : 'rgba(239, 83, 80, 0.95)'}
-    >
-      <div class="text-center leading-tight">
-        {formatPriceDelta(rulerStats.priceDelta)} ({formatPct(
-          rulerStats.pctDelta,
-        )})
-      </div>
-      <div class="text-center leading-tight opacity-90">
-        {rulerStats.barCount} bars{rulerStats.spanLabel
-          ? `, ${rulerStats.spanLabel}`
-          : ''}
-      </div>
-      <div class="text-center leading-tight opacity-90">
-        Vol {formatVolume(rulerStats.volumeSum)}
-      </div>
-    </div>
-  {/if}
+  <ChartDrawables
+    bind:this={chartDrawables}
+    activeTool={activeTool}
+    onActiveToolChange={t => (activeTool = t)}
+    {coordMap}
+    {symbol}
+    {candles}
+    {provider}
+    {interval}
+    toChartPoint={toChartPoint}
+    containerEl={containerEl}
+    onPlacementActiveChange={onDrawablePlacementActiveChange}
+  />
 </div>
 
 <style>

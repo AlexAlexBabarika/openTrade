@@ -1,13 +1,10 @@
-import type { OHLCVCandle } from './types';
+import type { OHLCVCandle } from '../../../types';
 
-export type ChartTool = 'cursor' | 'ruler';
-
-export interface Measurement {
-  startTime: number; // unix seconds
+export interface RulerGeometry {
+  startTime: number;
   endTime: number;
   startPrice: number;
   endPrice: number;
-  dragging: boolean;
 }
 
 export interface RulerStats {
@@ -31,13 +28,14 @@ function formatSpan(seconds: number): string {
 }
 
 export function computeStats(
-  m: Measurement,
+  geo: RulerGeometry,
   candles: readonly OHLCVCandle[],
 ): RulerStats {
-  const priceDelta = m.endPrice - m.startPrice;
-  const pctDelta = m.startPrice !== 0 ? (priceDelta / m.startPrice) * 100 : 0;
-  const tMin = Math.min(m.startTime, m.endTime);
-  const tMax = Math.max(m.startTime, m.endTime);
+  const priceDelta = geo.endPrice - geo.startPrice;
+  const pctDelta =
+    geo.startPrice !== 0 ? (priceDelta / geo.startPrice) * 100 : 0;
+  const tMin = Math.min(geo.startTime, geo.endTime);
+  const tMax = Math.max(geo.startTime, geo.endTime);
 
   let barCount = 0;
   let volumeSum = 0;

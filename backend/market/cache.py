@@ -4,6 +4,8 @@ In-memory cache for loaded OHLCV data.
 Keys are ``provider:symbol`` so different providers never overwrite the same symbol.
 """
 
+from typing import Any
+
 from backend.market.models import OHLCVCandle
 
 # "provider:symbol" -> candles
@@ -43,3 +45,44 @@ def is_csv_cached(symbol: str) -> bool:
 def list_cached_keys() -> list[str]:
     """Return all cache keys (``provider:symbol``)."""
     return list(_data_cache.keys())
+
+
+# ---------------------------------------------------------------------------
+# Volume-profile cache
+# Keyed by (provider, symbol, start_ts, end_ts, row_size, va_pct, interval).
+# Values are arbitrary result objects (ProfileResult from volume_profile.py).
+# ---------------------------------------------------------------------------
+
+_profile_cache: dict[tuple, Any] = {}
+
+
+def make_profile_key(
+    provider: str,
+    symbol: str,
+    start_ts: int,
+    end_ts: int | None,
+    row_size: float,
+    va_pct: float,
+    interval: str,
+) -> tuple:
+    return (
+        provider.strip().lower(),
+        symbol.strip(),
+        int(start_ts),
+        int(end_ts) if end_ts is not None else None,
+        round(float(row_size), 8),
+        round(float(va_pct), 6),
+        interval.strip().lower(),
+    )
+
+
+def get_cached_profile(key: tuple) -> Any | None:
+    return _profile_cache.get(key)
+
+
+def set_cached_profile(key: tuple, value: Any) -> None:
+    _profile_cache[key] = value
+
+
+def clear_profile_cache() -> None:
+    _profile_cache.clear()
