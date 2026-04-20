@@ -30,7 +30,7 @@
 ## To maintain
 1. **Format python code**
     ```bash
-    black backend/
+    ruff format backend/
     ```
 2. **Format ts code**
     ```bash
