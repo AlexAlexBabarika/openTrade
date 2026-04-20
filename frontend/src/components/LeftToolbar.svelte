@@ -11,7 +11,6 @@
   import {
     drawables,
     listTools,
-    ensureToolsRegistered,
     CURSOR,
     type ActiveTool,
   } from '../lib/drawables';
@@ -28,8 +27,6 @@
     activeTool: ActiveTool;
     onToolSettings: (toolType: string) => void;
   } = $props();
-
-  ensureToolsRegistered();
 
   let crosshairOpen = $state(false);
   /** Popover open state per tool type — keys must exist for bind:open. */

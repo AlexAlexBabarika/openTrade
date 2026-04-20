@@ -4,7 +4,6 @@
   import type { OHLCVCandle } from '../lib/types';
   import {
     drawables,
-    ensureToolsRegistered,
     getTool,
     CURSOR,
     type ActiveTool,
@@ -47,8 +46,6 @@
   function setActiveTool(t: ActiveTool): void {
     onActiveToolChange(t);
   }
-
-  ensureToolsRegistered();
 
   /** Subscribe via `drawables.items` so the list reactively updates when `add()` runs. */
   let drawablesForSymbol = $derived.by(() =>
