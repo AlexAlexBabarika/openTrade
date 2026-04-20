@@ -3,7 +3,8 @@ import type { DrawableTool } from './types';
 
 // Registry is heterogeneous — each tool narrows <Geo,Params,Style,Data> to its
 // own types. A typed registry would fight Svelte's invariant Component<Props>.
-// Tool-specific typing lives in each tool module's exported `*Drawable` alias.
+// Bundled tools use concrete types in `toolCatalog.ts`; this map stays widened
+// so tests can register minimal `DrawableTool` fakes.
 type AnyTool = DrawableTool<any, any, any, any>;
 
 const tools = new Map<string, AnyTool>();

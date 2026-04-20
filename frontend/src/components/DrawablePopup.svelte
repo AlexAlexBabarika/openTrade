@@ -29,6 +29,7 @@
   style:top="{anchor.y + OFFSET_Y}px"
   role="toolbar"
   aria-label="Drawable actions"
+  tabindex="-1"
   onpointerdown={(e) => e.stopPropagation()}
 >
   {#each actions as action (action.id)}

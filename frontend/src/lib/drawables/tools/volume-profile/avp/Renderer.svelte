@@ -26,6 +26,15 @@
     return Math.round(MAX_WIDTH_PX * pct);
   });
 
+  let boxLeft = $derived.by(() => {
+    coordMap.version;
+    if (drawable.style.placement === 'right') {
+      const pw = coordMap.plotWidth;
+      return pw > boxWidth ? pw - boxWidth : 0;
+    }
+    return 0;
+  });
+
   let maxBinVol = $derived(
     data ? Math.max(0, ...data.bins.map(b => b.upVol + b.downVol)) : 0,
   );
@@ -36,8 +45,7 @@
       return;
     }
     const anchorY = coordMap.priceToY(data?.poc ?? 0) ?? 0;
-    const pt: ScreenPoint = { x: anchorX + (drawable.style.placement === 'right' ? boxWidth : -boxWidth), y: anchorY };
-    onAnchorPoint(pt);
+    onAnchorPoint({ x: anchorX, y: anchorY } satisfies ScreenPoint);
   });
 
   function onHitPointerDown(e: PointerEvent) {
@@ -48,7 +56,6 @@
 
 {#if anchorX != null}
   {@const placement = drawable.style.placement}
-  {@const boxLeft = placement === 'right' ? anchorX : anchorX - boxWidth}
   <g>
     <line
       x1={anchorX}
@@ -74,23 +81,6 @@
           {@const downW = fullW - upW}
           {#if placement === 'right'}
             <rect
-              x={boxLeft}
-              y={top}
-              width={upW}
-              height={h}
-              fill={drawable.style.upColor}
-              fill-opacity="0.6"
-            />
-            <rect
-              x={boxLeft + upW}
-              y={top}
-              width={downW}
-              height={h}
-              fill={drawable.style.downColor}
-              fill-opacity="0.6"
-            />
-          {:else}
-            <rect
               x={boxLeft + boxWidth - upW}
               y={top}
               width={upW}
@@ -100,6 +90,23 @@
             />
             <rect
               x={boxLeft + boxWidth - fullW}
+              y={top}
+              width={downW}
+              height={h}
+              fill={drawable.style.downColor}
+              fill-opacity="0.6"
+            />
+          {:else}
+            <rect
+              x={boxLeft}
+              y={top}
+              width={upW}
+              height={h}
+              fill={drawable.style.upColor}
+              fill-opacity="0.6"
+            />
+            <rect
+              x={boxLeft + upW}
               y={top}
               width={downW}
               height={h}

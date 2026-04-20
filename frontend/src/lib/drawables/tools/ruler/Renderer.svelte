@@ -58,6 +58,23 @@
   let stats = $derived(data ?? null);
 
   $effect(() => {
+    coordMap.version;
+    const g = drawable.geometry;
+    console.log('[R]', drawable.id,
+      'box=', box,
+      'stats=', stats,
+      'data=', data,
+      'geo=', g,
+      'x1=', coordMap.timeToX(g.startTime),
+      'x2=', coordMap.timeToX(g.endTime),
+      'y1=', coordMap.priceToY(g.startPrice),
+      'y2=', coordMap.priceToY(g.endPrice),
+      'v=', coordMap.version,
+    );
+  });
+
+
+  $effect(() => {
     if (!box) {
       onAnchorPoint(null);
       return;

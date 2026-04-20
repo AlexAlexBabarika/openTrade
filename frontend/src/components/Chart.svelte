@@ -33,21 +33,13 @@
     type CrosshairModeName,
   } from '../lib/crosshair';
   import {
-    drawables,
-    ensureToolsRegistered,
-    getTool,
     buildCoordMap,
     CURSOR,
     type ActiveTool,
     type CoordMap,
     type ChartPoint,
-    type PlacementMachine,
-    type Drawable,
-    type ScreenPoint,
-    resolvePopupActions,
   } from '../lib/drawables';
-  import type { PopupAction } from '../lib/drawables';
-  import DrawablePopup from './DrawablePopup.svelte';
+  import ChartDrawables from './ChartDrawables.svelte';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
 
@@ -89,7 +81,7 @@
     api?: ChartApi | null;
   } = $props();
 
-  let containerEl: HTMLDivElement;
+  let containerEl = $state<HTMLDivElement | null>(null);
   let chart: IChartApi | null = null;
   let candleSeries: ISeriesApi<'Candlestick'> | null = null;
   let lineSeries: ISeriesApi<'Line'> | null = null;
@@ -105,63 +97,24 @@
   // Bumped whenever pan/zoom/resize invalidates our cached pixel coords.
   let coordVersion = $state(0);
 
-  ensureToolsRegistered();
-
   let coordMap = $state<CoordMap | null>(null);
 
-  let placement = $state<{
-    type: string;
-    machine: PlacementMachine<unknown>;
-    preview: Drawable | null;
-  } | null>(null);
+  /** True while the user is dragging out a new drawable (disables chart pan/zoom). */
+  let drawablePlacing = $state(false);
 
-  // Computed data per drawable. Synchronous for Phase 1; async in later phases.
-  let computedData = $state<Map<string, unknown>>(new Map());
-
-  // Anchor points are updated by Renderers via onAnchorPoint. We store the
-  // Map outside reactivity to avoid feedback loops — `anchorTick` is the
-  // reactive read used by the popup's position derivation.
-  const anchorPointsMap = new Map<string, ScreenPoint>();
-  let anchorTick = $state(0);
-
-  function setAnchorPoint(id: string, pt: ScreenPoint | null): void {
-    const prev = anchorPointsMap.get(id);
-    if (pt === null) {
-      if (prev === undefined) return;
-      anchorPointsMap.delete(id);
-    } else {
-      if (prev && prev.x === pt.x && prev.y === pt.y) return;
-      anchorPointsMap.set(id, pt);
-    }
-    anchorTick += 1;
+  function onDrawablePlacementActiveChange(active: boolean): void {
+    drawablePlacing = active;
   }
 
-  let popupAnchor = $derived.by(() => {
-    anchorTick; // re-run when anchors change
-    const sel = drawables.selected;
-    if (!sel) return null;
-    const pt = anchorPointsMap.get(sel.id);
-    return pt ?? null;
-  });
-
-  let popupActions = $derived.by(() => {
-    const sel = drawables.selected;
-    if (!sel) return [] as PopupAction[];
-    const tool = getTool(sel.type);
-    return tool ? resolvePopupActions(tool) : [];
-  });
-
-  function onPopupAction(id: PopupAction['id'], action: PopupAction): void {
-    const sel = drawables.selected;
-    if (!sel) return;
-    if (id === 'delete') {
-      drawables.remove(sel.id);
-      return;
-    }
-    if (id === 'custom' && action.id === 'custom') {
-      action.handler(sel);
-    }
-  }
+  let chartDrawables = $state<
+    | {
+        handlePointerDown: (e: PointerEvent) => void;
+        handlePointerMove: (e: PointerEvent) => void;
+        handlePointerUp: (e: PointerEvent) => void;
+        handleKeyDown: (e: KeyboardEvent) => void;
+      }
+    | undefined
+  >(undefined);
 
   let legendName = $state('');
   let legendPrice = $state('');
@@ -272,6 +225,10 @@
   function applySeries(type: ChartType): void {
     if (!chart) return;
 
+    const needCandle = type === 'candlestick';
+    if (needCandle && candleSeries) return;
+    if (!needCandle && lineSeries) return;
+
     if (candleSeries) {
       chart.removeSeries(candleSeries);
       candleSeries = null;
@@ -281,7 +238,7 @@
       lineSeries = null;
     }
 
-    if (type === 'candlestick') {
+    if (needCandle) {
       candleSeries = addCandlestickSeries(chart, colours);
     } else {
       lineSeries = addLineSeries(chart, resolveColour(colours, 'lineColour'));
@@ -370,106 +327,19 @@
   }
 
   function onChartPointerDown(e: PointerEvent) {
-    // Selection path: cursor mode, click on chart background deselects.
-    if (activeTool === CURSOR) {
-      const target = e.target as Element | null;
-      const hitId = target
-        ?.closest('[data-drawable-id]')
-        ?.getAttribute('data-drawable-id');
-      if (hitId) {
-        drawables.select(hitId);
-      } else {
-        drawables.select(null);
-      }
-      return;
-    }
-
-    // Placement path.
-    const pt = toChartPoint(e);
-    if (!pt || !coordMap) return;
-    if (!placement) {
-      const tool = getTool(activeTool);
-      if (!tool) return;
-      const machine = tool.createPlacement({ coordMap, symbol });
-      const toolType = tool.type;
-      machine.onComplete((geometry: unknown) => {
-        drawables.add({
-          id: crypto.randomUUID(),
-          type: toolType,
-          symbol,
-          geometry,
-          params: tool.defaults.params,
-          style: tool.defaults.style,
-          createdAt: Date.now(),
-        });
-        placement = null;
-        activeTool = CURSOR;
-      });
-      placement = { type: toolType, machine, preview: null };
-    }
-    placement.machine.onPointerDown(pt);
-    containerEl?.setPointerCapture?.(e.pointerId);
-    e.preventDefault();
-    refreshPlacementPreview();
+    chartDrawables?.handlePointerDown(e);
   }
 
   function onChartPointerMove(e: PointerEvent) {
-    if (!placement) return;
-    const pt = toChartPoint(e);
-    if (!pt) return;
-    placement.machine.onPointerMove(pt);
-    refreshPlacementPreview();
+    chartDrawables?.handlePointerMove(e);
   }
 
   function onChartPointerUp(e: PointerEvent) {
-    if (!placement) return;
-    const pt = toChartPoint(e);
-    if (pt) placement.machine.onPointerUp(pt);
-    if (containerEl?.hasPointerCapture?.(e.pointerId)) {
-      containerEl.releasePointerCapture(e.pointerId);
-    }
-    refreshPlacementPreview();
+    chartDrawables?.handlePointerUp(e);
   }
 
-  function refreshPlacementPreview() {
-    if (!placement) return;
-    const prev = placement.machine.preview;
-    const tool = getTool(placement.type);
-    if (!prev || !tool) {
-      placement = { ...placement, preview: null };
-      return;
-    }
-    const previewDrawable: Drawable = {
-      id: '__preview__',
-      type: placement.type,
-      symbol,
-      geometry: prev.geometry,
-      params: tool.defaults.params,
-      style: tool.defaults.style,
-      createdAt: 0,
-    };
-    placement = { ...placement, preview: previewDrawable };
-  }
-
-  function onKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
-      if (placement) {
-        placement.machine.cancel();
-        placement = null;
-        activeTool = CURSOR;
-        return;
-      }
-      if (drawables.selected) {
-        drawables.select(null);
-      }
-      return;
-    }
-    if (
-      (e.key === 'Delete' || e.key === 'Backspace') &&
-      drawables.selected
-    ) {
-      drawables.remove(drawables.selected.id);
-    }
+  function onChartKeyDown(e: KeyboardEvent) {
+    chartDrawables?.handleKeyDown(e);
   }
 
   $effect(() => {
@@ -486,66 +356,9 @@
     coordMap = buildCoordMap(chart, series, version);
   });
 
-  const computeControllers = new Map<string, AbortController>();
-
+  // Suspend chart pan/zoom while the user is placing a drawable (see ChartDrawables).
   $effect(() => {
-    const sym = symbol;
-    const cs = candles;
-    const prov = provider;
-    const iv = interval;
-    const items = drawables.forSymbol(sym);
-
-    const liveIds = new Set(items.map(d => d.id));
-    for (const [id, ctl] of computeControllers) {
-      if (!liveIds.has(id)) {
-        ctl.abort();
-        computeControllers.delete(id);
-        if (computedData.has(id)) {
-          const next = new Map(computedData);
-          next.delete(id);
-          computedData = next;
-        }
-      }
-    }
-
-    for (const d of items) {
-      const tool = getTool(d.type);
-      if (!tool?.compute) continue;
-
-      computeControllers.get(d.id)?.abort();
-      const ctl = new AbortController();
-      computeControllers.set(d.id, ctl);
-
-      try {
-        const res = tool.compute(d, {
-          candles: cs,
-          provider: prov,
-          symbol: sym,
-          interval: iv,
-          signal: ctl.signal,
-        });
-        if (res instanceof Promise) {
-          res
-            .then(value => {
-              if (ctl.signal.aborted) return;
-              computedData = new Map(computedData).set(d.id, value);
-            })
-            .catch(err => {
-              if (ctl.signal.aborted) return;
-              console.warn(`compute failed for drawable ${d.id}`, err);
-            });
-        } else {
-          computedData = new Map(computedData).set(d.id, res);
-        }
-      } catch (err) {
-        console.warn(`compute failed for drawable ${d.id}`, err);
-      }
-    }
-  });
-
-  // Suspend chart scroll/scale while placing a drawable.
-  $effect(() => {
-    const placing = placement !== null;
+    const placing = drawablePlacing;
     if (!chart) return;
     untrack(() => {
       chart?.applyOptions({
@@ -588,11 +401,6 @@
       chart.remove();
       chart = null;
     }
-  });
-
-  onDestroy(() => {
-    for (const ctl of computeControllers.values()) ctl.abort();
-    computeControllers.clear();
   });
 
   let prevCandles: OHLCVCandle[] | undefined;
@@ -747,17 +555,21 @@
   });
 </script>
 
+<!-- Hit target for chart + drawables: lightweight-charts canvas is not focusable; we need tabindex and keyboard handlers here. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
   class="flex-1 min-h-[400px] relative w-full z-0 overflow-hidden"
   class:cursor-crosshair={activeTool !== CURSOR}
   bind:this={containerEl}
-  role="presentation"
+  role="region"
+  aria-label="Chart"
   tabindex="0"
   onpointerdown={onChartPointerDown}
   onpointermove={onChartPointerMove}
   onpointerup={onChartPointerUp}
   onpointercancel={onChartPointerUp}
-  onkeydown={onKeyDown}
+  onkeydown={onChartKeyDown}
 >
   {#if showLegend}
     <div
@@ -771,52 +583,19 @@
     </div>
   {/if}
 
-  {#if coordMap}
-    <svg
-      class="absolute inset-0 w-full h-full z-10 pointer-events-none"
-      style="overflow: visible;"
-    >
-      {#each drawables.forSymbol(symbol) as d (d.id)}
-        {@const tool = getTool(d.type)}
-        {#if tool}
-          {@const RendererCmp = tool.Renderer}
-          <RendererCmp
-            drawable={d}
-            data={computedData.get(d.id)}
-            selected={drawables.selected?.id === d.id}
-            coordMap={coordMap}
-            onGeometryChange={geo => drawables.update(d.id, { geometry: geo })}
-            onRequestSelect={() => drawables.select(d.id)}
-            onAnchorPoint={(pt) => setAnchorPoint(d.id, pt)}
-          />
-        {/if}
-      {/each}
-
-      {#if placement?.preview}
-        {@const previewTool = getTool(placement.type)}
-        {#if previewTool}
-          {@const PreviewCmp = previewTool.Renderer}
-          <PreviewCmp
-            drawable={placement.preview}
-            data={undefined}
-            selected={false}
-            coordMap={coordMap}
-            onGeometryChange={() => {}}
-            onRequestSelect={() => {}}
-            onAnchorPoint={() => {}}
-          />
-        {/if}
-      {/if}
-    </svg>
-
-    {#if popupAnchor && popupActions.length > 0}
-      <DrawablePopup
-        anchor={popupAnchor}
-        actions={popupActions}
-        onAction={onPopupAction}
-      />
-    {/if}
-  {/if}
+  <ChartDrawables
+    bind:this={chartDrawables}
+    activeTool={activeTool}
+    onActiveToolChange={t => (activeTool = t)}
+    {coordMap}
+    {symbol}
+    {candles}
+    {provider}
+    {interval}
+    toChartPoint={toChartPoint}
+    containerEl={containerEl}
+    onPlacementActiveChange={onDrawablePlacementActiveChange}
+  />
 </div>
 
 <style>

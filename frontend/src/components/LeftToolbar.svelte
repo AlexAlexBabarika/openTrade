@@ -3,11 +3,13 @@
   import Crosshair from '@lucide/svelte/icons/crosshair';
   import Check from '@lucide/svelte/icons/check';
   import Settings from '@lucide/svelte/icons/settings';
+  import X from '@lucide/svelte/icons/x';
   import {
     CROSSHAIR_MODES,
     type CrosshairModeName,
   } from '../lib/crosshair';
   import {
+    drawables,
     listTools,
     ensureToolsRegistered,
     CURSOR,
@@ -15,21 +17,24 @@
   } from '../lib/drawables';
 
   let {
+    chartSymbol = '',
     crosshairMode = $bindable<CrosshairModeName>('magnet'),
     activeTool = $bindable<ActiveTool>(CURSOR),
     onToolSettings,
   }: {
+    /** Current chart ticker — drawables cleared for this symbol only. */
+    chartSymbol?: string;
     crosshairMode: CrosshairModeName;
     activeTool: ActiveTool;
     onToolSettings: (toolType: string) => void;
   } = $props();
 
   ensureToolsRegistered();
-  const tools = listTools();
 
   let crosshairOpen = $state(false);
-  const toolPopoverOpen: Record<string, boolean> = $state(
-    Object.fromEntries(tools.map(t => [t.type, false])),
+  /** Popover open state per tool type — keys must exist for bind:open. */
+  let toolPopoverOpen = $state<Record<string, boolean>>(
+    Object.fromEntries(listTools().map(t => [t.type, false])),
   );
 
   function selectCrosshair(mode: CrosshairModeName) {
@@ -39,17 +44,22 @@
 
   function activateTool(type: string) {
     activeTool = activeTool === type ? CURSOR : type;
-    toolPopoverOpen[type] = false;
+    toolPopoverOpen = { ...toolPopoverOpen, [type]: false };
   }
 
   function openSettings(type: string) {
-    toolPopoverOpen[type] = false;
+    toolPopoverOpen = { ...toolPopoverOpen, [type]: false };
     onToolSettings(type);
+  }
+
+  function clearDrawablesForChart() {
+    if (!chartSymbol) return;
+    drawables.removeAllForSymbol(chartSymbol);
   }
 </script>
 
 <div
-  class="flex flex-col items-center gap-1 py-1 border-r border-border bg-background w-10 shrink-0"
+  class="flex flex-col items-center gap-1 py-1 border-r border-border bg-background w-10 shrink-0 h-full min-h-0"
 >
   <Popover.Root bind:open={crosshairOpen}>
     <Popover.Trigger
@@ -83,10 +93,11 @@
     </Popover.Portal>
   </Popover.Root>
 
-  {#each tools as tool (tool.type)}
+  {#each listTools() as tool (tool.type)}
     {@const Icon = tool.icon}
-    <Popover.Root bind:open={toolPopoverOpen[tool.type]}>
+    <Popover.Root bind:open={toolPopoverOpen[tool.type]!}>
       <Popover.Trigger
+        type="button"
         class="flex items-center justify-center w-8 h-8 rounded hover:bg-accent transition-colors outline-none {activeTool ===
         tool.type
           ? 'bg-accent text-foreground'
@@ -129,4 +140,19 @@
       </Popover.Portal>
     </Popover.Root>
   {/each}
+
+  <div class="mt-auto flex flex-col items-center pt-2">
+    <button
+      type="button"
+      class="flex items-center justify-center w-8 h-8 rounded-sm bg-destructive hover:bg-destructive/90 transition-colors outline-none shrink-0"
+      aria-label="Clear all drawables on chart"
+      title="Clear all drawables"
+      onclick={clearDrawablesForChart}
+    >
+      <X
+        class="h-4 w-4 text-white dark:text-zinc-950"
+        strokeWidth={2.5}
+      />
+    </button>
+  </div>
 </div>

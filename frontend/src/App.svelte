@@ -612,6 +612,7 @@
   <ErrorMessage bind:message={errorMessage} />
   <div class="flex flex-1 min-h-0">
     <LeftToolbar
+      chartSymbol={symbol}
       bind:crosshairMode
       bind:activeTool
       onToolSettings={openToolSettings}

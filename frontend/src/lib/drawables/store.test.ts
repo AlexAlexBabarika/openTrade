@@ -63,4 +63,16 @@ describe('drawables store', () => {
     store.select(null);
     expect(store.selected).toBeNull();
   });
+
+  it('removeAllForSymbol removes only matching symbol and clears selection if needed', () => {
+    store.add(d('1', 'AAPL'));
+    store.add(d('2', 'MSFT'));
+    store.add(d('3', 'AAPL'));
+    store.select('3');
+    store.removeAllForSymbol('AAPL');
+    expect(store.items.map(x => x.id)).toEqual(['2']);
+    expect(store.selected).toBeNull();
+    store.removeAllForSymbol('MSFT');
+    expect(store.items).toEqual([]);
+  });
 });

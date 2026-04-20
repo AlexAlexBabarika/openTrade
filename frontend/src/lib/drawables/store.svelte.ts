@@ -25,6 +25,16 @@ export function createDrawablesStore() {
       items = items.filter(d => d.id !== id);
       if (selectedId === id) selectedId = null;
     },
+    removeAllForSymbol(symbol: string) {
+      const removing = new Set(
+        items.filter(d => d.symbol === symbol).map(d => d.id),
+      );
+      if (removing.size === 0) return;
+      items = items.filter(d => d.symbol !== symbol);
+      if (selectedId !== null && removing.has(selectedId)) {
+        selectedId = null;
+      }
+    },
     replaceAll(next: Drawable[]) {
       items = [...next];
       selectedId = null;

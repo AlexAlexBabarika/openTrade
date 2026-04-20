@@ -1,10 +1,11 @@
 // frontend/src/lib/drawables/index.ts
 import { registerTool, getTool } from './registry';
-import { rulerTool } from './tools/ruler/tool';
-import { avpTool } from './tools/volume-profile/avp/tool';
+import { BUNDLED_TOOLS } from './toolCatalog';
 import { loadToolDefaults } from './toolDefaults';
 
 export * from './types';
+export type { BundledTool, BundledToolType } from './toolCatalog';
+export { BUNDLED_TOOLS, isBundledToolType } from './toolCatalog';
 export { drawables, createDrawablesStore } from './store.svelte';
 export { loadAll, saveAll, DRAWABLES_STORAGE_KEY } from './persistence';
 export { registerTool, getTool, listTools } from './registry';
@@ -20,19 +21,28 @@ export { buildCoordMap } from './coordMap';
 
 let registered = false;
 
-/** Idempotent. Call once from app bootstrap. */
-export function ensureToolsRegistered(): void {
-  if (registered) return;
-  registerTool(rulerTool);
-  registerTool(avpTool);
-  // Apply persisted per-tool default overrides.
-  for (const type of [rulerTool.type, avpTool.type]) {
-    const stored = loadToolDefaults(type);
-    const tool = getTool(type);
+function applyPersistedToolDefaults(): void {
+  for (const bundled of BUNDLED_TOOLS) {
+    const stored = loadToolDefaults(bundled.type);
+    const tool = getTool(bundled.type);
     if (stored && tool) {
       tool.defaults.params = stored.params as typeof tool.defaults.params;
       tool.defaults.style = stored.style as typeof tool.defaults.style;
     }
   }
+}
+
+/** Idempotent. Call once from app bootstrap. */
+export function ensureToolsRegistered(): void {
+  if (registered) return;
+  for (const tool of BUNDLED_TOOLS) {
+    registerTool(tool);
+  }
+  applyPersistedToolDefaults();
   registered = true;
 }
+
+// Register as soon as this module loads so any importer (e.g. LeftToolbar
+// before App's script runs) sees a full `listTools()` — import order in App
+// loads LeftToolbar before `./lib/drawables`.
+ensureToolsRegistered();

@@ -14,12 +14,13 @@ export interface ChartPoint {
 }
 
 /**
- * Maps chart-space ↔ screen-space. Provided by Chart.svelte to Renderers and
+ * Maps chart-space ↔ screen-space. Provided by the chart to Renderers and
  * placement machines. `version` bumps whenever pan/zoom/resize invalidates
  * cached coordinates, so consumers can depend on it in `$derived`.
  */
 export interface CoordMap {
   version: number;
+  plotWidth: number;
   timeToX: (t: number) => number | null;
   xToTime: (x: number) => number | null;
   priceToY: (p: number) => number | null;
