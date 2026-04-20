@@ -1,12 +1,10 @@
-<!-- Chart overlay: drawable placement, compute, SVG renderers, popup. -->
+<!-- Chart overlay: placement + popup orchestration; compute and SVG live in child components. -->
 <script lang="ts">
-  import { onDestroy, untrack } from 'svelte';
   import type { OHLCVCandle } from '../lib/types';
   import {
     drawables,
     getTool,
     CURSOR,
-    previewPlacementRendererProps,
     type BundledDrawable,
     type ActiveTool,
     type CoordMap,
@@ -17,6 +15,8 @@
     resolvePopupActions,
   } from '../lib/drawables';
   import type { PopupAction } from '../lib/drawables';
+  import ChartDrawablesCompute from './ChartDrawablesCompute.svelte';
+  import DrawablesSvgScene from './DrawablesSvgScene.svelte';
   import DrawablePopup from './DrawablePopup.svelte';
 
   let {
@@ -205,111 +205,28 @@
       drawables.remove(drawables.selected.id);
     }
   }
-
-  const computeControllers = new Map<string, AbortController>();
-
-  function setComputedIfChanged(id: string, value: unknown): void {
-    if (Object.is(computedData.get(id), value)) return;
-    computedData = new Map(computedData).set(id, value);
-  }
-
-  $effect(() => {
-    const sym = symbol;
-    const cs = candles;
-    const prov = provider;
-    const iv = interval;
-    const items = drawables.forSymbol(sym);
-
-    const liveIds = new Set(items.map(d => d.id));
-    untrack(() => {
-      let pruned = false;
-      const nextMap = new Map(computedData);
-      for (const id of [...computeControllers.keys()]) {
-        if (!liveIds.has(id)) {
-          computeControllers.get(id)?.abort();
-          computeControllers.delete(id);
-          if (nextMap.delete(id)) pruned = true;
-        }
-      }
-      if (pruned) computedData = nextMap;
-
-      for (const d of items) {
-        const tool = getTool(d.type);
-        if (!tool?.compute) continue;
-
-        computeControllers.get(d.id)?.abort();
-        const ctl = new AbortController();
-        computeControllers.set(d.id, ctl);
-
-        try {
-          const res = tool.compute(d, {
-            candles: cs,
-            provider: prov,
-            symbol: sym,
-            interval: iv,
-            signal: ctl.signal,
-          });
-          if (res instanceof Promise) {
-            res
-              .then(value => {
-                if (ctl.signal.aborted) return;
-                setComputedIfChanged(d.id, value);
-              })
-              .catch(err => {
-                if (ctl.signal.aborted) return;
-                console.warn(`compute failed for drawable ${d.id}`, err);
-              });
-          } else {
-            setComputedIfChanged(d.id, res);
-          }
-        } catch (err) {
-          console.warn(`compute failed for drawable ${d.id}`, err);
-        }
-      }
-    });
-  });
-
-  onDestroy(() => {
-    for (const ctl of computeControllers.values()) ctl.abort();
-    computeControllers.clear();
-  });
 </script>
 
 {#if coordMap}
-  <svg
-    class="absolute inset-0 w-full h-full z-10 pointer-events-none"
-    style="overflow: visible;"
-  >
-    {#each itemsForSymbol as d (d.id)}
-      {@const tool = getTool(d.type)}
-      {#if tool}
-        {@const RendererCmp = tool.Renderer}
-        <RendererCmp
-          drawable={d}
-          data={computedData.get(d.id)}
-          selected={drawables.selected?.id === d.id}
-          coordMap={coordMap}
-          onGeometryChange={geo => drawables.update(d.id, { geometry: geo })}
-          onRequestSelect={() => drawables.select(d.id)}
-          onAnchorPoint={pt => setAnchorPoint(d.id, pt)}
-        />
-      {/if}
-    {/each}
+  <ChartDrawablesCompute
+    bind:computedData
+    {symbol}
+    {candles}
+    {provider}
+    {interval}
+    items={itemsForSymbol}
+  />
 
-    {#if placement?.preview}
-      {@const previewTool = getTool(placement.type)}
-      {#if previewTool}
-        {@const PreviewCmp = previewTool.Renderer}
-        <PreviewCmp
-          {...previewPlacementRendererProps({
-            drawable: placement.preview,
-            data: undefined,
-            coordMap,
-          })}
-        />
-      {/if}
-    {/if}
-  </svg>
+  <DrawablesSvgScene
+    {coordMap}
+    items={itemsForSymbol}
+    {computedData}
+    selectedId={drawables.selected?.id ?? null}
+    {placement}
+    onPatchGeometry={(id, geometry) => drawables.update(id, { geometry })}
+    onSelectDrawable={id => drawables.select(id)}
+    onAnchorPoint={(id, pt) => setAnchorPoint(id, pt)}
+  />
 
   {#if popupAnchor && popupActions.length > 0}
     <DrawablePopup
