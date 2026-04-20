@@ -38,9 +38,11 @@ export interface Drawable<Geo = unknown, Params = unknown, Style = unknown> {
   createdAt: number;
 }
 
-/** Popup action descriptor. Every tool gets settings + delete by default. */
+/**
+ * Popup action descriptor. Default is delete only; tool settings live in the
+ * left-toolbar tool dropdown. Tools may override via `DrawableTool.popupActions`.
+ */
 export type PopupAction =
-  | { id: 'settings'; label: string }
   | { id: 'delete'; label: string }
   | { id: 'custom'; label: string; handler: (drawable: Drawable) => void };
 
@@ -102,15 +104,41 @@ export interface DrawableTool<
   popupActions?: PopupAction[];
 }
 
-/** Renderer prop shape — enforced by `DrawableTool.Renderer` typing above. */
-export interface RendererProps<Geo, Params, Style, Data> {
+/** Minimal props for placement preview (no selection or mutation callbacks). */
+export interface PreviewRendererProps<Geo, Params, Style, Data> {
   drawable: Drawable<Geo, Params, Style>;
   data: Data | undefined;
-  selected: boolean;
   coordMap: CoordMap;
+}
+
+/** Interactive callbacks for a committed drawable on the chart. */
+export interface RendererInteraction<Geo> {
+  selected: boolean;
   onGeometryChange: (geo: Geo) => void;
   onRequestSelect: () => void;
   onAnchorPoint: (pt: ScreenPoint | null) => void;
+}
+
+/** Full renderer props — enforced by `DrawableTool.Renderer` typing above. */
+export type RendererProps<Geo, Params, Style, Data> = PreviewRendererProps<
+  Geo,
+  Params,
+  Style,
+  Data
+> &
+  RendererInteraction<Geo>;
+
+/** Merge preview props with inert handlers for placement preview rendering. */
+export function previewPlacementRendererProps<Geo, Params, Style, Data>(
+  preview: PreviewRendererProps<Geo, Params, Style, Data>,
+): RendererProps<Geo, Params, Style, Data> {
+  return {
+    ...preview,
+    selected: false,
+    onGeometryChange: () => {},
+    onRequestSelect: () => {},
+    onAnchorPoint: () => {},
+  };
 }
 
 /**

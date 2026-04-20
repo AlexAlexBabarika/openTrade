@@ -1,7 +1,9 @@
 <script lang="ts">
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import Settings from '@lucide/svelte/icons/settings';
+  import MoreHorizontal from '@lucide/svelte/icons/more-horizontal';
   import type { PopupAction, ScreenPoint } from '../lib/drawables';
+
+  type PopupActionId = PopupAction['id'];
 
   let {
     anchor,
@@ -13,9 +15,9 @@
     onAction: (id: PopupAction['id'], action: PopupAction) => void;
   } = $props();
 
-  const ICONS: Record<string, typeof Trash2> = {
-    settings: Settings,
+  const ICONS: Record<PopupActionId, typeof Trash2> = {
     delete: Trash2,
+    custom: MoreHorizontal,
   };
 
   // Place the popup 8px below and a few px left of the anchor corner.
@@ -33,7 +35,7 @@
   onpointerdown={(e) => e.stopPropagation()}
 >
   {#each actions as action (action.id)}
-    {@const Icon = ICONS[action.id] ?? Settings}
+    {@const Icon = ICONS[action.id]}
     <button
       type="button"
       class="flex items-center justify-center w-7 h-7 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors outline-none"

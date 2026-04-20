@@ -6,6 +6,7 @@
     drawables,
     getTool,
     CURSOR,
+    previewPlacementRendererProps,
     type ActiveTool,
     type CoordMap,
     type ChartPoint,
@@ -296,13 +297,11 @@
       {#if previewTool}
         {@const PreviewCmp = previewTool.Renderer}
         <PreviewCmp
-          drawable={placement.preview}
-          data={undefined}
-          selected={false}
-          coordMap={coordMap}
-          onGeometryChange={() => {}}
-          onRequestSelect={() => {}}
-          onAnchorPoint={() => {}}
+          {...previewPlacementRendererProps({
+            drawable: placement.preview,
+            data: undefined,
+            coordMap,
+          })}
         />
       {/if}
     {/if}
