@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
-  import type { OHLCVCandle } from '../lib/types';
+  import type { OHLCVCandle } from '$lib/core/types';
   import {
     bundledDrawablesFingerprint,
     candleBatchSignature,
-  } from '../lib/candleFingerprint';
-  import type { BundledDrawable } from '../lib/drawables/bundledDrawable';
-  import { getTool } from '../lib/drawables';
-  import { measureDrawablesSync } from '../lib/dev/drawablesProfile';
+  } from '$lib/features/chart/candleFingerprint';
+  import type { BundledDrawable } from '$lib/features/drawables/bundledDrawable';
+  import { getTool } from '$lib/features/drawables';
+  import { measureDrawablesSync } from '$lib/core/dev/drawablesProfile';
 
   /** Cached pieces so we do not rescan candles / stringify drawables when only the other input changes. */
   let lastMetaKey: string | undefined;

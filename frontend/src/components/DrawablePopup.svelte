@@ -1,7 +1,7 @@
 <script lang="ts">
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import MoreHorizontal from '@lucide/svelte/icons/more-horizontal';
-  import type { PopupAction, ScreenPoint } from '../lib/drawables';
+  import type { PopupAction, ScreenPoint } from '$lib/features/drawables';
 
   type PopupActionId = PopupAction['id'];
 

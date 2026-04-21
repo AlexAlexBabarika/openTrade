@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ConnectionStatus } from '../lib/ws';
+  import type { ConnectionStatus } from '$lib/core/ws';
 
   let { status = 'disconnected' }: { status: ConnectionStatus } = $props();
 

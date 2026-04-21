@@ -1,17 +1,17 @@
 <script lang="ts">
   import AuthDialog from './AuthDialog.svelte';
   import ApiKeysModal from './ApiKeysModal.svelte';
-  import type { ConnectionStatus } from '../lib/ws';
+  import type { ConnectionStatus } from '$lib/core/ws';
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
-  import { authState, logout } from '$lib/auth';
+  import { authState, logout } from '$lib/features/auth/auth';
   import {
     MARKET_DATA_PROVIDERS,
     type MarketDataProviderValue,
-  } from '$lib/marketDataProviders';
-  import { DEFAULT_MARKET_INTERVAL } from '$lib/marketIntervals';
+  } from '$lib/features/market/marketDataProviders';
+  import { DEFAULT_MARKET_INTERVAL } from '$lib/features/market/marketIntervals';
   import IntervalPicker from './IntervalPicker.svelte';
-  import { DEFAULT_MARKET_PERIOD } from '$lib/marketPeriods';
+  import { DEFAULT_MARKET_PERIOD } from '$lib/features/market/marketPeriods';
   import PeriodPicker from './PeriodPicker.svelte';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import ChartCandlestick from '@lucide/svelte/icons/chart-candlestick';

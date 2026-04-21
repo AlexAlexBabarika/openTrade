@@ -10,19 +10,19 @@
   import TrendingUp from '@lucide/svelte/icons/trending-up';
   import Moon from '@lucide/svelte/icons/moon';
   import Sun from '@lucide/svelte/icons/sun';
-  import type { Theme } from '../lib/theme';
+  import type { Theme } from '$lib/features/theme/theme';
   import ColourSwatch from './ColourSwatch.svelte';
   import type {
     ChartColours,
     ChartTemplate,
     ChartType,
-  } from '../lib/chartColours';
+  } from '$lib/features/chart/chartColours';
   import {
     defaultChartColours,
     loadTemplates,
     saveTemplate,
     deleteTemplate,
-  } from '../lib/chartColours';
+  } from '$lib/features/chart/chartColours';
 
   export interface MovingAverageConfig {
     enabled: boolean;

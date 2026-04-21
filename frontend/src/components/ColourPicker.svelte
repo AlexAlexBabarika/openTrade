@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { cssColourToHsva, hsvaToHex, hsvaToRgba, type HSVA } from '../lib/colourUtils';
+  import { cssColourToHsva, hsvaToHex, hsvaToRgba, type HSVA } from '$lib/features/chart/colourUtils';
 
   let {
     colour = $bindable('#000000'),

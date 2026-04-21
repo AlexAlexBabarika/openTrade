@@ -3,7 +3,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
-  import { login, signup } from '$lib/auth';
+  import { login, signup } from '$lib/features/auth/auth';
 
   let {
     open = $bindable(false),

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { OHLCVCandle } from '../lib/types';
+  import type { OHLCVCandle } from '$lib/core/types';
   import {
     drawables,
     getTool,
@@ -14,7 +14,7 @@
     type PopupAction,
     type ScreenPoint,
     resolvePopupActions,
-  } from '../lib/drawables';
+  } from '$lib/features/drawables';
   import ChartDrawablesCompute from './ChartDrawablesCompute.svelte';
   import DrawablesSvgScene from './DrawablesSvgScene.svelte';
   import DrawablePopup from './DrawablePopup.svelte';

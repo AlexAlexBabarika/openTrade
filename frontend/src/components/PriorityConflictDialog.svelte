@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
   import * as Dialog from '$lib/components/ui/dialog';
-  import type { PriorityConflict, TickerPriority } from '../lib/tickers';
+  import type { PriorityConflict, TickerPriority } from '$lib/features/market/tickers';
 
   let {
     open,

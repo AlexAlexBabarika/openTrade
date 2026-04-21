@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import ColorBends from '$lib/ColorBends.svelte';
+  import ColorBends from '$lib/features/chart/ColorBends.svelte';
 
   let {
     colors,

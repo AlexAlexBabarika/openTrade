@@ -11,7 +11,7 @@
     updateApiKey,
     type ApiKeyProvider,
     type ApiKeyInfo,
-  } from '$lib/api-keys';
+  } from '$lib/features/api-keys/api-keys';
 
   let {
     open = $bindable(false),

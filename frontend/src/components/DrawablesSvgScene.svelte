@@ -6,8 +6,8 @@
     type Drawable,
     type PlacementMachine,
     type ScreenPoint,
-  } from '../lib/drawables';
-  import type { BundledDrawable } from '../lib/drawables/bundledDrawable';
+  } from '$lib/features/drawables';
+  import type { BundledDrawable } from '$lib/features/drawables/bundledDrawable';
 
   let {
     coordMap,

@@ -8,11 +8,11 @@
 </script>
 
 <script lang="ts">
-  import { runSpring } from '$lib/spring';
+  import { runSpring } from '$lib/features/chart/spring';
   import ChartCandlestick from '@lucide/svelte/icons/chart-candlestick';
   import ChevronUp from '@lucide/svelte/icons/chevron-up';
   import ToolboxWidget from './ToolboxWidget.svelte';
-  import type { Theme } from '../lib/theme';
+  import type { Theme } from '$lib/features/theme/theme';
 
   let {
     open = $bindable(false),

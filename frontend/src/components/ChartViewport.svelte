@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { OHLCVCandle } from '../lib/types';
+  import type { OHLCVCandle } from '$lib/core/types';
   import {
     CURSOR,
     type ActiveTool,
     type CoordMap,
     type ChartPoint,
     type DrawableSurface,
-  } from '../lib/drawables';
+  } from '$lib/features/drawables';
   import ChartDrawables from './ChartDrawables.svelte';
   import ChartLegend from './ChartLegend.svelte';
 

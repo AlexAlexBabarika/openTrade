@@ -12,11 +12,11 @@
     TickerGroup,
     GroupActions,
     FlaggedPriority,
-  } from '../lib/tickers';
+  } from '$lib/features/market/tickers';
   import {
     FLAGGED_PRIORITIES,
     PRIORITY_COLOURS,
-  } from '../lib/tickers';
+  } from '$lib/features/market/tickers';
 
   let {
     groups,

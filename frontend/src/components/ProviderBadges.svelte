@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SymbolProviders } from '../lib/symbols';
+  import type { SymbolProviders } from '$lib/features/market/symbols';
 
   let {
     providers,

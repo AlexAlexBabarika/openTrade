@@ -12,15 +12,15 @@
     TickerPriority,
     PRIORITY_COLOURS,
     PRIORITY_OPTIONS,
-  } from '../lib/tickers';
+  } from '$lib/features/market/tickers';
   import type {
     TickerGroup,
     TrackedTicker,
     GroupActions,
     FlaggedPriority,
-  } from '../lib/tickers';
-  import type { TickerQuote } from '../lib/tickerQuotes';
-  import type { TickerNote } from '../lib/notes';
+  } from '$lib/features/market/tickers';
+  import type { TickerQuote } from '$lib/features/market/tickerQuotes';
+  import type { TickerNote } from '$lib/features/notes/notes';
 
   let {
     symbol = '',

@@ -7,7 +7,7 @@
     loadIntervalFavourites,
     persistIntervalFavourites,
     sortFavouritesByCanonical,
-  } from '../lib/marketIntervals';
+  } from '$lib/features/market/marketIntervals';
 
   let {
     value = $bindable(),

@@ -7,8 +7,8 @@
     MovingAverageConfig,
     BollingerBandsConfig,
   } from './ChartOptionsMenu.svelte';
-  import type { ChartColours, ChartType } from '../lib/chartColours';
-  import type { Theme } from '../lib/theme';
+  import type { ChartColours, ChartType } from '$lib/features/chart/chartColours';
+  import type { Theme } from '$lib/features/theme/theme';
 
   let {
     chartType = $bindable(),
