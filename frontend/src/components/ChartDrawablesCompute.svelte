@@ -4,6 +4,25 @@
   import type { BundledDrawable } from '../lib/drawables/bundledDrawable';
   import { getTool } from '../lib/drawables';
 
+  /** Stable batch identity so a new candles array reference does not N× recompute when OHLCV is unchanged. */
+  function candleBatchSignature(cs: OHLCVCandle[]): string {
+    const n = cs.length;
+    if (n === 0) return '0';
+    const row = (c: OHLCVCandle) =>
+      `${c.timestamp}:${c.open}:${c.high}:${c.low}:${c.close}:${c.volume}`;
+    const mid = n === 1 ? 0 : Math.floor(n / 2);
+    return `${n}|${row(cs[0])}|${row(cs[mid])}|${row(cs[n - 1])}`;
+  }
+
+  function bundledListComputeKey(items: readonly BundledDrawable[]): string {
+    return items
+      .map(
+        d =>
+          `${d.id}:${d.type}:${JSON.stringify(d.geometry)}:${JSON.stringify(d.params)}:${JSON.stringify(d.style)}`,
+      )
+      .join('|');
+  }
+
   let {
     symbol,
     candles,
@@ -22,6 +41,8 @@
 
   const computeControllers = new Map<string, AbortController>();
 
+  let lastComputeWorkKey: string | undefined;
+
   function setComputedIfChanged(id: string, value: unknown): void {
     if (Object.is(computedData.get(id), value)) return;
     computedData = new Map(computedData).set(id, value);
@@ -33,6 +54,10 @@
     const prov = provider;
     const iv = interval;
     const list = items;
+
+    const workKey = `${sym}|${prov}|${iv}|${candleBatchSignature(cs)}|${bundledListComputeKey(list)}`;
+    if (workKey === lastComputeWorkKey) return;
+    lastComputeWorkKey = workKey;
 
     const liveIds = new Set(list.map(d => d.id));
     untrack(() => {

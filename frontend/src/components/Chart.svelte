@@ -95,6 +95,13 @@
   let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let resizeObserver: ResizeObserver | null = null;
 
+  /** Avoid repeated layout reads during drawable placement pointer moves; invalidate on resize, scroll, or gesture start. */
+  let containerRectCache: DOMRect | null = null;
+
+  function invalidateContainerRectCache(): void {
+    containerRectCache = null;
+  }
+
   /**
    * Incremented when pan/zoom/resize (or container size) invalidates chart pixel
    * mapping. Fed into `buildCoordMap(..., version)` → `coordMap.version`.
@@ -290,6 +297,7 @@
   }
 
   function handleResize(): void {
+    invalidateContainerRectCache();
     if (chart && containerEl) {
       chart.applyOptions({
         width: containerEl.clientWidth,
@@ -310,7 +318,11 @@
     if (!chart || !containerEl) return null;
     const series = priceSeries();
     if (!series) return null;
-    const rect = containerEl.getBoundingClientRect();
+    let rect = containerRectCache;
+    if (!rect) {
+      rect = containerEl.getBoundingClientRect();
+      containerRectCache = rect;
+    }
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     const time = chart.timeScale().coordinateToTime(x);
@@ -325,6 +337,7 @@
   }
 
   function onChartPointerDown(e: PointerEvent) {
+    invalidateContainerRectCache();
     chartDrawables?.handlePointerDown(e);
   }
 
@@ -370,6 +383,7 @@
     initChart();
     api = { appendCandle };
     window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', invalidateContainerRectCache, true);
 
     if (containerEl) {
       resizeObserver = new ResizeObserver(handleResize);
@@ -391,6 +405,7 @@
   onDestroy(() => {
     api = null;
     window.removeEventListener('resize', handleResize);
+    window.removeEventListener('scroll', invalidateContainerRectCache, true);
     if (resizeObserver) {
       resizeObserver.disconnect();
       resizeObserver = null;

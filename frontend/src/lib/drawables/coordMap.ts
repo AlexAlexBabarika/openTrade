@@ -19,6 +19,7 @@ export function buildCoordMap(
   return {
     version,
     plotWidth: chart.paneSize().width,
+    plotHeight: chart.paneSize().height,
     timeToX: (t: number) => chart.timeScale().timeToCoordinate(t as Time),
     xToTime: (x: number) => {
       const t = chart.timeScale().coordinateToTime(x);

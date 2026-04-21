@@ -35,9 +35,17 @@
     return 0;
   });
 
-  let maxBinVol = $derived(
-    data ? Math.max(0, ...data.bins.map(b => b.upVol + b.downVol)) : 0,
-  );
+  let plotHeight = $derived(coordMap.plotHeight);
+
+  let maxBinVol = $derived.by(() => {
+    if (!data?.bins.length) return 0;
+    let m = 0;
+    for (const b of data.bins) {
+      const v = b.upVol + b.downVol;
+      if (v > m) m = v;
+    }
+    return m;
+  });
 
   $effect(() => {
     if (anchorX == null) {
@@ -61,7 +69,7 @@
       x1={anchorX}
       y1={0}
       x2={anchorX}
-      y2={10000}
+      y2={plotHeight}
       stroke={drawable.style.upColor}
       stroke-width={selected ? 2 : 1}
       stroke-dasharray="2 4"
@@ -160,7 +168,7 @@
       x={anchorX - 5}
       y={0}
       width={10}
-      height={10000}
+      height={plotHeight}
       fill="transparent"
       stroke="transparent"
       pointer-events="auto"
