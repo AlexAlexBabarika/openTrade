@@ -5,11 +5,8 @@ import { loadToolDefaults } from './toolDefaults';
 
 export * from './types';
 export type { BundledTool, BundledToolType } from './toolCatalog';
-export {
-  BUNDLED_TOOLS,
-  BUNDLED_TOOLS_BY_TYPE,
-  isBundledToolType,
-} from './toolCatalog';
+export { BUNDLED_TOOLS, BUNDLED_TOOLS_BY_TYPE } from './toolCatalog';
+export { deepCloneDrawableSnapshot } from './clone';
 export type { BundledDrawable } from './bundledDrawable';
 export { drawables, createDrawablesStore } from './store.svelte';
 export { loadAll, saveAll, DRAWABLES_STORAGE_KEY } from './persistence';
