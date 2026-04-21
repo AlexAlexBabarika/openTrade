@@ -3,6 +3,7 @@
   import type { OHLCVCandle } from '../lib/types';
   import type { BundledDrawable } from '../lib/drawables/bundledDrawable';
   import { getTool } from '../lib/drawables';
+  import { measureDrawablesSync } from '../lib/dev/drawablesProfile';
 
   /** Stable batch identity so a new candles array reference does not N× recompute when OHLCV is unchanged. */
   function candleBatchSignature(cs: OHLCVCandle[]): string {
@@ -61,50 +62,52 @@
 
     const liveIds = new Set(list.map(d => d.id));
     untrack(() => {
-      let pruned = false;
-      const nextMap = new Map(computedData);
-      for (const id of [...computeControllers.keys()]) {
-        if (!liveIds.has(id)) {
-          computeControllers.get(id)?.abort();
-          computeControllers.delete(id);
-          if (nextMap.delete(id)) pruned = true;
-        }
-      }
-      if (pruned) computedData = nextMap;
-
-      for (const d of list) {
-        const tool = getTool(d.type);
-        if (!tool?.compute) continue;
-
-        computeControllers.get(d.id)?.abort();
-        const ctl = new AbortController();
-        computeControllers.set(d.id, ctl);
-
-        try {
-          const res = tool.compute(d, {
-            candles: cs,
-            provider: prov,
-            symbol: sym,
-            interval: iv,
-            signal: ctl.signal,
-          });
-          if (res instanceof Promise) {
-            res
-              .then(value => {
-                if (ctl.signal.aborted) return;
-                setComputedIfChanged(d.id, value);
-              })
-              .catch(err => {
-                if (ctl.signal.aborted) return;
-                console.warn(`compute failed for drawable ${d.id}`, err);
-              });
-          } else {
-            setComputedIfChanged(d.id, res);
+      measureDrawablesSync('drawables:compute-pass', () => {
+        let pruned = false;
+        const nextMap = new Map(computedData);
+        for (const id of [...computeControllers.keys()]) {
+          if (!liveIds.has(id)) {
+            computeControllers.get(id)?.abort();
+            computeControllers.delete(id);
+            if (nextMap.delete(id)) pruned = true;
           }
-        } catch (err) {
-          console.warn(`compute failed for drawable ${d.id}`, err);
         }
-      }
+        if (pruned) computedData = nextMap;
+
+        for (const d of list) {
+          const tool = getTool(d.type);
+          if (!tool?.compute) continue;
+
+          computeControllers.get(d.id)?.abort();
+          const ctl = new AbortController();
+          computeControllers.set(d.id, ctl);
+
+          try {
+            const res = tool.compute(d, {
+              candles: cs,
+              provider: prov,
+              symbol: sym,
+              interval: iv,
+              signal: ctl.signal,
+            });
+            if (res instanceof Promise) {
+              res
+                .then(value => {
+                  if (ctl.signal.aborted) return;
+                  setComputedIfChanged(d.id, value);
+                })
+                .catch(err => {
+                  if (ctl.signal.aborted) return;
+                  console.warn(`compute failed for drawable ${d.id}`, err);
+                });
+            } else {
+              setComputedIfChanged(d.id, res);
+            }
+          } catch (err) {
+            console.warn(`compute failed for drawable ${d.id}`, err);
+          }
+        }
+      });
     });
   });
 

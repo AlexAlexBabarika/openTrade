@@ -1,4 +1,5 @@
 // frontend/src/lib/drawables/store.svelte.ts
+import { measureDrawablesSync } from '../dev/drawablesProfile';
 import type { BundledDrawable } from './bundledDrawable';
 import type { Drawable } from './types';
 
@@ -21,30 +22,40 @@ export function createDrawablesStore() {
       return items.filter(d => d.symbol === symbol);
     },
     add(d: BundledDrawable) {
-      items = [...items, d];
+      measureDrawablesSync('drawables:store:add', () => {
+        items = [...items, d];
+      });
     },
     update(id: string, patch: Partial<Drawable>) {
-      items = items.map(d =>
-        d.id === id ? ({ ...d, ...patch } as BundledDrawable) : d,
-      );
+      measureDrawablesSync('drawables:store:update', () => {
+        items = items.map(d =>
+          d.id === id ? ({ ...d, ...patch } as BundledDrawable) : d,
+        );
+      });
     },
     remove(id: string) {
-      items = items.filter(d => d.id !== id);
-      if (selectedId === id) selectedId = null;
+      measureDrawablesSync('drawables:store:remove', () => {
+        items = items.filter(d => d.id !== id);
+        if (selectedId === id) selectedId = null;
+      });
     },
     removeAllForSymbol(symbol: string) {
-      const removing = new Set(
-        items.filter(d => d.symbol === symbol).map(d => d.id),
-      );
-      if (removing.size === 0) return;
-      items = items.filter(d => d.symbol !== symbol);
-      if (selectedId !== null && removing.has(selectedId)) {
-        selectedId = null;
-      }
+      measureDrawablesSync('drawables:store:removeAllForSymbol', () => {
+        const removing = new Set(
+          items.filter(d => d.symbol === symbol).map(d => d.id),
+        );
+        if (removing.size === 0) return;
+        items = items.filter(d => d.symbol !== symbol);
+        if (selectedId !== null && removing.has(selectedId)) {
+          selectedId = null;
+        }
+      });
     },
     replaceAll(next: BundledDrawable[]) {
-      items = [...next];
-      selectedId = null;
+      measureDrawablesSync('drawables:store:replaceAll', () => {
+        items = [...next];
+        selectedId = null;
+      });
     },
     select(id: string | null) {
       selectedId = id;
