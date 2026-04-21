@@ -40,8 +40,11 @@ export function bundledDrawablesFingerprint(
   const rows: string[] = new Array(items.length);
   for (let i = 0; i < items.length; i++) {
     const d = items[i];
-    rows[i] =
-      `${d.id}\x1f${d.type}\x1f${JSON.stringify(d.geometry)}\x1f${JSON.stringify(d.params)}\x1f${JSON.stringify(d.style)}`;
+    rows[i] = `${d.id}\x1f${d.type}\x1f${JSON.stringify({
+      geometry: d.geometry,
+      params: d.params,
+      style: d.style,
+    })}`;
   }
   return `${items.length}:${fnv1a32Hex(rows.join('\x1e'))}`;
 }
