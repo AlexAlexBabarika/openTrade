@@ -1,19 +1,13 @@
 <script lang="ts">
+  /**
+   * Drawable async/sync `compute` + `computedData` map.
+   */
   import { onDestroy, untrack } from 'svelte';
   import type { OHLCVCandle } from '../lib/types';
+  import { candleBatchSignature } from '../lib/candleFingerprint';
   import type { BundledDrawable } from '../lib/drawables/bundledDrawable';
   import { getTool } from '../lib/drawables';
   import { measureDrawablesSync } from '../lib/dev/drawablesProfile';
-
-  /** Stable batch identity so a new candles array reference does not N× recompute when OHLCV is unchanged. */
-  function candleBatchSignature(cs: OHLCVCandle[]): string {
-    const n = cs.length;
-    if (n === 0) return '0';
-    const row = (c: OHLCVCandle) =>
-      `${c.timestamp}:${c.open}:${c.high}:${c.low}:${c.close}:${c.volume}`;
-    const mid = n === 1 ? 0 : Math.floor(n / 2);
-    return `${n}|${row(cs[0])}|${row(cs[mid])}|${row(cs[n - 1])}`;
-  }
 
   function bundledListComputeKey(items: readonly BundledDrawable[]): string {
     return items
@@ -44,9 +38,44 @@
 
   let lastComputeWorkKey: string | undefined;
 
+  let pendingComputed = new Map<string, unknown>();
+  let flushComputedScheduled = false;
+
+  function applyPendingComputed(): void {
+    if (pendingComputed.size === 0) return;
+    const next = new Map(computedData);
+    let changed = false;
+    for (const [id, value] of pendingComputed) {
+      if (!Object.is(next.get(id), value)) {
+        next.set(id, value);
+        changed = true;
+      }
+    }
+    pendingComputed.clear();
+    if (changed) computedData = next;
+  }
+
+  function flushComputedPendingSync(): void {
+    flushComputedScheduled = false;
+    applyPendingComputed();
+  }
+
+  function scheduleFlushComputed(): void {
+    if (flushComputedScheduled) return;
+    flushComputedScheduled = true;
+    queueMicrotask(() => {
+      flushComputedScheduled = false;
+      applyPendingComputed();
+    });
+  }
+
   function setComputedIfChanged(id: string, value: unknown): void {
-    if (Object.is(computedData.get(id), value)) return;
-    computedData = new Map(computedData).set(id, value);
+    const current = pendingComputed.has(id)
+      ? pendingComputed.get(id)
+      : computedData.get(id);
+    if (Object.is(current, value)) return;
+    pendingComputed.set(id, value);
+    scheduleFlushComputed();
   }
 
   $effect(() => {
@@ -63,10 +92,13 @@
     const liveIds = new Set(list.map(d => d.id));
     untrack(() => {
       measureDrawablesSync('drawables:compute-pass', () => {
+        flushComputedPendingSync();
+
         let pruned = false;
         const nextMap = new Map(computedData);
         for (const id of [...computeControllers.keys()]) {
           if (!liveIds.has(id)) {
+            pendingComputed.delete(id);
             computeControllers.get(id)?.abort();
             computeControllers.delete(id);
             if (nextMap.delete(id)) pruned = true;
@@ -114,5 +146,6 @@
   onDestroy(() => {
     for (const ctl of computeControllers.values()) ctl.abort();
     computeControllers.clear();
+    pendingComputed.clear();
   });
 </script>

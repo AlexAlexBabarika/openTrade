@@ -28,9 +28,12 @@ export function createDrawablesStore() {
     },
     update(id: string, patch: Partial<Drawable>) {
       measureDrawablesSync('drawables:store:update', () => {
-        items = items.map(d =>
-          d.id === id ? ({ ...d, ...patch } as BundledDrawable) : d,
-        );
+        const i = items.findIndex(d => d.id === id);
+        if (i === -1) return;
+        const merged = { ...items[i], ...patch } as BundledDrawable;
+        const next = items.slice();
+        next[i] = merged;
+        items = next;
       });
     },
     remove(id: string) {
