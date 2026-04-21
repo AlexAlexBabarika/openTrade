@@ -44,6 +44,13 @@
 
   let stats = $derived(data ?? null);
 
+  /** Same hue as the box fill; stronger than `fill-opacity` on the rect (see below). */
+  const accentOpacity = 0.88;
+
+  let up = $derived(
+    stats ? stats.isUp : drawable.geometry.endPrice >= drawable.geometry.startPrice,
+  );
+
   $effect(() => {
     if (!box) {
       onAnchorPoint(null);
@@ -59,10 +66,22 @@
   }
 </script>
 
-{#if box && stats}
-  {@const up = stats.isUp}
+{#if box}
   {@const fill = up ? drawable.style.upColor : drawable.style.downColor}
   {@const stroke = fill}
+  {@const cx = box.left + box.width / 2}
+  {@const cy = box.top + box.height / 2}
+  {@const timeArrowRight = box.x2 >= box.x1}
+  {@const ah = Math.max(
+    1,
+    Math.min(
+      8,
+      Math.max(2, Math.min(box.width, box.height) * 0.22),
+      box.width / 2,
+      box.height / 2,
+    ),
+  )}
+  {@const aw = ah * 0.65}
   <g>
     <rect
       x={box.left}
@@ -74,22 +93,70 @@
       stroke={stroke}
       stroke-width={selected ? 2 : 1}
     />
-    <line
-      x1={box.x1}
-      y1={box.y1}
-      x2={box.x2}
-      y2={box.y1}
-      stroke={stroke}
-      stroke-width="1.5"
-    />
-    <line
-      x1={box.x1}
-      y1={box.y1}
-      x2={box.x1}
-      y2={box.y2}
-      stroke={stroke}
-      stroke-width="1.5"
-    />
+    <!-- Vertical axis: arrow toward higher price (up) or lower price (down) -->
+    {#if up}
+      <line
+        x1={cx}
+        y1={box.top + box.height}
+        x2={cx}
+        y2={box.top + ah}
+        stroke={stroke}
+        stroke-opacity={accentOpacity}
+        stroke-width="1.5"
+      />
+      <polygon
+        points="{cx},{box.top} {cx - aw},{box.top + ah} {cx + aw},{box.top + ah}"
+        fill={fill}
+        fill-opacity={accentOpacity}
+      />
+    {:else}
+      <line
+        x1={cx}
+        y1={box.top}
+        x2={cx}
+        y2={box.top + box.height - ah}
+        stroke={stroke}
+        stroke-opacity={accentOpacity}
+        stroke-width="1.5"
+      />
+      <polygon
+        points="{cx},{box.top + box.height} {cx - aw},{box.top + box.height - ah} {cx + aw},{box.top + box.height - ah}"
+        fill={fill}
+        fill-opacity={accentOpacity}
+      />
+    {/if}
+    <!-- Horizontal axis: arrow in the direction of time (start → end) -->
+    {#if timeArrowRight}
+      <line
+        x1={box.left}
+        y1={cy}
+        x2={box.left + box.width - ah}
+        y2={cy}
+        stroke={stroke}
+        stroke-opacity={accentOpacity}
+        stroke-width="1.5"
+      />
+      <polygon
+        points="{box.left + box.width},{cy} {box.left + box.width - ah},{cy - aw} {box.left + box.width - ah},{cy + aw}"
+        fill={fill}
+        fill-opacity={accentOpacity}
+      />
+    {:else}
+      <line
+        x1={box.left + ah}
+        y1={cy}
+        x2={box.left + box.width}
+        y2={cy}
+        stroke={stroke}
+        stroke-opacity={accentOpacity}
+        stroke-width="1.5"
+      />
+      <polygon
+        points="{box.left},{cy} {box.left + ah},{cy - aw} {box.left + ah},{cy + aw}"
+        fill={fill}
+        fill-opacity={accentOpacity}
+      />
+    {/if}
     <DrawableSvgHitRect
       x={box.left - 4}
       y={box.top - 4}
@@ -101,7 +168,7 @@
       mode="stroke"
     />
 
-    {#if drawable.style.showStats}
+    {#if stats && drawable.style.showStats}
       <foreignObject
         x={box.x2 - 60}
         y={up ? box.y1 + 8 : box.y1 - 56}
