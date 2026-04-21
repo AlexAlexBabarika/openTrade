@@ -10,6 +10,7 @@
     formatPriceDelta,
     formatVolume,
   } from './compute';
+  import DrawableSvgHitRect from '../../ui/DrawableSvgHitRect.svelte';
 
   interface RulerGeo {
     startTime: number;
@@ -103,22 +104,15 @@
       stroke={stroke}
       stroke-width="1.5"
     />
-    <!-- Wide invisible hit region on the frame edges for selection. -->
-    <rect
+    <DrawableSvgHitRect
       x={box.left - 4}
       y={box.top - 4}
       width={box.width + 8}
       height={box.height + 8}
-      fill="transparent"
-      stroke="transparent"
-      stroke-width="10"
-      pointer-events="stroke"
-      data-drawable-id={drawable.id}
-      role="button"
-      tabindex="-1"
-      aria-label="Ruler drawable"
-      onpointerdown={onHitPointerDown}
-      style:cursor="pointer"
+      drawableId={drawable.id}
+      ariaLabel="Ruler drawable"
+      onPointerDown={onHitPointerDown}
+      mode="stroke"
     />
 
     {#if drawable.style.showStats}

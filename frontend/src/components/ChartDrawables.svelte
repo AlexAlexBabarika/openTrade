@@ -1,10 +1,10 @@
-<!-- Chart overlay: placement + popup orchestration; compute and SVG live in child components. -->
 <script lang="ts">
   import type { OHLCVCandle } from '../lib/types';
   import {
     drawables,
     getTool,
     CURSOR,
+    deepCloneDrawableSnapshot,
     type BundledDrawable,
     type ActiveTool,
     type CoordMap,
@@ -152,8 +152,8 @@
           type: toolType,
           symbol,
           geometry,
-          params: structuredClone(tool.defaults.params),
-          style: structuredClone(tool.defaults.style),
+          params: deepCloneDrawableSnapshot(tool.defaults.params),
+          style: deepCloneDrawableSnapshot(tool.defaults.style),
           createdAt: Date.now(),
         } as BundledDrawable);
         placement = null;

@@ -4,6 +4,7 @@
     getTool,
     drawables,
     saveToolDefaults,
+    deepCloneDrawableSnapshot,
     type Drawable,
   } from '../lib/drawables';
   import ModalFooter from '../lib/drawables/ui/ModalFooter.svelte';
@@ -25,8 +26,8 @@
 
   $effect(() => {
     if (open && tool && lastOpenedType !== tool.type) {
-      stagedParams = JSON.parse(JSON.stringify(tool.defaults.params));
-      stagedStyle = JSON.parse(JSON.stringify(tool.defaults.style));
+      stagedParams = deepCloneDrawableSnapshot(tool.defaults.params);
+      stagedStyle = deepCloneDrawableSnapshot(tool.defaults.style);
       lastOpenedType = tool.type;
     }
     if (!open) {
@@ -51,8 +52,8 @@
     for (const d of drawables.items) {
       if (d.type === toolType) {
         drawables.update(d.id, {
-          params: JSON.parse(JSON.stringify(nextParams)),
-          style: JSON.parse(JSON.stringify(nextStyle)),
+          params: deepCloneDrawableSnapshot(nextParams),
+          style: deepCloneDrawableSnapshot(nextStyle),
         } as Partial<Drawable>);
       }
     }

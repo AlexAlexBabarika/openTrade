@@ -2,6 +2,7 @@
   import type { RendererProps, ScreenPoint } from '../../../types';
   import type { AvpGeo, AvpParams, AvpStyle } from './compute';
   import type { VolumeProfileResponse } from '../shared/types';
+  import DrawableSvgHitRect from '../../../ui/DrawableSvgHitRect.svelte';
 
   let {
     drawable,
@@ -164,20 +165,14 @@
       {/if}
     {/if}
 
-    <rect
+    <DrawableSvgHitRect
       x={anchorX - 5}
       y={0}
       width={10}
       height={plotHeight}
-      fill="transparent"
-      stroke="transparent"
-      pointer-events="auto"
-      data-drawable-id={drawable.id}
-      role="button"
-      tabindex="-1"
-      aria-label="Anchored Volume Profile"
-      onpointerdown={onHitPointerDown}
-      style:cursor="pointer"
+      drawableId={drawable.id}
+      ariaLabel="Anchored Volume Profile"
+      onPointerDown={onHitPointerDown}
     />
   </g>
 {/if}

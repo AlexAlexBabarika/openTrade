@@ -112,7 +112,6 @@
 
   let coordMap = $state<CoordMap | null>(null);
 
-  /** True while the user is dragging out a new drawable (disables chart pan/zoom). */
   let drawablePlacing = $state(false);
 
   function onDrawablePlacementActiveChange(active: boolean): void {
@@ -367,7 +366,6 @@
     coordMap = buildCoordMap(chart, series, version);
   });
 
-  // Suspend chart pan/zoom while the user is placing a drawable (see ChartDrawables).
   $effect(() => {
     const placing = drawablePlacing;
     if (!chart) return;
