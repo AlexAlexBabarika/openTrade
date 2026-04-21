@@ -6,12 +6,16 @@ export function createDrawablesStore() {
   let items = $state<BundledDrawable[]>([]);
   let selectedId = $state<string | null>(null);
 
+  /** O(1) lookup by id; rebuilt when `items` changes (same cost as one linear scan). */
+  let byId = $derived(new Map(items.map(d => [d.id, d])));
+
   return {
     get items() {
       return items;
     },
     get selected() {
-      return items.find(d => d.id === selectedId) ?? null;
+      if (selectedId === null) return null;
+      return byId.get(selectedId) ?? null;
     },
     forSymbol(symbol: string) {
       return items.filter(d => d.symbol === symbol);

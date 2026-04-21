@@ -205,7 +205,6 @@
       drawables.remove(drawables.selected.id);
     }
   }
-
 </script>
 
 {#if coordMap}

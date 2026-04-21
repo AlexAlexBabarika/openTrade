@@ -6,6 +6,10 @@ import type { CoordMap } from './types';
  * Build a CoordMap from a live lightweight-charts instance. Caller is
  * responsible for incrementing `version` when the chart's visible range,
  * zoom, or container size changes.
+ *
+ * In `Chart.svelte`, that counter is `coordVersion`; it is passed here as
+ * `version` and exposed on the map as `coordMap.version` so renderers can
+ * subscribe to one reactive field for “pixel mapping changed.”
  */
 export function buildCoordMap(
   chart: IChartApi,

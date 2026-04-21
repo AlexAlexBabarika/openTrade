@@ -22,6 +22,11 @@
 
   const computeControllers = new Map<string, AbortController>();
 
+  function setComputedIfChanged(id: string, value: unknown): void {
+    if (Object.is(computedData.get(id), value)) return;
+    computedData = new Map(computedData).set(id, value);
+  }
+
   $effect(() => {
     const sym = symbol;
     const cs = candles;
@@ -31,15 +36,16 @@
 
     const liveIds = new Set(list.map(d => d.id));
     untrack(() => {
-      for (const [id, ctl] of computeControllers) {
+      let pruned = false;
+      const nextMap = new Map(computedData);
+      for (const id of [...computeControllers.keys()]) {
         if (!liveIds.has(id)) {
-          ctl.abort();
+          computeControllers.get(id)?.abort();
           computeControllers.delete(id);
-          const nextMap = new Map(computedData);
-          nextMap.delete(id);
-          computedData = nextMap;
+          if (nextMap.delete(id)) pruned = true;
         }
       }
+      if (pruned) computedData = nextMap;
 
       for (const d of list) {
         const tool = getTool(d.type);
@@ -61,14 +67,14 @@
             res
               .then(value => {
                 if (ctl.signal.aborted) return;
-                computedData = new Map(computedData).set(d.id, value);
+                setComputedIfChanged(d.id, value);
               })
               .catch(err => {
                 if (ctl.signal.aborted) return;
                 console.warn(`compute failed for drawable ${d.id}`, err);
               });
           } else {
-            computedData = new Map(computedData).set(d.id, res);
+            setComputedIfChanged(d.id, res);
           }
         } catch (err) {
           console.warn(`compute failed for drawable ${d.id}`, err);
