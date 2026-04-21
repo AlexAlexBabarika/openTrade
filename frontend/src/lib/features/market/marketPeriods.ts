@@ -13,7 +13,7 @@ export const MARKET_PERIOD_OPTIONS: MarketPeriodOption[] =
   }));
 
 /** Default period (must match an entry in ``shared/market_periods.json``). */
-export const DEFAULT_MARKET_PERIOD = '1mo' as const;
+export const DEFAULT_MARKET_PERIOD = '1y' as const;
 
 export type PeriodCategory = 'Days' | 'Weeks' | 'Months' | 'Years' | 'All';
 

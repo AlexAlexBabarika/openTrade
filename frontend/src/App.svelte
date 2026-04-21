@@ -140,7 +140,7 @@
   let marketDataVersion = $state(0);
   let isLoading = $state(false);
   let sidebarVisible = $state(true);
-  let crosshairMode = $state<CrosshairModeName>('magnet');
+  let crosshairMode = $state<CrosshairModeName>('normal');
   let activeTool = $state<ActiveTool>(CURSOR);
   let toolSettingsOpen = $state(false);
   let toolSettingsType = $state<string | null>(null);

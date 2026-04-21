@@ -137,7 +137,7 @@
   function handleReset() {
     colours = defaultChartColours();
     chartType = 'candlestick';
-    showArea = true;
+    showArea = false;
     showVolume = true;
     smaConfig = { enabled: false, period: 20, lineWidth: 2 };
     emaConfig = { enabled: false, period: 20, lineWidth: 2 };
