@@ -21,6 +21,8 @@ export interface ChartPoint {
 export interface CoordMap {
   version: number;
   plotWidth: number;
+  /** Pixel height of the main price pane (for vertical guides / overlays). */
+  plotHeight: number;
   timeToX: (t: number) => number | null;
   xToTime: (x: number) => number | null;
   priceToY: (p: number) => number | null;
