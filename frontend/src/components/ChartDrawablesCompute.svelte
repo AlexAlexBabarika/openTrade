@@ -1,22 +1,20 @@
 <script lang="ts">
-  /**
-   * Drawable async/sync `compute` + `computedData` map.
-   */
   import { onDestroy, untrack } from 'svelte';
   import type { OHLCVCandle } from '../lib/types';
-  import { candleBatchSignature } from '../lib/candleFingerprint';
+  import {
+    bundledDrawablesFingerprint,
+    candleBatchSignature,
+  } from '../lib/candleFingerprint';
   import type { BundledDrawable } from '../lib/drawables/bundledDrawable';
   import { getTool } from '../lib/drawables';
   import { measureDrawablesSync } from '../lib/dev/drawablesProfile';
 
-  function bundledListComputeKey(items: readonly BundledDrawable[]): string {
-    return items
-      .map(
-        d =>
-          `${d.id}:${d.type}:${JSON.stringify(d.geometry)}:${JSON.stringify(d.params)}:${JSON.stringify(d.style)}`,
-      )
-      .join('|');
-  }
+  /** Cached pieces so we do not rescan candles / stringify drawables when only the other input changes. */
+  let lastMetaKey: string | undefined;
+  let lastItemsRef: readonly BundledDrawable[] | undefined;
+  let lastCandlesRef: OHLCVCandle[] | undefined;
+  let lastListKey: string | undefined;
+  let lastCandleSig: string | undefined;
 
   let {
     symbol,
@@ -85,9 +83,37 @@
     const iv = interval;
     const list = items;
 
-    const workKey = `${sym}|${prov}|${iv}|${candleBatchSignature(cs)}|${bundledListComputeKey(list)}`;
+    const metaKey = `${sym}|${prov}|${iv}`;
+    if (metaKey === lastMetaKey && list === lastItemsRef && cs === lastCandlesRef) {
+      return;
+    }
+
+    const { listKey, candleSig, workKey } = measureDrawablesSync(
+      'drawables:workKey',
+      () => {
+        const lk =
+          metaKey === lastMetaKey && list === lastItemsRef
+            ? lastListKey!
+            : bundledDrawablesFingerprint(list);
+        const csig =
+          metaKey === lastMetaKey && cs === lastCandlesRef
+            ? lastCandleSig!
+            : candleBatchSignature(cs);
+        return {
+          listKey: lk,
+          candleSig: csig,
+          workKey: `${metaKey}|${csig}|${lk}`,
+        };
+      },
+    );
+
     if (workKey === lastComputeWorkKey) return;
     lastComputeWorkKey = workKey;
+    lastMetaKey = metaKey;
+    lastItemsRef = list;
+    lastCandlesRef = cs;
+    lastListKey = listKey;
+    lastCandleSig = candleSig;
 
     const liveIds = new Set(list.map(d => d.id));
     untrack(() => {

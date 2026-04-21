@@ -19,6 +19,7 @@ export interface RulerStyle {
 }
 export type RulerDrawable = Drawable<RulerGeo, RulerParams, RulerStyle>;
 
+// Stroke/fill use rgb(); AVP defaults use the same bull/bear hues as hex—intentional, not a single shared palette module.
 const defaultStyle: RulerStyle = {
   upColor: 'rgb(38, 166, 154)',
   downColor: 'rgb(239, 83, 80)',

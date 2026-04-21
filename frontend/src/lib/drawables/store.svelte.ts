@@ -66,5 +66,7 @@ export function createDrawablesStore() {
   };
 }
 
+export type DrawablesStoreApi = ReturnType<typeof createDrawablesStore>;
+
 /** Singleton used by the app. Tests create their own via createDrawablesStore(). */
 export const drawables = createDrawablesStore();

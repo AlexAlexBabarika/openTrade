@@ -1,17 +1,16 @@
 // frontend/src/lib/drawables/toolDefaults.ts
+import { safeLocalStorageGet, safeLocalStorageSet } from '../storage';
+
 export const TOOL_DEFAULTS_STORAGE_KEY = 'openTrade.drawables.toolDefaults.v1';
 
 type Stored = Record<string, { params: unknown; style: unknown }>;
 
 function readAll(): Stored {
-  try {
-    const raw = localStorage.getItem(TOOL_DEFAULTS_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed: unknown = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? (parsed as Stored) : {};
-  } catch {
-    return {};
-  }
+  const parsed = safeLocalStorageGet<unknown>(TOOL_DEFAULTS_STORAGE_KEY, {
+    warnLabel: '[drawables] loadToolDefaults read failed, using empty map',
+  });
+  if (!parsed || typeof parsed !== 'object') return {};
+  return parsed as Stored;
 }
 
 export function loadToolDefaults(
@@ -26,5 +25,5 @@ export function saveToolDefaults(
 ): void {
   const all = readAll();
   all[type] = defaults;
-  localStorage.setItem(TOOL_DEFAULTS_STORAGE_KEY, JSON.stringify(all));
+  safeLocalStorageSet(TOOL_DEFAULTS_STORAGE_KEY, all);
 }

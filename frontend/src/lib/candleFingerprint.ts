@@ -25,3 +25,23 @@ export function candleBatchSignature(cs: OHLCVCandle[]): string {
   }
   return `${cs.length}:${fnv1a32Hex(rows.join('\x1e'))}`;
 }
+
+/** Same shape as {@link candleBatchSignature}: count + FNV-1a over row records (not cryptographic). */
+export function bundledDrawablesFingerprint(
+  items: readonly {
+    id: string;
+    type: string;
+    geometry: unknown;
+    params: unknown;
+    style: unknown;
+  }[],
+): string {
+  if (items.length === 0) return '0';
+  const rows: string[] = new Array(items.length);
+  for (let i = 0; i < items.length; i++) {
+    const d = items[i];
+    rows[i] =
+      `${d.id}\x1f${d.type}\x1f${JSON.stringify(d.geometry)}\x1f${JSON.stringify(d.params)}\x1f${JSON.stringify(d.style)}`;
+  }
+  return `${items.length}:${fnv1a32Hex(rows.join('\x1e'))}`;
+}

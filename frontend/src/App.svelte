@@ -82,7 +82,14 @@
   import ToolSettingsModal from './components/ToolSettingsModal.svelte';
   import DrawablesPersistence from './lib/drawables/DrawablesPersistence.svelte';
   import type { CrosshairModeName } from './lib/crosshair';
-  import { CURSOR, type ActiveTool } from './lib/drawables';
+  import {
+    CURSOR,
+    drawables,
+    toolbarCommandsFromStore,
+    type ActiveTool,
+  } from './lib/drawables';
+
+  const drawableToolbarCommands = toolbarCommandsFromStore(drawables);
 
   let symbol = $state('AAPL');
   let loadedSymbol = $state('');
@@ -600,6 +607,7 @@
       bind:crosshairMode
       bind:activeTool
       onToolSettings={openToolSettings}
+      drawableCommands={drawableToolbarCommands}
     />
     <ToolSettingsModal
       toolType={toolSettingsType}

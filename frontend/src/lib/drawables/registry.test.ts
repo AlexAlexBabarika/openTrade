@@ -1,7 +1,14 @@
 // frontend/src/lib/drawables/registry.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
-import { registerTool, getTool, listTools, _resetRegistry } from './registry';
+import {
+  registerTool,
+  getTool,
+  getRegisteredBundledTool,
+  listTools,
+  _resetRegistry,
+} from './registry';
 import type { DrawableTool } from './types';
+import { rulerTool } from './tools/ruler/tool';
 
 function fakeTool(type: string): DrawableTool {
   return {
@@ -22,13 +29,21 @@ describe('registry', () => {
   beforeEach(() => _resetRegistry());
 
   it('registers a tool and retrieves it by type', () => {
-    const t = fakeTool('ruler');
+    const t = fakeTool('custom-tool');
     registerTool(t);
-    expect(getTool('ruler')).toBe(t);
+    expect(getTool('custom-tool')).toBe(t);
   });
 
   it('returns undefined for unknown type', () => {
     expect(getTool('nope')).toBeUndefined();
+  });
+
+  it('getRegisteredBundledTool returns the catalog-shaped tool from the registry', () => {
+    _resetRegistry();
+    registerTool(rulerTool);
+    const t = getRegisteredBundledTool('ruler');
+    expect(t).toBe(rulerTool);
+    expect(t?.type).toBe('ruler');
   });
 
   it('lists tools in registration order', () => {

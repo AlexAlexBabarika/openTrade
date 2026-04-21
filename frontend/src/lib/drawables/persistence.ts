@@ -1,4 +1,5 @@
 // frontend/src/lib/drawables/persistence.ts
+import { safeLocalStorageGet, safeLocalStorageSet } from '../storage';
 import type { BundledDrawable } from './bundledDrawable';
 import {
   extractDrawableFieldBag,
@@ -29,19 +30,15 @@ function hydrateEntry(entry: unknown): BundledDrawable | null {
 }
 
 export function loadAll(): BundledDrawable[] {
-  try {
-    const raw = localStorage.getItem(DRAWABLES_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
+  const parsed = safeLocalStorageGet<unknown>(DRAWABLES_STORAGE_KEY, {
+    warnLabel: '[drawables] loadAll failed, using empty list',
+  });
+  if (!Array.isArray(parsed)) return [];
 
-    return parsed.flatMap((entry: unknown): BundledDrawable[] => {
-      const d = hydrateEntry(entry);
-      return d ? [d] : [];
-    });
-  } catch {
-    return [];
-  }
+  return parsed.flatMap((entry: unknown): BundledDrawable[] => {
+    const d = hydrateEntry(entry);
+    return d ? [d] : [];
+  });
 }
 
 export function saveAll(items: readonly BundledDrawable[]): void {
@@ -50,5 +47,5 @@ export function saveAll(items: readonly BundledDrawable[]): void {
     if (!tool) return [];
     return [{ ...d, schemaVersion: tool.schemaVersion }];
   });
-  localStorage.setItem(DRAWABLES_STORAGE_KEY, JSON.stringify(stamped));
+  safeLocalStorageSet(DRAWABLES_STORAGE_KEY, stamped);
 }

@@ -1,5 +1,7 @@
 /**
  * Optional drawable/chart profiling for Chrome DevTools **Performance** → **Timings** / **User Timing**.
+ * Set `localStorage.opentrade:profileDrawables = '1'` then look for `opentrade:drawables:workKey` and
+ * `opentrade:drawables:compute-pass` when tuning ChartDrawablesCompute / store paths.
  */
 
 let measureSeq = 0;
