@@ -31,10 +31,12 @@
     drawableCommands: DrawableToolbarCommands;
   } = $props();
 
+  /** Snapshot at mount; bundled tool list is fixed after `ensureToolsRegistered()`. */
+  const tools = listTools();
   let crosshairOpen = $state(false);
   /** Popover open state per tool type — keys must exist for bind:open. */
   let toolPopoverOpen = $state<Record<string, boolean>>(
-    Object.fromEntries(listTools().map(t => [t.type, false])),
+    Object.fromEntries(tools.map(t => [t.type, false])),
   );
 
   function selectCrosshair(mode: CrosshairModeName) {
@@ -93,7 +95,7 @@
     </Popover.Portal>
   </Popover.Root>
 
-  {#each listTools() as tool (tool.type)}
+  {#each tools as tool (tool.type)}
     {@const Icon = tool.icon}
     <Popover.Root bind:open={toolPopoverOpen[tool.type]!}>
       <Popover.Trigger
