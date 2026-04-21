@@ -5,7 +5,7 @@ import { BUNDLED_TOOLS_BY_TYPE, type BundledToolType } from './toolCatalog';
 /**
  * Heterogeneous `DrawableTool` registry (`AnyTool` for fakes and wide `compute`).
  * - `getTool` — runtime map. `getRegisteredBundledTool` — narrow bundled id + cast to catalog shape.
- * - `getBundledTool` — catalog only (`toolCatalog`), not the registry.
+ * Catalog-only lookups: use `BUNDLED_TOOLS_BY_TYPE` from `toolCatalog`.
  */
 type AnyTool = DrawableTool<any, any, any, any>;
 
@@ -29,13 +29,6 @@ export function getRegisteredBundledTool<T extends BundledToolType>(
   type: T,
 ): (typeof BUNDLED_TOOLS_BY_TYPE)[T] | undefined {
   return tools.get(type) as (typeof BUNDLED_TOOLS_BY_TYPE)[T] | undefined;
-}
-
-/** Catalog snapshot only; chart/runtime should use `getTool` / `getRegisteredBundledTool`. */
-export function getBundledTool<T extends BundledToolType>(
-  type: T,
-): (typeof BUNDLED_TOOLS_BY_TYPE)[T] | undefined {
-  return BUNDLED_TOOLS_BY_TYPE[type];
 }
 
 export function listTools(): AnyTool[] {

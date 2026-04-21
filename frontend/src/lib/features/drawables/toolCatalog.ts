@@ -10,7 +10,7 @@ export type BundledTool = (typeof BUNDLED_TOOLS)[number];
 
 export type BundledToolType = BundledTool['type'];
 
-/** Compile-time map for bundled tools (`getBundledTool` in registry). */
+/** Compile-time map for bundled tools (catalog-only; runtime uses `getTool` / registry). */
 export const BUNDLED_TOOLS_BY_TYPE: Record<BundledToolType, BundledTool> = {
   [rulerTool.type]: rulerTool,
   [avpTool.type]: avpTool,

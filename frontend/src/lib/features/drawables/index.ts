@@ -14,7 +14,6 @@ export {
   registerTool,
   getTool,
   getRegisteredBundledTool,
-  getBundledTool,
   listTools,
 } from './registry';
 export { DEFAULT_POPUP_ACTIONS, resolvePopupActions } from './popupActions';
