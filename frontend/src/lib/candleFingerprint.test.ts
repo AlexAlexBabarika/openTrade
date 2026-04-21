@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { candleBatchSignature } from './candleFingerprint';
+import {
+  bundledDrawablesFingerprint,
+  candleBatchSignature,
+} from './candleFingerprint';
 import type { OHLCVCandle } from './types';
 
 const base = (overrides: Partial<OHLCVCandle> = {}): OHLCVCandle => ({
@@ -24,5 +27,27 @@ describe('candleBatchSignature', () => {
     const a = candleBatchSignature([base()]);
     const b = candleBatchSignature([base({ close: 1.51 })]);
     expect(a).not.toBe(b);
+  });
+});
+
+describe('bundledDrawablesFingerprint', () => {
+  const row = (id: string, close: number) => ({
+    id,
+    type: 'ruler',
+    geometry: { startTime: 0, endTime: 1, startPrice: 1, endPrice: close },
+    params: {},
+    style: { upColor: 'x', downColor: 'y', showStats: true },
+  });
+
+  it('is stable for same logical list with different array identity', () => {
+    const a = [row('a', 2)];
+    const b = [row('a', 2)];
+    expect(bundledDrawablesFingerprint(a)).toBe(bundledDrawablesFingerprint(b));
+  });
+
+  it('changes when a drawable field changes', () => {
+    const x = bundledDrawablesFingerprint([row('a', 2)]);
+    const y = bundledDrawablesFingerprint([row('a', 2.01)]);
+    expect(x).not.toBe(y);
   });
 });

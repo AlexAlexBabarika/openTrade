@@ -40,7 +40,7 @@ export function computeStats(
   let barCount = 0;
   let volumeSum = 0;
   for (const c of candles) {
-    const t = new Date(c.timestamp).getTime() / 1000;
+    const t = Date.parse(c.timestamp) / 1000;
     if (t >= tMin && t <= tMax) {
       barCount += 1;
       volumeSum += c.volume;

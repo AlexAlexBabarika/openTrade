@@ -9,10 +9,10 @@
     type CrosshairModeName,
   } from '../lib/crosshair';
   import {
-    drawables,
     listTools,
     CURSOR,
     type ActiveTool,
+    type DrawableToolbarCommands,
   } from '../lib/drawables';
 
   let {
@@ -20,12 +20,15 @@
     crosshairMode = $bindable<CrosshairModeName>('magnet'),
     activeTool = $bindable<ActiveTool>(CURSOR),
     onToolSettings,
+    drawableCommands,
   }: {
     /** Current chart ticker — drawables cleared for this symbol only. */
     chartSymbol?: string;
     crosshairMode: CrosshairModeName;
     activeTool: ActiveTool;
     onToolSettings: (toolType: string) => void;
+    /** Injected drawable actions (use `toolbarCommandsFromStore(drawables)` in App; pass fakes in tests). */
+    drawableCommands: DrawableToolbarCommands;
   } = $props();
 
   let crosshairOpen = $state(false);
@@ -51,7 +54,7 @@
 
   function clearDrawablesForChart() {
     if (!chartSymbol) return;
-    drawables.removeAllForSymbol(chartSymbol);
+    drawableCommands.removeAllForSymbol(chartSymbol);
   }
 </script>
 

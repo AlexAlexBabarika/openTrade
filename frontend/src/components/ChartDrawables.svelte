@@ -11,10 +11,10 @@
     type ChartPoint,
     type PlacementMachine,
     type Drawable,
+    type PopupAction,
     type ScreenPoint,
     resolvePopupActions,
   } from '../lib/drawables';
-  import type { PopupAction } from '../lib/drawables';
   import ChartDrawablesCompute from './ChartDrawablesCompute.svelte';
   import DrawablesSvgScene from './DrawablesSvgScene.svelte';
   import DrawablePopup from './DrawablePopup.svelte';
@@ -49,7 +49,22 @@
     onActiveToolChange(t);
   }
 
-  let itemsForSymbol = $derived.by(() => drawables.forSymbol(symbol));
+  /** Avoid new filtered array when `items` ref and symbol are unchanged (reduces downstream compute churn). */
+  let lastStoreItems: BundledDrawable[] | undefined;
+  let lastSymbolForItems: string | undefined;
+  let cachedItemsForSymbol: BundledDrawable[] = [];
+
+  let itemsForSymbol = $derived.by(() => {
+    const all = drawables.items;
+    const sym = symbol;
+    if (all === lastStoreItems && sym === lastSymbolForItems) {
+      return cachedItemsForSymbol;
+    }
+    lastStoreItems = all;
+    lastSymbolForItems = sym;
+    cachedItemsForSymbol = all.filter(d => d.symbol === sym);
+    return cachedItemsForSymbol;
+  });
 
   let placement = $state<{
     type: string;

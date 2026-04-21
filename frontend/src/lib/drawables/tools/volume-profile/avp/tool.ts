@@ -23,6 +23,7 @@ function avpPlacement(): PlacementMachine<AvpGeo> {
     onPointerDown: (p: ChartPoint) => inner.onPointerDown(p),
     onPointerMove: (p: ChartPoint) => inner.onPointerMove(p),
     onPointerUp: (p: ChartPoint) => inner.onPointerUp(p),
+    // Ruler shows a range preview; AVP only needs the anchor point—no segment preview here.
     get preview() {
       return null;
     },
@@ -48,6 +49,7 @@ export const avpTool: DrawableTool<
   schemaVersion: 1,
   defaults: {
     params: { rowSize: 1, vaPercent: 0.7 },
+    // Hex matches ruler’s default bull/bear semantics (#26a69a / #ef5350); ruler uses rgb() for SVG/CSS ergonomics.
     style: {
       showProfile: true,
       widthPct: 25,

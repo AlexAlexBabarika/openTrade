@@ -1,5 +1,5 @@
 // frontend/src/lib/drawables/index.ts
-import { registerTool, getTool } from './registry';
+import { registerTool, getRegisteredBundledTool } from './registry';
 import { BUNDLED_TOOLS } from './toolCatalog';
 import { loadToolDefaults } from './toolDefaults';
 
@@ -10,7 +10,13 @@ export { deepCloneDrawableSnapshot } from './clone';
 export type { BundledDrawable } from './bundledDrawable';
 export { drawables, createDrawablesStore } from './store.svelte';
 export { loadAll, saveAll, DRAWABLES_STORAGE_KEY } from './persistence';
-export { registerTool, getTool, getBundledTool, listTools } from './registry';
+export {
+  registerTool,
+  getTool,
+  getRegisteredBundledTool,
+  getBundledTool,
+  listTools,
+} from './registry';
 export { DEFAULT_POPUP_ACTIONS, resolvePopupActions } from './popupActions';
 export {
   loadToolDefaults,
@@ -21,13 +27,15 @@ export type { ActiveTool } from './activeTool';
 export { CURSOR } from './activeTool';
 export { buildCoordMap } from './coordMap';
 export type { DrawableSurface } from './drawableSurface';
+export type { DrawableToolbarCommands } from './toolbarCommands';
+export { toolbarCommandsFromStore } from './toolbarCommands';
 
 let registered = false;
 
 function applyPersistedToolDefaults(): void {
   for (const bundled of BUNDLED_TOOLS) {
     const stored = loadToolDefaults(bundled.type);
-    const tool = getTool(bundled.type);
+    const tool = getRegisteredBundledTool(bundled.type);
     if (stored && tool) {
       tool.defaults.params = stored.params as typeof tool.defaults.params;
       tool.defaults.style = stored.style as typeof tool.defaults.style;
@@ -35,11 +43,7 @@ function applyPersistedToolDefaults(): void {
   }
 }
 
-/**
- * Idempotent. Bundled tools register when this package is first imported
- * (`index.ts` runs `ensureToolsRegistered()` at module load). Exported for
- * tests or callers that import submodules without loading this entry.
- */
+/** Registers bundled tools once; runs at load so early importers see `listTools()`. Exported for tests. */
 export function ensureToolsRegistered(): void {
   if (registered) return;
   for (const tool of BUNDLED_TOOLS) {
@@ -49,7 +53,4 @@ export function ensureToolsRegistered(): void {
   registered = true;
 }
 
-// Register as soon as this module loads so any importer (e.g. LeftToolbar
-// before App's script runs) sees a full `listTools()` — import order in App
-// loads LeftToolbar before `./lib/drawables`.
 ensureToolsRegistered();

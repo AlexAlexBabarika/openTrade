@@ -3,10 +3,9 @@ import type { DrawableTool } from './types';
 import { BUNDLED_TOOLS_BY_TYPE, type BundledToolType } from './toolCatalog';
 
 /**
- * Registry is heterogeneous — each tool narrows Geo/Params/Style/Data. Values
- * are `AnyTool` so tests can register minimal fakes and Svelte `Component`
- * props stay ergonomic. For **bundled** tools, prefer `getBundledTool(type)` for
- * a `BundledTool` return type; `getTool` remains the generic lookup.
+ * Heterogeneous `DrawableTool` registry (`AnyTool` for fakes and wide `compute`).
+ * - `getTool` — runtime map. `getRegisteredBundledTool` — narrow bundled id + cast to catalog shape.
+ * - `getBundledTool` — catalog only (`toolCatalog`), not the registry.
  */
 type AnyTool = DrawableTool<any, any, any, any>;
 
@@ -25,6 +24,14 @@ export function getTool(type: string): AnyTool | undefined {
   return tools.get(type);
 }
 
+/** Bundled id → catalog-typed tool from the registry (cast; fakes under bundled ids break typing). */
+export function getRegisteredBundledTool<T extends BundledToolType>(
+  type: T,
+): (typeof BUNDLED_TOOLS_BY_TYPE)[T] | undefined {
+  return tools.get(type) as (typeof BUNDLED_TOOLS_BY_TYPE)[T] | undefined;
+}
+
+/** Catalog snapshot only; chart/runtime should use `getTool` / `getRegisteredBundledTool`. */
 export function getBundledTool<T extends BundledToolType>(
   type: T,
 ): (typeof BUNDLED_TOOLS_BY_TYPE)[T] | undefined {

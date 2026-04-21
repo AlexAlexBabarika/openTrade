@@ -4,6 +4,7 @@
     ScreenPoint,
     RendererProps,
   } from '../../types';
+  import type { RulerGeo, RulerParams, RulerStyle } from './tool';
   import type { RulerStats } from './compute';
   import {
     formatPct,
@@ -11,21 +12,6 @@
     formatVolume,
   } from './compute';
   import DrawableSvgHitRect from '../../ui/DrawableSvgHitRect.svelte';
-
-  interface RulerGeo {
-    startTime: number;
-    endTime: number;
-    startPrice: number;
-    endPrice: number;
-  }
-  interface RulerParams {
-    [k: string]: never;
-  }
-  interface RulerStyle {
-    upColor: string;
-    downColor: string;
-    showStats: boolean;
-  }
 
   let {
     drawable,
