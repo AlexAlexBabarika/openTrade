@@ -11,7 +11,7 @@
     candleOHLCVtoAreaData,
     candleOHLCVtoCandlestickData,
     candleOHLCVtoVolumeData,
-  } from '../lib/chartAdapters';
+  } from '$lib/features/chart/chartAdapters';
   import {
     createChartContainer,
     addCandlestickSeries,
@@ -20,18 +20,18 @@
     addLineSeries,
     syncChartTheme,
     resolveColour,
-  } from '../lib/chart';
+  } from '$lib/features/chart/chart';
   import type {
     OHLCVCandle,
     IndicatorPoint,
     BollingerBandsPoint,
-  } from '../lib/types';
-  import type { ChartColours, ChartType } from '../lib/chartColours';
-  import { linePoint } from '../lib/chart';
+  } from '$lib/core/types';
+  import type { ChartColours, ChartType } from '$lib/features/chart/chartColours';
+  import { linePoint } from '$lib/features/chart/chart';
   import {
     toCrosshairMode,
     type CrosshairModeName,
-  } from '../lib/crosshair';
+  } from '$lib/features/chart/crosshair';
   import {
     buildCoordMap,
     CURSOR,
@@ -39,7 +39,7 @@
     type CoordMap,
     type ChartPoint,
     type DrawableSurface,
-  } from '../lib/drawables';
+  } from '$lib/features/drawables';
   import ChartViewport from './ChartViewport.svelte';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };

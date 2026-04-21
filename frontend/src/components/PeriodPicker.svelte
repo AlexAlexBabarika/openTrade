@@ -7,7 +7,7 @@
     loadPeriodFavourites,
     persistPeriodFavourites,
     sortPeriodFavouritesByCanonical,
-  } from '../lib/marketPeriods';
+  } from '$lib/features/market/marketPeriods';
 
   let {
     value = $bindable(),

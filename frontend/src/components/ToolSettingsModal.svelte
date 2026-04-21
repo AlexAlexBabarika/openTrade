@@ -6,8 +6,8 @@
     saveToolDefaults,
     deepCloneDrawableSnapshot,
     type Drawable,
-  } from '../lib/drawables';
-  import ModalFooter from '../lib/drawables/ui/ModalFooter.svelte';
+  } from '$lib/features/drawables';
+  import ModalFooter from '$lib/features/drawables/ui/ModalFooter.svelte';
 
   let {
     toolType,

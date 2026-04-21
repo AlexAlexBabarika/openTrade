@@ -10,33 +10,33 @@
     MovingAverageConfig,
     BollingerBandsConfig,
   } from './components/ChartOptionsMenu.svelte';
-  import type { ChartType } from './lib/chartColours';
-  import { fetchSMA, fetchEMA, fetchBBands } from './lib/indicators';
-  import type { IndicatorPoint, BollingerBandsPoint } from './lib/types';
-  import { fetchMarketOHLCV } from './lib/marketData';
-  import { apiFetch, readErrorMessage } from './lib/api';
-  import { WSClient } from './lib/ws';
-  import type { ConnectionStatus } from './lib/ws';
-  import type { OHLCVCandle } from './lib/types';
-  import { fetchSession } from './lib/auth';
-  import type { MarketDataProviderValue } from './lib/marketDataProviders';
-  import { DEFAULT_MARKET_INTERVAL } from './lib/marketIntervals';
-  import { DEFAULT_MARKET_PERIOD } from './lib/marketPeriods';
-  import type { ChartColours } from './lib/chartColours';
+  import type { ChartType } from '$lib/features/chart/chartColours';
+  import { fetchSMA, fetchEMA, fetchBBands } from '$lib/features/chart/indicators';
+  import type { IndicatorPoint, BollingerBandsPoint } from '$lib/core/types';
+  import { fetchMarketOHLCV } from '$lib/features/market/marketData';
+  import { apiFetch, readErrorMessage } from '$lib/core/api';
+  import { WSClient } from '$lib/core/ws';
+  import type { ConnectionStatus } from '$lib/core/ws';
+  import type { OHLCVCandle } from '$lib/core/types';
+  import { fetchSession } from '$lib/features/auth/auth';
+  import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
+  import { DEFAULT_MARKET_INTERVAL } from '$lib/features/market/marketIntervals';
+  import { DEFAULT_MARKET_PERIOD } from '$lib/features/market/marketPeriods';
+  import type { ChartColours } from '$lib/features/chart/chartColours';
   import {
     defaultChartColours,
     loadChartColoursFromStorage,
     persistChartColours,
     loadChartSettingsFromStorage,
     persistChartSettings,
-  } from './lib/chartColours';
-  import { loadTheme, persistTheme, applyTheme, type Theme } from './lib/theme';
+  } from '$lib/features/chart/chartColours';
+  import { loadTheme, persistTheme, applyTheme, type Theme } from '$lib/features/theme/theme';
   import type {
     TickerGroup,
     FlaggedPriority,
     PriorityConflict,
     TickerPriority,
-  } from './lib/tickers';
+  } from '$lib/features/market/tickers';
   import {
     loadGroupsFromStorage,
     persistGroups,
@@ -59,16 +59,16 @@
     findPriorityConflict,
     setTickerProvidersEverywhere,
     findTickerProviders,
-  } from './lib/tickers';
-  import type { SymbolProviders } from './lib/symbols';
-  import { markYFinanceSupported, DEFAULT_PROVIDERS } from './lib/symbols';
-  import { fetchLastClose, type TickerQuote } from './lib/tickerQuotes';
+  } from '$lib/features/market/tickers';
+  import type { SymbolProviders } from '$lib/features/market/symbols';
+  import { markYFinanceSupported, DEFAULT_PROVIDERS } from '$lib/features/market/symbols';
+  import { fetchLastClose, type TickerQuote } from '$lib/features/market/tickerQuotes';
   import { untrack } from 'svelte';
   import TextPromptDialog from './components/TextPromptDialog.svelte';
   import SymbolSearchDialog from './components/SymbolSearchDialog.svelte';
   import PriorityConflictDialog from './components/PriorityConflictDialog.svelte';
   import NoteDialog from './components/NoteDialog.svelte';
-  import type { TickerNote, NotesBySymbol } from './lib/notes';
+  import type { TickerNote, NotesBySymbol } from '$lib/features/notes/notes';
   import {
     loadNotesFromStorage,
     persistNotes,
@@ -76,18 +76,18 @@
     addNote,
     updateNote,
     deleteNote,
-  } from './lib/notes';
+  } from '$lib/features/notes/notes';
   import ToolboxPanel from './components/ToolboxPanel.svelte';
   import LeftToolbar from './components/LeftToolbar.svelte';
   import ToolSettingsModal from './components/ToolSettingsModal.svelte';
-  import DrawablesPersistence from './lib/drawables/DrawablesPersistence.svelte';
-  import type { CrosshairModeName } from './lib/crosshair';
+  import DrawablesPersistence from '$lib/features/drawables/DrawablesPersistence.svelte';
+  import type { CrosshairModeName } from '$lib/features/chart/crosshair';
   import {
     CURSOR,
     drawables,
     toolbarCommandsFromStore,
     type ActiveTool,
-  } from './lib/drawables';
+  } from '$lib/features/drawables';
 
   const drawableToolbarCommands = toolbarCommandsFromStore(drawables);
 

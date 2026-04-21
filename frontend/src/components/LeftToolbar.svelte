@@ -7,13 +7,13 @@
   import {
     CROSSHAIR_MODES,
     type CrosshairModeName,
-  } from '../lib/crosshair';
+  } from '$lib/features/chart/crosshair';
   import {
     listTools,
     CURSOR,
     type ActiveTool,
     type DrawableToolbarCommands,
-  } from '../lib/drawables';
+  } from '$lib/features/drawables';
 
   let {
     chartSymbol = '',

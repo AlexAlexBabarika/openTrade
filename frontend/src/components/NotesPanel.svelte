@@ -2,7 +2,7 @@
   import Pencil from '@lucide/svelte/icons/pencil';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
-  import type { TickerNote } from '../lib/notes';
+  import type { TickerNote } from '$lib/features/notes/notes';
 
   let {
     notes,

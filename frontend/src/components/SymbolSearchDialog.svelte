@@ -7,7 +7,7 @@
     searchSymbols,
     type SymbolSearchResult,
     type SymbolProviders,
-  } from '../lib/symbols';
+  } from '$lib/features/market/symbols';
 
   let {
     open,
