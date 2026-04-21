@@ -1,8 +1,12 @@
 <script lang="ts">
   import type { RendererProps, ScreenPoint } from '../../../types';
   import type { AvpGeo, AvpParams, AvpStyle } from './compute';
-  import type { VolumeProfileResponse } from '../shared/types';
+  import type {
+    VolumeProfileBin,
+    VolumeProfileResponse,
+  } from '../shared/types';
   import DrawableSvgHitRect from '../../../ui/DrawableSvgHitRect.svelte';
+  import { measureDrawablesSync } from '../../../../dev/drawablesProfile';
 
   let {
     drawable,
@@ -48,6 +52,50 @@
     return m;
   });
 
+  /** Precomputed rows so bin geometry is measurable (`drawables:avp-bin-layout`) and matches the prior `{#each}` math. */
+  let binLayoutRows = $derived.by(() => {
+    coordMap.version;
+    if (
+      !data?.bins.length ||
+      !drawable.style.showProfile ||
+      maxBinVol <= 0
+    ) {
+      return [] as Array<{
+        bin: VolumeProfileBin;
+        top: number;
+        h: number;
+        upW: number;
+        downW: number;
+        fullW: number;
+      }>;
+    }
+    const d = data;
+    const rowSize = d.rowSize;
+    return measureDrawablesSync('drawables:avp-bin-layout', () => {
+      const rows: Array<{
+        bin: VolumeProfileBin;
+        top: number;
+        h: number;
+        upW: number;
+        downW: number;
+        fullW: number;
+      }> = [];
+      for (const bin of d.bins) {
+        const y = coordMap.priceToY(bin.price);
+        const yNext = coordMap.priceToY(bin.price + rowSize);
+        if (y == null || yNext == null) continue;
+        const h = Math.max(1, Math.abs(y - yNext));
+        const top = Math.min(y, yNext);
+        const total = bin.upVol + bin.downVol;
+        const fullW = (total / maxBinVol) * boxWidth;
+        const upW = total > 0 ? fullW * (bin.upVol / total) : 0;
+        const downW = fullW - upW;
+        rows.push({ bin, top, h, upW, downW, fullW });
+      }
+      return rows;
+    });
+  });
+
   $effect(() => {
     if (anchorX == null) {
       onAnchorPoint(null);
@@ -78,51 +126,41 @@
     />
 
     {#if drawable.style.showProfile && data && maxBinVol > 0}
-      {#each data.bins as bin (bin.price)}
-        {@const y = coordMap.priceToY(bin.price)}
-        {@const yNext = coordMap.priceToY(bin.price + data.rowSize)}
-        {#if y != null && yNext != null}
-          {@const h = Math.max(1, Math.abs(y - yNext))}
-          {@const top = Math.min(y, yNext)}
-          {@const total = bin.upVol + bin.downVol}
-          {@const fullW = (total / maxBinVol) * boxWidth}
-          {@const upW = total > 0 ? fullW * (bin.upVol / total) : 0}
-          {@const downW = fullW - upW}
-          {#if placement === 'right'}
-            <rect
-              x={boxLeft + boxWidth - upW}
-              y={top}
-              width={upW}
-              height={h}
-              fill={drawable.style.upColor}
-              fill-opacity="0.6"
-            />
-            <rect
-              x={boxLeft + boxWidth - fullW}
-              y={top}
-              width={downW}
-              height={h}
-              fill={drawable.style.downColor}
-              fill-opacity="0.6"
-            />
-          {:else}
-            <rect
-              x={boxLeft}
-              y={top}
-              width={upW}
-              height={h}
-              fill={drawable.style.upColor}
-              fill-opacity="0.6"
-            />
-            <rect
-              x={boxLeft + upW}
-              y={top}
-              width={downW}
-              height={h}
-              fill={drawable.style.downColor}
-              fill-opacity="0.6"
-            />
-          {/if}
+      {#each binLayoutRows as row (row.bin.price)}
+        {#if placement === 'right'}
+          <rect
+            x={boxLeft + boxWidth - row.upW}
+            y={row.top}
+            width={row.upW}
+            height={row.h}
+            fill={drawable.style.upColor}
+            fill-opacity="0.6"
+          />
+          <rect
+            x={boxLeft + boxWidth - row.fullW}
+            y={row.top}
+            width={row.downW}
+            height={row.h}
+            fill={drawable.style.downColor}
+            fill-opacity="0.6"
+          />
+        {:else}
+          <rect
+            x={boxLeft}
+            y={row.top}
+            width={row.upW}
+            height={row.h}
+            fill={drawable.style.upColor}
+            fill-opacity="0.6"
+          />
+          <rect
+            x={boxLeft + row.upW}
+            y={row.top}
+            width={row.downW}
+            height={row.h}
+            fill={drawable.style.downColor}
+            fill-opacity="0.6"
+          />
         {/if}
       {/each}
     {/if}
