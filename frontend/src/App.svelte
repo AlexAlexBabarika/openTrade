@@ -70,8 +70,12 @@
     setTickerProvidersEverywhere,
     findTickerProviders,
   } from '$lib/features/market/tickers';
-  import type { SymbolProviders } from '$lib/features/market/symbols';
-  import { markYFinanceSupported, DEFAULT_PROVIDERS } from '$lib/features/market/symbols';
+  import type { SymbolProviders, SymbolSearchResult } from '$lib/features/market/symbols';
+  import {
+    markYFinanceSupported,
+    DEFAULT_PROVIDERS,
+    fetchSymbolMeta,
+  } from '$lib/features/market/symbols';
   import { fetchLastClose, type TickerQuote } from '$lib/features/market/tickerQuotes';
   import { untrack } from 'svelte';
   import TextPromptDialog from './components/TextPromptDialog.svelte';
@@ -179,6 +183,7 @@
   } | null>(null);
 
   let notes = $state<NotesBySymbol>(loadNotesFromStorage());
+  let symbolMeta = $state<SymbolSearchResult | null>(null);
   let noteDialogState = $state<{
     mode: 'create' | 'edit';
     symbol: string;
@@ -187,6 +192,35 @@
 
   $effect(() => {
     persistNotes(notes);
+  });
+
+  $effect(() => {
+    const sym = loadedSymbol;
+    const src = source;
+    if (!sym.trim() || src === 'csv') {
+      symbolMeta = null;
+      return;
+    }
+    const ac = new AbortController();
+    void fetchSymbolMeta(sym, ac.signal).then(m => {
+      if (!ac.signal.aborted) symbolMeta = m;
+    });
+    return () => ac.abort();
+  });
+
+  let symbolFullName = $derived.by(() => {
+    const m = symbolMeta;
+    const s = loadedSymbol.trim().toUpperCase();
+    if (!m || !s) return null;
+    const n = m.name.trim();
+    if (!n || n.toUpperCase() === s) return null;
+    return n;
+  });
+  let symbolExchangeLabel = $derived.by(() => {
+    const m = symbolMeta;
+    if (!m) return null;
+    const ex = m.exchange?.trim();
+    return ex && ex.length > 0 ? ex : null;
   });
 
   let currentNotes = $derived(notesForSymbol(notes, loadedSymbol));
@@ -705,6 +739,8 @@
     {#if sidebarVisible}
       <Sidebar
         symbol={loadedSymbol}
+        symbolFullName={symbolFullName}
+        symbolExchange={symbolExchangeLabel}
         closePrice={lastClose}
         {groups}
         {selectedGroupName}

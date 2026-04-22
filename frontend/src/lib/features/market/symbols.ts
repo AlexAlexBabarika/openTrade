@@ -34,6 +34,27 @@ export async function searchSymbols(
   });
 }
 
+/** Exact directory lookup; null if unknown or on recoverable errors. */
+export async function fetchSymbolMeta(
+  symbol: string,
+  signal?: AbortSignal,
+): Promise<SymbolSearchResult | null> {
+  const sym = symbol.trim().toUpperCase();
+  if (!sym) return null;
+  const params = new URLSearchParams({ symbol: sym });
+  try {
+    const res = await apiFetch(`/symbols/meta?${params.toString()}`, {
+      method: 'GET',
+      signal,
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) return null;
+    return (await res.json()) as SymbolSearchResult;
+  } catch {
+    return null;
+  }
+}
+
 /** Fire-and-forget: tells the backend yfinance just succeeded for this symbol. */
 export function markYFinanceSupported(symbol: string): void {
   const sym = symbol.trim().toUpperCase();
