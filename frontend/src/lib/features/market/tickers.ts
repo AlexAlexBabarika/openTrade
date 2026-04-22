@@ -12,9 +12,20 @@ export enum TickerPriority {
 
 export type FlaggedPriority = Exclude<TickerPriority, TickerPriority.None>;
 
+export enum TickerStance {
+  None = 'none',
+  Watch = 'watch',
+  Hold = 'hold',
+  Buy = 'buy',
+  Sell = 'sell',
+}
+
+export type FlaggedStance = Exclude<TickerStance, TickerStance.None>;
+
 export interface TrackedTicker {
   symbol: string;
   priority: TickerPriority;
+  stance: TickerStance;
   /** Cached provider-support flags from the symbol directory. ``null`` means
    *  unlisted (user added an unknown symbol) — sidebar renders no badges. */
   providers?: SymbolProviders | null;
@@ -45,11 +56,62 @@ export const FLAGGED_PRIORITIES: readonly FlaggedPriority[] = [
   TickerPriority.Critical,
 ];
 
+export const STANCE_COLOURS: Record<FlaggedStance, string> = {
+  [TickerStance.Watch]: '#a78bfa',
+  [TickerStance.Hold]: '#38bdf8',
+  [TickerStance.Buy]: '#4ade80',
+  [TickerStance.Sell]: '#fb7185',
+};
+
+export const STANCE_OPTIONS: readonly TickerStance[] = [
+  TickerStance.None,
+  TickerStance.Watch,
+  TickerStance.Hold,
+  TickerStance.Buy,
+  TickerStance.Sell,
+];
+
+export const FLAGGED_STANCES: readonly FlaggedStance[] = [
+  TickerStance.Watch,
+  TickerStance.Hold,
+  TickerStance.Buy,
+  TickerStance.Sell,
+];
+
 function isFlaggedPriority(value: unknown): value is FlaggedPriority {
   return (
     typeof value === 'string' &&
     (FLAGGED_PRIORITIES as readonly string[]).includes(value)
   );
+}
+
+function isFlaggedStance(value: unknown): value is FlaggedStance {
+  return (
+    typeof value === 'string' &&
+    (FLAGGED_STANCES as readonly string[]).includes(value)
+  );
+}
+
+function normalizeTicker(raw: unknown): TrackedTicker {
+  const t = raw as Partial<TrackedTicker>;
+  const stanceRaw = t.stance;
+  const stance =
+    typeof stanceRaw === 'string' &&
+    (STANCE_OPTIONS as readonly string[]).includes(stanceRaw)
+      ? (stanceRaw as TickerStance)
+      : TickerStance.None;
+  const priorityRaw = t.priority;
+  const priority =
+    typeof priorityRaw === 'string' &&
+    (PRIORITY_OPTIONS as readonly string[]).includes(priorityRaw)
+      ? (priorityRaw as TickerPriority)
+      : TickerPriority.None;
+  return {
+    symbol: typeof t.symbol === 'string' ? t.symbol : '',
+    priority,
+    stance,
+    providers: t.providers,
+  };
 }
 
 export interface TickerGroup {
@@ -69,6 +131,7 @@ export interface GroupActions {
 const GROUPS_STORAGE_KEY = 'opentrade:groups';
 const SELECTED_GROUP_STORAGE_KEY = 'opentrade:selectedGroup';
 const SELECTED_PRIORITY_STORAGE_KEY = 'opentrade:selectedPriority';
+const SELECTED_STANCE_STORAGE_KEY = 'opentrade:selectedStance';
 
 function isValidGroup(value: unknown): value is TickerGroup {
   if (!value || typeof value !== 'object') return false;
@@ -85,7 +148,10 @@ export function loadGroupsFromStorage(): TickerGroup[] {
   ) {
     return [{ name: 'All', tickers: [] }];
   }
-  return groups as TickerGroup[];
+  return (groups as TickerGroup[]).map(g => ({
+    ...g,
+    tickers: g.tickers.map(normalizeTicker),
+  }));
 }
 
 export function persistGroups(groups: TickerGroup[]): void {
@@ -113,6 +179,15 @@ export function persistSelectedPriority(
   priority: FlaggedPriority | null,
 ): void {
   safeLocalStorageSet(SELECTED_PRIORITY_STORAGE_KEY, priority);
+}
+
+export function loadSelectedStance(): FlaggedStance | null {
+  const stored = safeLocalStorageGet<unknown>(SELECTED_STANCE_STORAGE_KEY);
+  return isFlaggedStance(stored) ? stored : null;
+}
+
+export function persistSelectedStance(stance: FlaggedStance | null): void {
+  safeLocalStorageSet(SELECTED_STANCE_STORAGE_KEY, stance);
 }
 
 function uniqueDuplicateName(groups: TickerGroup[], base: string): string {
@@ -185,6 +260,7 @@ export function addTickerToGroup(
   const ticker: TrackedTicker = {
     symbol,
     priority: TickerPriority.None,
+    stance: TickerStance.None,
     providers,
   };
   return updateGroup(groups, groupName, g =>
@@ -252,7 +328,7 @@ export function collectTickersByPriority(
     for (const t of g.tickers) {
       if (t.priority === priority && !seen.has(t.symbol)) {
         seen.add(t.symbol);
-        out.push({ symbol: t.symbol, priority });
+        out.push({ symbol: t.symbol, priority, stance: t.stance });
       }
     }
   }
@@ -283,6 +359,70 @@ export function priorityCounts(
     [TickerPriority.High]: seen[TickerPriority.High].size,
     [TickerPriority.Critical]: seen[TickerPriority.Critical].size,
   };
+}
+
+export function setTickerStance(
+  groups: TickerGroup[],
+  groupName: string,
+  symbol: string,
+  stance: TickerStance,
+): TickerGroup[] {
+  return updateGroup(groups, groupName, g => ({
+    ...g,
+    tickers: g.tickers.map(t => (t.symbol === symbol ? { ...t, stance } : t)),
+  }));
+}
+
+export function collectTickersByStance(
+  groups: TickerGroup[],
+  stance: FlaggedStance,
+): TrackedTicker[] {
+  const seen = new Set<string>();
+  const out: TrackedTicker[] = [];
+  for (const g of groups) {
+    for (const t of g.tickers) {
+      if (t.stance === stance && !seen.has(t.symbol)) {
+        seen.add(t.symbol);
+        out.push({ symbol: t.symbol, priority: t.priority, stance });
+      }
+    }
+  }
+  return out;
+}
+
+export function stanceCounts(
+  groups: TickerGroup[],
+): Record<FlaggedStance, number> {
+  const seen: Record<FlaggedStance, Set<string>> = {
+    [TickerStance.Watch]: new Set(),
+    [TickerStance.Hold]: new Set(),
+    [TickerStance.Buy]: new Set(),
+    [TickerStance.Sell]: new Set(),
+  };
+  for (const g of groups) {
+    for (const t of g.tickers) {
+      if (t.stance !== TickerStance.None) {
+        seen[t.stance as FlaggedStance].add(t.symbol);
+      }
+    }
+  }
+  return {
+    [TickerStance.Watch]: seen[TickerStance.Watch].size,
+    [TickerStance.Hold]: seen[TickerStance.Hold].size,
+    [TickerStance.Buy]: seen[TickerStance.Buy].size,
+    [TickerStance.Sell]: seen[TickerStance.Sell].size,
+  };
+}
+
+export function setStanceEverywhere(
+  groups: TickerGroup[],
+  symbol: string,
+  stance: TickerStance,
+): TickerGroup[] {
+  return groups.map(g => ({
+    ...g,
+    tickers: g.tickers.map(t => (t.symbol === symbol ? { ...t, stance } : t)),
+  }));
 }
 
 export function setPriorityEverywhere(
@@ -333,4 +473,33 @@ export function findPriorityConflict(
   }
   if (existing === null) return null;
   return { symbol, existingPriority: existing, groups: conflictingGroups };
+}
+
+export interface StanceConflict {
+  symbol: string;
+  existingStance: FlaggedStance;
+  groups: string[];
+}
+
+export function findStanceConflict(
+  groups: TickerGroup[],
+  symbol: string,
+  desired: TickerStance,
+  excludeGroup: string,
+): StanceConflict | null {
+  if (desired === TickerStance.None) return null;
+  let existing: FlaggedStance | null = null;
+  const conflictingGroups: string[] = [];
+  for (const g of groups) {
+    if (g.name === excludeGroup) continue;
+    for (const t of g.tickers) {
+      if (t.symbol !== symbol) continue;
+      if (t.stance !== TickerStance.None && t.stance !== desired) {
+        if (existing === null) existing = t.stance as FlaggedStance;
+        if (t.stance === existing) conflictingGroups.push(g.name);
+      }
+    }
+  }
+  if (existing === null) return null;
+  return { symbol, existingStance: existing, groups: conflictingGroups };
 }
