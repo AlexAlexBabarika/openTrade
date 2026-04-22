@@ -150,6 +150,9 @@ function getMonoFontFamily(): string {
   return value || DEFAULT_MONO_FONT;
 }
 
+/** Bars of empty logical space after the last point (drawables / placement past the final bar). */
+export const CHART_TIME_SCALE_RIGHT_OFFSET = 8;
+
 export function createChartContainer(
   parent: HTMLElement,
   colours?: ChartColours,
@@ -179,6 +182,7 @@ export function createChartContainer(
       borderColor,
       timeVisible: true,
       secondsVisible: false,
+      rightOffset: CHART_TIME_SCALE_RIGHT_OFFSET,
     },
     crosshair: { mode: CrosshairMode.Magnet },
   });

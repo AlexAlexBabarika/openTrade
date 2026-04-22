@@ -13,6 +13,7 @@
     candleOHLCVtoVolumeData,
   } from '$lib/features/chart/chartAdapters';
   import {
+    CHART_TIME_SCALE_RIGHT_OFFSET,
     createChartContainer,
     addCandlestickSeries,
     addVolumeSeries,
@@ -26,7 +27,10 @@
     IndicatorPoint,
     BollingerBandsPoint,
   } from '$lib/core/types';
-  import type { ChartColours, ChartType } from '$lib/features/chart/chartColours';
+  import type {
+    ChartColours,
+    ChartType,
+  } from '$lib/features/chart/chartColours';
   import { linePoint } from '$lib/features/chart/chart';
   import {
     toCrosshairMode,
@@ -34,6 +38,7 @@
   } from '$lib/features/chart/crosshair';
   import {
     buildCoordMap,
+    chartTimeAtCoordinate,
     CURSOR,
     type ActiveTool,
     type CoordMap,
@@ -95,16 +100,9 @@
   let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let resizeObserver: ResizeObserver | null = null;
 
-  /** Avoid repeated layout reads during drawable placement pointer moves; invalidate on resize, scroll, or gesture start. */
-  let containerRectCache: DOMRect | null = null;
-
-  function invalidateContainerRectCache(): void {
-    containerRectCache = null;
-  }
-
   /**
    * Incremented when pan/zoom/resize (or container size) invalidates chart pixel
-   * mapping. Fed into `buildCoordMap(..., version)` → `coordMap.version`.
+   * mapping. Fed into `buildCoordMap(..., version, candles)` → `coordMap.version`.
    * Depend on `coordMap` / `coordMap.version` in overlays for transforms; this
    * counter is the chart shell’s upstream invalidation signal only.
    */
@@ -296,7 +294,6 @@
   }
 
   function handleResize(): void {
-    invalidateContainerRectCache();
     if (chart && containerEl) {
       chart.applyOptions({
         width: containerEl.clientWidth,
@@ -314,20 +311,21 @@
     clientX: number,
     clientY: number,
   ): { time: number; price: number } | null {
-    if (!chart || !containerEl) return null;
+    if (!chart) return null;
     const series = priceSeries();
     if (!series) return null;
-    let rect = containerRectCache;
-    if (!rect) {
-      rect = containerEl.getBoundingClientRect();
-      containerRectCache = rect;
-    }
+    const rect = chart.chartElement().getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-    const time = chart.timeScale().coordinateToTime(x);
-    const price = series.coordinateToPrice(y);
+    const time = chartTimeAtCoordinate(chart, x, candles);
+    const coordPrice = series.coordinateToPrice(y);
+    let price: number | null =
+      coordPrice == null ? null : Number(coordPrice);
+    if (price == null && candles.length > 0) {
+      price = candles[candles.length - 1].close;
+    }
     if (time == null || price == null) return null;
-    return { time: time as number, price };
+    return { time, price };
   }
 
   function toChartPoint(e: PointerEvent): ChartPoint | null {
@@ -336,7 +334,6 @@
   }
 
   function onChartPointerDown(e: PointerEvent) {
-    invalidateContainerRectCache();
     chartDrawables?.handlePointerDown(e);
   }
 
@@ -354,6 +351,7 @@
 
   $effect(() => {
     const version = coordVersion;
+    const data = candles;
     if (!chart) {
       coordMap = null;
       return;
@@ -363,7 +361,7 @@
       coordMap = null;
       return;
     }
-    coordMap = buildCoordMap(chart, series, version);
+    coordMap = buildCoordMap(chart, series, version, data);
   });
 
   $effect(() => {
@@ -381,7 +379,6 @@
     initChart();
     api = { appendCandle };
     window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', invalidateContainerRectCache, true);
 
     if (containerEl) {
       resizeObserver = new ResizeObserver(handleResize);
@@ -403,7 +400,6 @@
   onDestroy(() => {
     api = null;
     window.removeEventListener('resize', handleResize);
-    window.removeEventListener('scroll', invalidateContainerRectCache, true);
     if (resizeObserver) {
       resizeObserver.disconnect();
       resizeObserver = null;
@@ -430,6 +426,9 @@
       setSeriesData(data);
       if (data !== prevCandles) {
         chart.timeScale().fitContent();
+        chart.applyOptions({
+          timeScale: { rightOffset: CHART_TIME_SCALE_RIGHT_OFFSET },
+        });
         prevCandles = data;
       }
     });
@@ -575,16 +574,16 @@
   {candles}
   {provider}
   {interval}
-  toChartPoint={toChartPoint}
+  {toChartPoint}
   onPlacementActiveChange={onDrawablePlacementActiveChange}
-  onChartPointerDown={onChartPointerDown}
-  onChartPointerMove={onChartPointerMove}
-  onChartPointerUp={onChartPointerUp}
-  onChartKeyDown={onChartKeyDown}
-  showLegend={showLegend}
+  {onChartPointerDown}
+  {onChartPointerMove}
+  {onChartPointerUp}
+  {onChartKeyDown}
+  {showLegend}
   legendTitle={legendName}
-  legendPrice={legendPrice}
-  legendDate={legendDate}
-  legendVolume={legendVolume}
+  {legendPrice}
+  {legendDate}
+  {legendVolume}
   legendTextColour={colours?.textColour}
 />

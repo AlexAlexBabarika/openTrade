@@ -53,6 +53,10 @@ export type PopupAction =
 export interface PlacementCtx {
   coordMap: CoordMap;
   symbol: string;
+  /** Unix seconds of last loaded candle; band tools anchor their right edge here. */
+  lastCandleTime?: number | null;
+  /** Seconds between the last two bars; used for minimum horizontal span past the last candle. */
+  barStepSeconds?: number | null;
 }
 
 /**
@@ -112,6 +116,8 @@ export interface PreviewRendererProps<Geo, Params, Style, Data> {
   drawable: Drawable<Geo, Params, Style>;
   data: Data | undefined;
   coordMap: CoordMap;
+  /** Chart hit-test for drawable handle drags (optional). */
+  toChartPoint?: (e: PointerEvent) => ChartPoint | null;
 }
 
 /** Interactive callbacks for a committed drawable on the chart. */

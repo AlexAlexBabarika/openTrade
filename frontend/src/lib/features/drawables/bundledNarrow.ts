@@ -5,16 +5,27 @@ import type {
   AvpParams,
   AvpStyle,
 } from './tools/volume-profile/avp/compute';
+import {
+  normalizePositionStyle,
+  type PositionGeo,
+  type PositionParams,
+  type PositionStyle,
+} from './tools/position/compute';
+import {
+  POSITION_LONG_TYPE,
+  POSITION_SHORT_TYPE,
+} from './tools/position/constants';
 import type { BundledDrawable } from './bundledDrawable';
 import { isBundledToolType, type BundledToolType } from './toolCatalog';
+import {
+  extractDrawableFieldBag,
+  finiteNumber,
+  isRecord,
+  type DrawableFieldBag,
+} from './drawableFieldBag';
 
-function isRecord(x: unknown): x is Record<string, unknown> {
-  return typeof x === 'object' && x !== null && !Array.isArray(x);
-}
-
-function finiteNumber(x: unknown): x is number {
-  return typeof x === 'number' && Number.isFinite(x);
-}
+export { extractDrawableFieldBag };
+export type { DrawableFieldBag };
 
 function isRulerGeo(g: unknown): g is RangeGeo {
   if (!isRecord(g)) return false;
@@ -64,34 +75,30 @@ function isAvpStyle(s: unknown): s is AvpStyle {
   return true;
 }
 
-export type DrawableFieldBag = {
-  id: string;
-  type: string;
-  symbol: string;
-  createdAt: number;
-  geometry: unknown;
-  params: unknown;
-  style: unknown;
-};
+function isPositionGeo(g: unknown): g is PositionGeo {
+  if (!isRecord(g)) return false;
+  return (
+    finiteNumber(g.startTime) &&
+    finiteNumber(g.endTime) &&
+    finiteNumber(g.entryPrice) &&
+    finiteNumber(g.stopPrice) &&
+    finiteNumber(g.targetPrice)
+  );
+}
 
-/** Extract core drawable fields from a stored or migrated object. */
-export function extractDrawableFieldBag(
-  candidate: unknown,
-): DrawableFieldBag | null {
-  if (!isRecord(candidate)) return null;
-  if (typeof candidate.id !== 'string') return null;
-  if (typeof candidate.type !== 'string') return null;
-  if (typeof candidate.symbol !== 'string') return null;
-  if (!finiteNumber(candidate.createdAt)) return null;
-  return {
-    id: candidate.id,
-    type: candidate.type,
-    symbol: candidate.symbol,
-    createdAt: candidate.createdAt,
-    geometry: candidate.geometry,
-    params: candidate.params,
-    style: candidate.style,
-  };
+function isPositionParams(p: unknown): p is PositionParams {
+  return p == null || isRecord(p);
+}
+
+function isPositionStyle(s: unknown): s is PositionStyle {
+  if (!isRecord(s)) return false;
+  return (
+    typeof s.stopColor === 'string' &&
+    typeof s.targetColor === 'string' &&
+    typeof s.showRiskZone === 'boolean' &&
+    typeof s.showRewardZone === 'boolean' &&
+    typeof s.showMetrics === 'boolean'
+  );
 }
 
 /** Runtime narrow for bundled tools only; returns null if shape is invalid. */
@@ -134,6 +141,40 @@ export function narrowBundledDrawable(
         geometry: fields.geometry,
         params: fields.params,
         style: fields.style,
+      };
+    case POSITION_LONG_TYPE:
+      if (
+        !isPositionGeo(fields.geometry) ||
+        !isPositionParams(fields.params) ||
+        !isPositionStyle(fields.style)
+      ) {
+        return null;
+      }
+      return {
+        id: fields.id,
+        type: POSITION_LONG_TYPE,
+        symbol: fields.symbol,
+        createdAt: fields.createdAt,
+        geometry: fields.geometry,
+        params: {},
+        style: normalizePositionStyle(fields.style),
+      };
+    case POSITION_SHORT_TYPE:
+      if (
+        !isPositionGeo(fields.geometry) ||
+        !isPositionParams(fields.params) ||
+        !isPositionStyle(fields.style)
+      ) {
+        return null;
+      }
+      return {
+        id: fields.id,
+        type: POSITION_SHORT_TYPE,
+        symbol: fields.symbol,
+        createdAt: fields.createdAt,
+        geometry: fields.geometry,
+        params: {},
+        style: normalizePositionStyle(fields.style),
       };
     default:
       return null;
