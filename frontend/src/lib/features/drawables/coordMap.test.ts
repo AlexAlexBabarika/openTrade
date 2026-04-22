@@ -9,6 +9,7 @@ import {
 
 function makeCandles(times: number[]): OHLCVCandle[] {
   return times.map((t, i) => ({
+    symbol: 'TEST',
     timestamp: new Date(t * 1000).toISOString(),
     open: 100 + i,
     high: 101 + i,
