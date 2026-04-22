@@ -92,7 +92,7 @@ function isFlaggedStance(value: unknown): value is FlaggedStance {
   );
 }
 
-function normalizeTicker(raw: unknown): TrackedTicker {
+export function normalizeTicker(raw: unknown): TrackedTicker {
   const t = raw as Partial<TrackedTicker>;
   const stanceRaw = t.stance;
   const stance =
@@ -139,6 +139,40 @@ function isValidGroup(value: unknown): value is TickerGroup {
   return typeof g.name === 'string' && Array.isArray(g.tickers);
 }
 
+/** Re-run validation/normalization on groups from the API. */
+export function normalizeGroupsList(groups: TickerGroup[]): TickerGroup[] {
+  return groups.map(g => ({
+    ...g,
+    tickers: g.tickers.map(normalizeTicker),
+  }));
+}
+
+export function isDefaultTickerWorkspaceState(
+  groups: TickerGroup[],
+  selectedGroupName: string,
+  selectedPriority: FlaggedPriority | null,
+  selectedStance: FlaggedStance | null,
+): boolean {
+  if (groups.length !== 1) return false;
+  const g0 = groups[0];
+  if (g0.name !== 'All' || g0.tickers.length !== 0) return false;
+  if (selectedGroupName !== 'All') return false;
+  if (selectedPriority !== null || selectedStance !== null) return false;
+  return true;
+}
+
+export function clearTickerLocalStorage(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.removeItem(GROUPS_STORAGE_KEY);
+    localStorage.removeItem(SELECTED_GROUP_STORAGE_KEY);
+    localStorage.removeItem(SELECTED_PRIORITY_STORAGE_KEY);
+    localStorage.removeItem(SELECTED_STANCE_STORAGE_KEY);
+  } catch (e) {
+    console.warn('[opentrade] Failed to clear ticker local storage', e);
+  }
+}
+
 export function loadGroupsFromStorage(): TickerGroup[] {
   const groups = safeLocalStorageGet<unknown>(GROUPS_STORAGE_KEY);
   if (
@@ -158,11 +192,21 @@ export function persistGroups(groups: TickerGroup[]): void {
   safeLocalStorageSet(GROUPS_STORAGE_KEY, groups);
 }
 
+/** Pick the active group name from storage, or fall back to the first group. */
 export function loadSelectedGroupName(groups: TickerGroup[]): string {
   const stored = safeLocalStorageGet<string>(SELECTED_GROUP_STORAGE_KEY);
   if (typeof stored === 'string' && groups.some(g => g.name === stored)) {
     return stored;
   }
+  return groups[0].name;
+}
+
+/** Use a known selection (e.g. from the server) without reading localStorage. */
+export function resolveSelectedGroupName(
+  groups: TickerGroup[],
+  preferred: string,
+): string {
+  if (groups.some(g => g.name === preferred)) return preferred;
   return groups[0].name;
 }
 

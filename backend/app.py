@@ -37,6 +37,7 @@ from backend.websocket import stream_candles
 from backend.core.supabase_client import get_supabase_client, is_supabase_configured
 from backend.routes.auth_routes import router as auth_router
 from backend.routes.user_routes import router as user_router
+from backend.routes.ticker_workspace_routes import router as ticker_workspace_router
 from backend.routes.api_key_routes import router as api_key_router
 from backend.routes.market_routes import router as market_router
 from backend.routes.indicator_routes import router as indicator_router
@@ -91,6 +92,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(user_router)
+app.include_router(ticker_workspace_router)
 app.include_router(api_key_router)
 app.include_router(market_router)
 app.include_router(indicator_router)

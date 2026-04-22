@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import TopHeader from './components/TopHeader.svelte';
   import BottomHeader from './components/BottomHeader.svelte';
   import ErrorMessage from './components/ErrorMessage.svelte';
@@ -18,7 +19,7 @@
   import { WSClient } from '$lib/core/ws';
   import type { ConnectionStatus } from '$lib/core/ws';
   import type { OHLCVCandle } from '$lib/core/types';
-  import { fetchSession } from '$lib/features/auth/auth';
+  import { authState, fetchSession } from '$lib/features/auth/auth';
   import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
   import { DEFAULT_MARKET_INTERVAL } from '$lib/features/market/marketIntervals';
   import { DEFAULT_MARKET_PERIOD } from '$lib/features/market/marketPeriods';
@@ -49,6 +50,8 @@
     persistSelectedPriority,
     loadSelectedStance,
     persistSelectedStance,
+    clearTickerLocalStorage,
+    isDefaultTickerWorkspaceState,
     addGroup,
     renameGroup,
     duplicateGroup,
@@ -70,6 +73,12 @@
     setTickerProvidersEverywhere,
     findTickerProviders,
   } from '$lib/features/market/tickers';
+  import {
+    buildTickerWorkspacePayload,
+    fetchTickerWorkspace,
+    putTickerWorkspace,
+    workspacePayloadToAppState,
+  } from '$lib/features/market/tickerWorkspace';
   import type { SymbolProviders, SymbolSearchResult } from '$lib/features/market/symbols';
   import {
     markYFinanceSupported,
@@ -169,6 +178,10 @@
   let selectedGroupName = $state(loadSelectedGroupName(initialGroups));
   let selectedPriority = $state<FlaggedPriority | null>(loadSelectedPriority());
   let selectedStance = $state<FlaggedStance | null>(loadSelectedStance());
+  const authed = $derived($authState.user != null);
+  let lastRemoteUserId = $state<string | null>(null);
+  let remoteTickerLoadDone = $state(false);
+  let sessionReady = $state(false);
   let groupDialogMode = $state<null | 'add' | 'rename'>(null);
   let addSymbolDialogOpen = $state(false);
   let priorityConflictState = $state<{
@@ -248,16 +261,75 @@
   let toolboxOpen = $state(false);
 
   $effect(() => {
+    if (authed) return;
     persistGroups(groups);
-  });
-  $effect(() => {
     persistSelectedGroupName(selectedGroupName);
-  });
-  $effect(() => {
     persistSelectedPriority(selectedPriority);
+    persistSelectedStance(selectedStance);
   });
   $effect(() => {
-    persistSelectedStance(selectedStance);
+    if (!authed || !remoteTickerLoadDone) return;
+    const payload = buildTickerWorkspacePayload(
+      groups,
+      selectedGroupName,
+      selectedPriority,
+      selectedStance,
+    );
+    const t = setTimeout(() => {
+      void putTickerWorkspace(payload).catch((err: unknown) => {
+        console.warn('[opentrade] Ticker workspace sync failed', err);
+      });
+    }, 500);
+    return () => clearTimeout(t);
+  });
+  $effect(() => {
+    if (!sessionReady) return;
+    const u = $authState.user;
+    const id = u?.id ?? null;
+    if (id && id !== lastRemoteUserId) {
+      lastRemoteUserId = id;
+      void (async () => {
+        remoteTickerLoadDone = false;
+        try {
+          const res = await fetchTickerWorkspace();
+          if (res.from_database) {
+            const next = workspacePayloadToAppState(res.workspace);
+            groups = next.groups;
+            selectedGroupName = next.selectedGroupName;
+            selectedPriority = next.selectedPriority;
+            selectedStance = next.selectedStance;
+          } else if (
+            !isDefaultTickerWorkspaceState(
+              groups,
+              selectedGroupName,
+              selectedPriority,
+              selectedStance,
+            )
+          ) {
+            await putTickerWorkspace(
+              buildTickerWorkspacePayload(
+                groups,
+                selectedGroupName,
+                selectedPriority,
+                selectedStance,
+              ),
+            );
+          }
+        } catch (e) {
+          console.warn('[opentrade] Ticker workspace load failed', e);
+        }
+        clearTickerLocalStorage();
+        remoteTickerLoadDone = true;
+      })();
+    } else if (!id && lastRemoteUserId) {
+      const g = loadGroupsFromStorage();
+      groups = g;
+      selectedGroupName = loadSelectedGroupName(g);
+      selectedPriority = loadSelectedPriority();
+      selectedStance = loadSelectedStance();
+      lastRemoteUserId = null;
+      remoteTickerLoadDone = true;
+    }
   });
 
   let currentGroup = $derived(groups.find(g => g.name === selectedGroupName));
@@ -668,6 +740,43 @@
     } catch (err) {
       console.warn('Session fetch failed:', err);
     }
+    const u = get(authState).user;
+    if (u) {
+      try {
+        const res = await fetchTickerWorkspace();
+        if (res.from_database) {
+          const next = workspacePayloadToAppState(res.workspace);
+          groups = next.groups;
+          selectedGroupName = next.selectedGroupName;
+          selectedPriority = next.selectedPriority;
+          selectedStance = next.selectedStance;
+        } else if (
+          !isDefaultTickerWorkspaceState(
+            groups,
+            selectedGroupName,
+            selectedPriority,
+            selectedStance,
+          )
+        ) {
+          await putTickerWorkspace(
+            buildTickerWorkspacePayload(
+              groups,
+              selectedGroupName,
+              selectedPriority,
+              selectedStance,
+            ),
+          );
+        }
+      } catch (e) {
+        console.warn('[opentrade] Ticker workspace load failed', e);
+      }
+      clearTickerLocalStorage();
+      lastRemoteUserId = u.id;
+    } else {
+      lastRemoteUserId = null;
+    }
+    remoteTickerLoadDone = true;
+    sessionReady = true;
     await loadMarketData();
     initialLoadDone = true;
   });
