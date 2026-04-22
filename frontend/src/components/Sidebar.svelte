@@ -96,6 +96,18 @@
     if (q.status === 'error') return '—';
     return formatPrice(q.close);
   }
+
+  const currentTicker = $derived(
+    tickers.find(
+      t => t.symbol.toUpperCase() === (symbol || '').trim().toUpperCase(),
+    ) ?? null,
+  );
+
+  const hasSidebarTags = $derived(
+    currentTicker != null &&
+      (currentTicker.priority !== TickerPriority.None ||
+        currentTicker.stance !== TickerStance.None),
+  );
 </script>
 
 <aside
@@ -283,11 +295,45 @@
           </div>
         {/if}
       </div>
-      <span
-        class="text-sm font-mono tabular-nums text-foreground shrink-0 leading-snug"
-      >
-        {formatPrice(closePrice)}
-      </span>
+      <div class="shrink-0 text-right min-w-0">
+        <div
+          class="text-sm font-mono tabular-nums text-foreground leading-snug"
+        >
+          {formatPrice(closePrice)}
+        </div>
+        {#if hasSidebarTags && currentTicker}
+          <div
+            class="mt-1 flex flex-wrap items-center justify-end gap-1 max-w-[10rem] sm:max-w-[12rem]"
+          >
+            {#if currentTicker.priority !== TickerPriority.None}
+              {@const p = currentTicker.priority}
+              <span
+                class="inline-flex rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none capitalize"
+                style="border-color: {PRIORITY_COLOURS[
+                  p
+                ]}; color: {PRIORITY_COLOURS[p]}; background: color-mix(in srgb, {PRIORITY_COLOURS[
+                  p
+                ]} 12%, transparent);"
+              >
+                {p}
+              </span>
+            {/if}
+            {#if currentTicker.stance !== TickerStance.None}
+              {@const s = currentTicker.stance}
+              <span
+                class="inline-flex rounded border px-1.5 py-0.5 text-[10px] font-medium leading-none capitalize"
+                style="border-color: {STANCE_COLOURS[
+                  s
+                ]}; color: {STANCE_COLOURS[s]}; background: color-mix(in srgb, {STANCE_COLOURS[
+                  s
+                ]} 12%, transparent);"
+              >
+                {s}
+              </span>
+            {/if}
+          </div>
+        {/if}
+      </div>
     </div>
     {#if symbol}
       <NotesPanel {notes} onedit={oneditnote} ondelete={ondeletenote} />
