@@ -23,7 +23,7 @@ describe('position tool migrate v1 geometry', () => {
         stopPrice: 9,
         targetPrice: 11,
       },
-      params: positionLongTool.defaults.params,
+      params: {},
       style: positionLongTool.defaults.style,
       schemaVersion: 1,
     };

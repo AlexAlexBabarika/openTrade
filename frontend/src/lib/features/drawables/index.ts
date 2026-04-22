@@ -53,7 +53,11 @@ function applyPersistedToolDefaults(): void {
     const stored = loadToolDefaults(bundled.type);
     const tool = getRegisteredBundledTool(bundled.type);
     if (stored && tool) {
-      tool.defaults.params = stored.params as typeof tool.defaults.params;
+      if (isPositionToolType(tool.type)) {
+        tool.defaults.params = {} as typeof tool.defaults.params;
+      } else {
+        tool.defaults.params = stored.params as typeof tool.defaults.params;
+      }
       tool.defaults.style = stored.style as typeof tool.defaults.style;
     }
   }

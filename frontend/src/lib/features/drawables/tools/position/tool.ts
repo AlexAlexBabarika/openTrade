@@ -5,6 +5,8 @@ import { positionBandPlacement } from '../../placement/positionBand';
 import type { PositionGeo } from '../../placement/positionBand';
 import {
   computePositionMetrics,
+  DEFAULT_POSITION_STYLE,
+  normalizePositionStyle,
   type PositionParams,
   type PositionStyle,
   type PositionMetricsResponse,
@@ -31,24 +33,7 @@ export type PositionShortDrawable = Drawable<
   PositionStyle
 > & { type: typeof POSITION_SHORT_TYPE };
 
-const defaultParams: PositionParams = {
-  accountBalance: 0,
-  riskPercent: 0,
-  riskAmount: 0,
-  quantity: 0,
-  leverage: 1,
-};
-
-const defaultStyle: PositionStyle = {
-  riskFill: 'rgb(239, 83, 80)',
-  rewardFill: 'rgb(38, 166, 154)',
-  entryColor: 'rgb(96, 165, 250)',
-  stopColor: 'rgb(239, 83, 80)',
-  targetColor: 'rgb(38, 166, 154)',
-  showRiskZone: true,
-  showRewardZone: true,
-  showMetrics: true,
-};
+const defaultParams: PositionParams = {};
 
 function isRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -101,8 +86,8 @@ function migratePositionEntry(
     symbol: bag.symbol,
     createdAt: bag.createdAt,
     geometry,
-    params: bag.params as PositionParams,
-    style: bag.style as PositionStyle,
+    params: {},
+    style: normalizePositionStyle(bag.style),
   };
 }
 
@@ -123,7 +108,7 @@ function createPositionTool(
     icon,
     defaults: {
       params: { ...defaultParams },
-      style: { ...defaultStyle },
+      style: { ...DEFAULT_POSITION_STYLE },
     },
     schemaVersion: 2,
     migrate: raw => migratePositionEntry(raw, type),

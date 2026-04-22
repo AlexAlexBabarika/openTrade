@@ -7,6 +7,10 @@
 
   const HANDLE = 9;
   const MIN_TIME_SPAN = 1;
+  const CHIP_H_TARGET_STOP = 36;
+  const CHIP_H_RR = 40;
+  /** Space between shaded band edge and Target/Stop chips (SVG y grows downward). */
+  const LABEL_GAP = 6;
 
   let {
     drawable,
@@ -60,6 +64,30 @@
   });
 
   let metrics = $derived(data ?? null);
+
+  /** Same math as backend when API omits or nulls `riskRewardRatio`. */
+  function riskRewardFromGeometry(g: PositionGeo, long: boolean): number | null {
+    if (long) {
+      const risk = g.entryPrice - g.stopPrice;
+      const reward = g.targetPrice - g.entryPrice;
+      if (!(risk > 0 && reward > 0)) return null;
+      return reward / risk;
+    }
+    const risk = g.stopPrice - g.entryPrice;
+    const reward = g.entryPrice - g.targetPrice;
+    if (!(risk > 0 && reward > 0)) return null;
+    return reward / risk;
+  }
+
+  let displayRiskReward = $derived.by(() => {
+    const m = metrics;
+    if (!m) return null;
+    const camel = m.riskRewardRatio;
+    if (camel != null && Number.isFinite(camel)) return camel;
+    const snake = (m as { risk_reward_ratio?: number | null }).risk_reward_ratio;
+    if (snake != null && Number.isFinite(snake)) return snake;
+    return riskRewardFromGeometry(drawable.geometry, isLong);
+  });
 
   let dragKind = $state<null | 'target' | 'stop' | 't0' | 't1'>(null);
 
@@ -163,6 +191,14 @@
   {@const L = layout}
   {@const strokeW = selected ? 2 : 1}
   {@const g = drawable.geometry}
+  {@const targetLabelY =
+    L.yT <= L.yE
+      ? L.yRewTop - LABEL_GAP - CHIP_H_TARGET_STOP
+      : L.yRewBot + LABEL_GAP}
+  {@const stopLabelY =
+    L.yS <= L.yE
+      ? L.yRiskTop - LABEL_GAP - CHIP_H_TARGET_STOP
+      : L.yRiskBot + LABEL_GAP}
   {@const entry = g.entryPrice}
   {@const targetPct = Math.abs(pctFromEntry(g.targetPrice, entry))}
   {@const stopPct = Math.abs(pctFromEntry(g.stopPrice, entry))}
@@ -188,7 +224,7 @@
         y={L.yRiskTop}
         width={L.width}
         height={Math.max(1, L.yRiskBot - L.yRiskTop)}
-        fill={drawable.style.riskFill}
+        fill={drawable.style.stopColor}
         fill-opacity="0.18"
         pointer-events="none"
       />
@@ -199,7 +235,7 @@
         y={L.yRewTop}
         width={L.width}
         height={Math.max(1, L.yRewBot - L.yRewTop)}
-        fill={drawable.style.rewardFill}
+        fill={drawable.style.targetColor}
         fill-opacity="0.18"
         pointer-events="none"
       />
@@ -210,7 +246,7 @@
       x2={L.xRight}
       y1={L.yE}
       y2={L.yE}
-      stroke={drawable.style.entryColor}
+      stroke={drawable.style.targetColor}
       stroke-width={strokeW}
       stroke-dasharray="4 3"
       pointer-events="none"
@@ -237,54 +273,46 @@
     {#if drawable.style.showMetrics && metrics}
       <foreignObject
         x={L.xLeft + L.width / 2 - 70}
-        y={L.yRewTop - 42}
+        y={targetLabelY}
         width="140"
-        height="36"
+        height={CHIP_H_TARGET_STOP}
         pointer-events="none"
       >
         <div
-          class="rounded px-2 py-1 text-[10px] font-mono text-white shadow-md text-center"
-          style:background-color="rgb(38, 166, 154)"
+          class="rounded px-2 py-1 text-[10px] font-mono text-white shadow-lg text-center"
+          style:background-color={drawable.style.targetColor}
         >
-          Target: {fmt(targetDist)} ({fmt(targetPct, 3)}%){#if metrics.profitAtTarget != null},
-            Amt: {fmt(metrics.profitAtTarget)}{/if}
-        </div>
-      </foreignObject>
-
-      <foreignObject
-        x={L.xLeft + L.width / 2 - 72}
-        y={L.yE - 36}
-        width="144"
-        height="72"
-        pointer-events="none"
-      >
-        <div
-          class="rounded border-2 border-white px-2 py-1.5 text-[10px] font-mono text-white shadow-md leading-tight text-center"
-          style:background-color="rgb(38, 166, 154)"
-        >
-          {#if metrics.openPnl != null && Number.isFinite(metrics.openPnl)}
-            <div>Open P&amp;L: {fmt(metrics.openPnl)}</div>
-          {/if}
-          {#if metrics.quantity != null}
-            <div>Qty: {fmt(metrics.quantity, 4)}</div>
-          {/if}
-          <div>Risk/reward: {fmt(metrics.riskRewardRatio, 2)}</div>
+          Target: {fmt(targetDist)} ({fmt(targetPct, 3)}%)
         </div>
       </foreignObject>
 
       <foreignObject
         x={L.xLeft + L.width / 2 - 70}
-        y={L.yRiskBot + 6}
+        y={stopLabelY}
         width="140"
-        height="36"
+        height={CHIP_H_TARGET_STOP}
         pointer-events="none"
       >
         <div
-          class="rounded px-2 py-1 text-[10px] font-mono text-white shadow-md text-center"
-          style:background-color="rgb(239, 83, 80)"
+          class="rounded px-2 py-1 text-[10px] font-mono text-white shadow-lg text-center"
+          style:background-color={drawable.style.stopColor}
         >
-          Stop: {fmt(stopDist)} ({fmt(stopPct, 3)}%){#if metrics.lossAtStop != null},
-            Amt: {fmt(metrics.lossAtStop)}{/if}
+          Stop: {fmt(stopDist)} ({fmt(stopPct, 3)}%)
+        </div>
+      </foreignObject>
+
+      <foreignObject
+        x={L.xLeft + L.width / 2 - 72}
+        y={L.yE - CHIP_H_RR / 2}
+        width="144"
+        height={CHIP_H_RR}
+        pointer-events="none"
+      >
+        <div
+          class="rounded px-2 py-1 text-[10px] font-mono text-white shadow-lg text-center"
+          style:background-color={drawable.style.targetColor}
+        >
+          Risk/reward: {fmt(displayRiskReward, 2)}
         </div>
       </foreignObject>
     {/if}

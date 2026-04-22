@@ -5,10 +5,11 @@ import type {
   AvpParams,
   AvpStyle,
 } from './tools/volume-profile/avp/compute';
-import type {
-  PositionGeo,
-  PositionParams,
-  PositionStyle,
+import {
+  normalizePositionStyle,
+  type PositionGeo,
+  type PositionParams,
+  type PositionStyle,
 } from './tools/position/compute';
 import {
   POSITION_LONG_TYPE,
@@ -86,22 +87,12 @@ function isPositionGeo(g: unknown): g is PositionGeo {
 }
 
 function isPositionParams(p: unknown): p is PositionParams {
-  if (!isRecord(p)) return false;
-  return (
-    finiteNumber(p.accountBalance) &&
-    finiteNumber(p.riskPercent) &&
-    finiteNumber(p.riskAmount) &&
-    finiteNumber(p.quantity) &&
-    finiteNumber(p.leverage)
-  );
+  return p == null || isRecord(p);
 }
 
 function isPositionStyle(s: unknown): s is PositionStyle {
   if (!isRecord(s)) return false;
   return (
-    typeof s.riskFill === 'string' &&
-    typeof s.rewardFill === 'string' &&
-    typeof s.entryColor === 'string' &&
     typeof s.stopColor === 'string' &&
     typeof s.targetColor === 'string' &&
     typeof s.showRiskZone === 'boolean' &&
@@ -165,8 +156,8 @@ export function narrowBundledDrawable(
         symbol: fields.symbol,
         createdAt: fields.createdAt,
         geometry: fields.geometry,
-        params: fields.params,
-        style: fields.style,
+        params: {},
+        style: normalizePositionStyle(fields.style),
       };
     case POSITION_SHORT_TYPE:
       if (
@@ -182,8 +173,8 @@ export function narrowBundledDrawable(
         symbol: fields.symbol,
         createdAt: fields.createdAt,
         geometry: fields.geometry,
-        params: fields.params,
-        style: fields.style,
+        params: {},
+        style: normalizePositionStyle(fields.style),
       };
     default:
       return null;
