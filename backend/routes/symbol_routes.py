@@ -96,6 +96,42 @@ def _search_blocking(q: str, limit: int) -> list[SymbolSearchResult]:
     return out
 
 
+def _meta_by_symbol_blocking(symbol: str) -> SymbolSearchResult | None:
+    """Exact primary-key lookup for one ticker."""
+    db = get_service_postgrest()
+    resp = db.from_("symbols").select(_COLUMNS).eq("symbol", symbol).limit(1).execute()
+    rows = resp.data or []
+    if not rows:
+        return None
+    return _to_result(rows[0])
+
+
+@router.get("/meta", response_model=SymbolSearchResult)
+async def symbol_meta(
+    symbol: str = Query(..., min_length=1, description="Exact instrument symbol"),
+) -> SymbolSearchResult:
+    sym = symbol.strip().upper()
+    if not sym:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="symbol is required",
+        )
+    try:
+        result = await run_in_threadpool(_meta_by_symbol_blocking, sym)
+    except APIError as e:
+        logger.warning("Symbol meta PostgREST error for %s: %s", sym, e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Symbol directory is not available.",
+        ) from e
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Unknown symbol.",
+        )
+    return result
+
+
 @router.get("/search", response_model=list[SymbolSearchResult])
 async def search_symbols(
     q: str = Query(..., min_length=1, description="Query prefix or fragment"),

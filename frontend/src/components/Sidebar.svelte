@@ -29,6 +29,8 @@
 
   let {
     symbol = '',
+    symbolFullName = null as string | null,
+    symbolExchange = null as string | null,
     closePrice = null as number | null,
     groups,
     selectedGroupName,
@@ -52,6 +54,8 @@
     ondeletenote,
   }: {
     symbol?: string;
+    symbolFullName?: string | null;
+    symbolExchange?: string | null;
     closePrice?: number | null;
     groups: TickerGroup[];
     selectedGroupName: string;
@@ -259,11 +263,29 @@
     <div class="text-[10px] font-medium tracking-wider uppercase text-muted-foreground">
       Current Symbol
     </div>
-    <div class="mt-1 flex items-baseline justify-between gap-2">
-      <span class="text-sm font-semibold text-foreground truncate">
-        {symbol || '—'}
-      </span>
-      <span class="text-sm font-mono tabular-nums text-foreground">
+    <div class="mt-1 flex items-start justify-between gap-2">
+      <div class="min-w-0 flex-1">
+        <div class="text-sm font-semibold text-foreground truncate leading-snug">
+          {symbol || '—'}
+        </div>
+        {#if symbolFullName}
+          <div
+            class="mt-0.5 text-xs text-muted-foreground truncate leading-snug"
+          >
+            {symbolFullName}
+          </div>
+        {/if}
+        {#if symbolExchange}
+          <div
+            class="mt-0.5 text-[10px] text-muted-foreground truncate leading-snug"
+          >
+            {symbolExchange}
+          </div>
+        {/if}
+      </div>
+      <span
+        class="text-sm font-mono tabular-nums text-foreground shrink-0 leading-snug"
+      >
         {formatPrice(closePrice)}
       </span>
     </div>
