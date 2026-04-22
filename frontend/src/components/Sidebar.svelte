@@ -1,6 +1,7 @@
 <script lang="ts">
   import Plus from '@lucide/svelte/icons/plus';
   import Flag from '@lucide/svelte/icons/flag';
+  import Tag from '@lucide/svelte/icons/tag';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Check from '@lucide/svelte/icons/check';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
@@ -10,14 +11,18 @@
   import ProviderBadges from './ProviderBadges.svelte';
   import {
     TickerPriority,
+    TickerStance,
     PRIORITY_COLOURS,
     PRIORITY_OPTIONS,
+    STANCE_COLOURS,
+    STANCE_OPTIONS,
   } from '$lib/features/market/tickers';
   import type {
     TickerGroup,
     TrackedTicker,
     GroupActions,
     FlaggedPriority,
+    FlaggedStance,
   } from '$lib/features/market/tickers';
   import type { TickerQuote } from '$lib/features/market/tickerQuotes';
   import type { TickerNote } from '$lib/features/notes/notes';
@@ -28,15 +33,19 @@
     groups,
     selectedGroupName,
     selectedPriority,
+    selectedStance,
     priorityCounts,
+    stanceCounts,
     tickers,
     quotes,
     groupActions,
     onaddticker,
     onselectpriority,
+    onselectstance,
     onselectticker,
     ondeleteticker,
     onsetpriority,
+    onsetstance,
     notes = [],
     onaddnote,
     oneditnote,
@@ -47,20 +56,28 @@
     groups: TickerGroup[];
     selectedGroupName: string;
     selectedPriority: FlaggedPriority | null;
+    selectedStance: FlaggedStance | null;
     priorityCounts: Record<FlaggedPriority, number>;
+    stanceCounts: Record<FlaggedStance, number>;
     tickers: TrackedTicker[];
     quotes: Record<string, TickerQuote>;
     groupActions: GroupActions;
     onaddticker: () => void;
     onselectpriority: (p: FlaggedPriority) => void;
+    onselectstance: (s: FlaggedStance) => void;
     onselectticker: (symbol: string) => void;
     ondeleteticker: (symbol: string) => void;
     onsetpriority: (symbol: string, priority: TickerPriority) => void;
+    onsetstance: (symbol: string, stance: TickerStance) => void;
     notes?: TickerNote[];
     onaddnote: (symbol: string) => void;
     oneditnote: (note: TickerNote) => void;
     ondeletenote: (id: string) => void;
   } = $props();
+
+  let aggregateFilterActive = $derived(
+    selectedPriority !== null || selectedStance !== null,
+  );
 
   function formatPrice(value: number | null | undefined): string {
     if (value == null || !Number.isFinite(value)) return '—';
@@ -86,17 +103,20 @@
       {groups}
       selectedName={selectedGroupName}
       {selectedPriority}
+      {selectedStance}
       {priorityCounts}
+      {stanceCounts}
       actions={groupActions}
       {onselectpriority}
+      {onselectstance}
     />
     <div class="flex items-center gap-1">
       <button
         type="button"
         class="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-accent hover:text-accent-foreground text-muted-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
         aria-label="Add symbol"
-        disabled={selectedPriority !== null}
-        title={selectedPriority !== null
+        disabled={aggregateFilterActive}
+        title={aggregateFilterActive
           ? 'Switch to a group to add symbols'
           : undefined}
         onclick={onaddticker}
@@ -109,9 +129,13 @@
   <div class="flex-1 min-h-0 overflow-y-auto">
     {#if tickers.length === 0}
       <div class="px-3 py-4 text-xs text-muted-foreground">
-        {selectedPriority
-          ? 'No tickers with this priority.'
-          : 'No symbols yet. Click + to add one.'}
+        {#if selectedStance}
+          No tickers with this stance.
+        {:else if selectedPriority}
+          No tickers with this priority.
+        {:else}
+          No symbols yet. Click + to add one.
+        {/if}
       </div>
     {:else}
       <div class="py-1">
@@ -129,6 +153,13 @@
                     <Flag
                       class="h-3 w-3 shrink-0"
                       style="color: {colour}; fill: {colour};"
+                    />
+                  {/if}
+                  {#if ticker.stance !== TickerStance.None}
+                    {@const sColour = STANCE_COLOURS[ticker.stance]}
+                    <Tag
+                      class="h-3 w-3 shrink-0"
+                      style="color: {sColour}; fill: {sColour};"
                     />
                   {/if}
                   <span class="truncate">{ticker.symbol}</span>
@@ -185,6 +216,33 @@
                     {/if}
                     <span class="flex-1 text-left capitalize">{p}</span>
                     {#if p === ticker.priority}
+                      <Check class="h-3.5 w-3.5" />
+                    {/if}
+                  </ContextMenu.Item>
+                {/each}
+                <ContextMenu.Separator class="my-1 h-px bg-border" />
+                <div
+                  class="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                >
+                  Stance
+                </div>
+                {#each STANCE_OPTIONS as st (st)}
+                  <ContextMenu.Item
+                    onSelect={() => onsetstance(ticker.symbol, st)}
+                    class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none"
+                  >
+                    {#if st === TickerStance.None}
+                      <span
+                        class="h-2 w-2 rounded-full border border-muted-foreground/40 shrink-0"
+                      ></span>
+                    {:else}
+                      <span
+                        class="h-2 w-2 rounded-full shrink-0"
+                        style="background: {STANCE_COLOURS[st]};"
+                      ></span>
+                    {/if}
+                    <span class="flex-1 text-left capitalize">{st}</span>
+                    {#if st === ticker.stance}
                       <Check class="h-3.5 w-3.5" />
                     {/if}
                   </ContextMenu.Item>

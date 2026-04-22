@@ -6,33 +6,47 @@
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Flag from '@lucide/svelte/icons/flag';
+  import Tag from '@lucide/svelte/icons/tag';
   import Check from '@lucide/svelte/icons/check';
   import { DropdownMenu } from 'bits-ui';
   import type {
     TickerGroup,
     GroupActions,
     FlaggedPriority,
+    FlaggedStance,
   } from '$lib/features/market/tickers';
   import {
     FLAGGED_PRIORITIES,
+    FLAGGED_STANCES,
     PRIORITY_COLOURS,
+    STANCE_COLOURS,
   } from '$lib/features/market/tickers';
 
   let {
     groups,
     selectedName,
     selectedPriority,
+    selectedStance,
     priorityCounts,
+    stanceCounts,
     actions,
     onselectpriority,
+    onselectstance,
   }: {
     groups: TickerGroup[];
     selectedName: string;
     selectedPriority: FlaggedPriority | null;
+    selectedStance: FlaggedStance | null;
     priorityCounts: Record<FlaggedPriority, number>;
+    stanceCounts: Record<FlaggedStance, number>;
     actions: GroupActions;
     onselectpriority: (p: FlaggedPriority) => void;
+    onselectstance: (s: FlaggedStance) => void;
   } = $props();
+
+  let inGroupMode = $derived(
+    selectedPriority === null && selectedStance === null,
+  );
 </script>
 
 <DropdownMenu.Root>
@@ -46,6 +60,13 @@
         style="color: {colour}; fill: {colour};"
       />
       <span class="truncate capitalize">{selectedPriority}</span>
+    {:else if selectedStance}
+      {@const colour = STANCE_COLOURS[selectedStance]}
+      <Tag
+        class="h-3 w-3 shrink-0"
+        style="color: {colour}; fill: {colour};"
+      />
+      <span class="truncate capitalize">{selectedStance}</span>
     {:else}
       <span class="truncate">{selectedName}</span>
     {/if}
@@ -57,7 +78,7 @@
       sideOffset={4}
       class="z-50 w-56 rounded-md border border-border bg-popover text-popover-foreground shadow-md py-1 outline-none"
     >
-      {#if !selectedPriority}
+      {#if inGroupMode}
         <DropdownMenu.Item
           onSelect={actions.rename}
           class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none"
@@ -83,7 +104,7 @@
       >
         <Plus class="h-3.5 w-3.5" /> Add new group
       </DropdownMenu.Item>
-      {#if !selectedPriority && groups.length > 1}
+      {#if inGroupMode && groups.length > 1}
         <DropdownMenu.Item
           onSelect={actions.delete}
           class="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-destructive data-[highlighted]:bg-destructive/10 cursor-default outline-none"
@@ -98,7 +119,7 @@
         {#each groups as group (group.name)}
           <DropdownMenu.Item
             onSelect={() => actions.select(group.name)}
-            class="flex w-full items-center px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none {!selectedPriority &&
+            class="flex w-full items-center px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none {inGroupMode &&
             group.name === selectedName
               ? 'bg-accent/60 text-accent-foreground'
               : ''}"
@@ -132,6 +153,35 @@
             {priorityCounts[p]}
           </span>
           {#if selectedPriority === p}
+            <Check class="h-3.5 w-3.5" />
+          {/if}
+        </DropdownMenu.Item>
+      {/each}
+
+      <DropdownMenu.Separator class="my-1 h-px bg-border" />
+      <div
+        class="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+      >
+        By stance
+      </div>
+      {#each FLAGGED_STANCES as s (s)}
+        {@const colour = STANCE_COLOURS[s]}
+        <DropdownMenu.Item
+          onSelect={() => onselectstance(s)}
+          class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none {selectedStance ===
+          s
+            ? 'bg-accent/60 text-accent-foreground'
+            : ''}"
+        >
+          <Tag
+            class="h-3.5 w-3.5 shrink-0"
+            style="color: {colour}; fill: {colour};"
+          />
+          <span class="flex-1 text-left capitalize">{s}</span>
+          <span class="text-xs text-muted-foreground tabular-nums">
+            {stanceCounts[s]}
+          </span>
+          {#if selectedStance === s}
             <Check class="h-3.5 w-3.5" />
           {/if}
         </DropdownMenu.Item>
