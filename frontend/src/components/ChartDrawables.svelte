@@ -54,6 +54,28 @@
   let lastSymbolForItems: string | undefined;
   let cachedItemsForSymbol: BundledDrawable[] = [];
 
+  let lastCandleTime = $derived(
+    candles.length > 0
+      ? Math.floor(
+          new Date(candles[candles.length - 1].timestamp).getTime() / 1000,
+        )
+      : null,
+  );
+
+  let barStepSeconds = $derived(
+    candles.length >= 2
+      ? Math.max(
+          1,
+          Math.floor(
+            new Date(candles[candles.length - 1].timestamp).getTime() / 1000,
+          ) -
+            Math.floor(
+              new Date(candles[candles.length - 2].timestamp).getTime() / 1000,
+            ),
+        )
+      : null,
+  );
+
   let itemsForSymbol = $derived.by(() => {
     const all = drawables.items;
     const sym = symbol;
@@ -159,7 +181,12 @@
     if (!placement) {
       const tool = getTool(activeTool);
       if (!tool) return;
-      const machine = tool.createPlacement({ coordMap, symbol });
+      const machine = tool.createPlacement({
+        coordMap,
+        symbol,
+        lastCandleTime,
+        barStepSeconds,
+      });
       const toolType = tool.type;
       machine.onComplete((geometry: unknown) => {
         drawables.add({
@@ -238,6 +265,7 @@
     {computedData}
     selectedId={drawables.selected?.id ?? null}
     {placement}
+    {toChartPoint}
     onPatchGeometry={(id, geometry) => drawables.update(id, { geometry })}
     onSelectDrawable={id => drawables.select(id)}
     onAnchorPoint={(id, pt) => setAnchorPoint(id, pt)}

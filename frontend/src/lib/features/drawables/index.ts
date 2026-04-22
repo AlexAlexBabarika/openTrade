@@ -1,7 +1,9 @@
 // frontend/src/lib/drawables/index.ts
-import { registerTool, getRegisteredBundledTool } from './registry';
+import { registerTool, getRegisteredBundledTool, listTools } from './registry';
 import { BUNDLED_TOOLS } from './toolCatalog';
 import { loadToolDefaults } from './toolDefaults';
+import { isPositionToolType } from './tools/position/constants';
+import type { DrawableTool } from './types';
 
 export * from './types';
 export type { BundledTool, BundledToolType } from './toolCatalog';
@@ -16,6 +18,17 @@ export {
   getRegisteredBundledTool,
   listTools,
 } from './registry';
+
+/** Draw tools shown as individual icons (excludes grouped position long/short). */
+export function listToolbarDrawableTools(): DrawableTool[] {
+  return listTools().filter(t => !isPositionToolType(t.type));
+}
+
+export { POSITION_TOOLBAR_MODES } from './tools/position/tool';
+export {
+  isPositionToolType,
+  POSITION_TOOL_TYPES,
+} from './tools/position/constants';
 export { DEFAULT_POPUP_ACTIONS, resolvePopupActions } from './popupActions';
 export {
   loadToolDefaults,
@@ -24,7 +37,11 @@ export {
 } from './toolDefaults';
 export type { ActiveTool } from './activeTool';
 export { CURSOR } from './activeTool';
-export { buildCoordMap } from './coordMap';
+export {
+  buildCoordMap,
+  chartTimeAtCoordinate,
+  candleUnixSeconds,
+} from './coordMap';
 export type { DrawableSurface } from './drawableSurface';
 export type { DrawableToolbarCommands } from './toolbarCommands';
 export { toolbarCommandsFromStore } from './toolbarCommands';

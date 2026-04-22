@@ -2,6 +2,7 @@
   import {
     getTool,
     previewPlacementRendererProps,
+    type ChartPoint,
     type CoordMap,
     type Drawable,
     type PlacementMachine,
@@ -15,6 +16,7 @@
     computedData,
     selectedId,
     placement,
+    toChartPoint,
     onPatchGeometry,
     onSelectDrawable,
     onAnchorPoint,
@@ -28,6 +30,7 @@
       machine: PlacementMachine<unknown>;
       preview: Drawable | null;
     } | null;
+    toChartPoint: (e: PointerEvent) => ChartPoint | null;
     onPatchGeometry: (id: string, geometry: unknown) => void;
     onSelectDrawable: (id: string) => void;
     onAnchorPoint: (id: string, pt: ScreenPoint | null) => void;
@@ -47,6 +50,7 @@
         data={computedData.get(d.id)}
         selected={selectedId === d.id}
         {coordMap}
+        {toChartPoint}
         onGeometryChange={geo => onPatchGeometry(d.id, geo)}
         onRequestSelect={() => onSelectDrawable(d.id)}
         onAnchorPoint={pt => onAnchorPoint(d.id, pt)}
@@ -63,6 +67,7 @@
           drawable: placement.preview,
           data: undefined,
           coordMap,
+          toChartPoint,
         })}
       />
     {/if}

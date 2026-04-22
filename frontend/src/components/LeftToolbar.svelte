@@ -8,8 +8,10 @@
     CROSSHAIR_MODES,
     type CrosshairModeName,
   } from '$lib/features/chart/crosshair';
+  import BadgeDollarSign from '@lucide/svelte/icons/badge-dollar-sign';
   import {
-    listTools,
+    listToolbarDrawableTools,
+    POSITION_TOOLBAR_MODES,
     CURSOR,
     type ActiveTool,
     type DrawableToolbarCommands,
@@ -32,11 +34,18 @@
   } = $props();
 
   /** Snapshot at mount; bundled tool list is fixed after `ensureToolsRegistered()`. */
-  const tools = listTools();
+  const tools = listToolbarDrawableTools();
   let crosshairOpen = $state(false);
+  let positionPopoverOpen = $state(false);
+  /** Last position subtype for settings when cursor tool is active. */
+  let positionSettingsType = $state<string>(POSITION_TOOLBAR_MODES[0].type);
   /** Popover open state per tool type — keys must exist for bind:open. */
   let toolPopoverOpen = $state<Record<string, boolean>>(
     Object.fromEntries(tools.map(t => [t.type, false])),
+  );
+
+  const positionToolActive = $derived(
+    POSITION_TOOLBAR_MODES.some(m => m.type === activeTool),
   );
 
   function selectCrosshair(mode: CrosshairModeName) {
@@ -47,6 +56,18 @@
   function activateTool(type: string) {
     activeTool = activeTool === type ? CURSOR : type;
     toolPopoverOpen = { ...toolPopoverOpen, [type]: false };
+  }
+
+  function selectPositionTool(type: string) {
+    activeTool = activeTool === type ? CURSOR : type;
+    positionSettingsType = type;
+    positionPopoverOpen = false;
+  }
+
+  function openPositionSettings() {
+    const t = positionToolActive ? activeTool : positionSettingsType;
+    positionPopoverOpen = false;
+    onToolSettings(t);
   }
 
   function openSettings(type: string) {
@@ -91,6 +112,54 @@
             {/if}
           </button>
         {/each}
+      </Popover.Content>
+    </Popover.Portal>
+  </Popover.Root>
+
+  <Popover.Root bind:open={positionPopoverOpen}>
+    <Popover.Trigger
+      class="flex items-center justify-center w-8 h-8 rounded hover:bg-accent transition-colors outline-none {positionToolActive
+        ? 'bg-accent text-foreground'
+        : 'text-muted-foreground'}"
+      aria-label="Long or short position tool"
+      aria-pressed={positionToolActive}
+    >
+      <BadgeDollarSign class="h-4 w-4" />
+    </Popover.Trigger>
+    <Popover.Portal>
+      <Popover.Content
+        side="right"
+        align="start"
+        sideOffset={10}
+        class="z-[60] min-w-[200px] rounded-lg border border-border bg-popover p-1 shadow-xl outline-none"
+      >
+        {#each POSITION_TOOLBAR_MODES as mode (mode.type)}
+          {@const Icon = mode.icon}
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              class="flex flex-1 items-center gap-2 rounded px-2 py-1.5 text-sm text-left hover:bg-accent outline-none"
+              onclick={() => selectPositionTool(mode.type)}
+            >
+              <Icon class="h-4 w-4 text-muted-foreground shrink-0" />
+              <span class="flex-1">{mode.label}</span>
+              {#if activeTool === mode.type}
+                <Check class="h-4 w-4 shrink-0" />
+              {/if}
+            </button>
+          </div>
+        {/each}
+        <div class="mt-1 flex justify-end border-t border-border pt-1">
+          <button
+            type="button"
+            class="flex items-center justify-center w-8 h-8 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors outline-none"
+            aria-label="Position tool settings"
+            title="Position tool settings"
+            onclick={() => openPositionSettings()}
+          >
+            <Settings class="h-4 w-4" />
+          </button>
+        </div>
       </Popover.Content>
     </Popover.Portal>
   </Popover.Root>

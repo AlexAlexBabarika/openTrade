@@ -42,6 +42,7 @@ from backend.routes.market_routes import router as market_router
 from backend.routes.indicator_routes import router as indicator_router
 from backend.routes.symbol_routes import router as symbol_router
 from backend.routes.volume_profile_routes import router as volume_profile_router
+from backend.routes.position_metrics_routes import router as position_metrics_router
 from backend.core.rate_limit import allow, client_key, retry_after_seconds
 
 logger = logging.getLogger(__name__)
@@ -95,6 +96,7 @@ app.include_router(market_router)
 app.include_router(indicator_router)
 app.include_router(symbol_router)
 app.include_router(volume_profile_router)
+app.include_router(position_metrics_router)
 
 
 @app.get("/health")
