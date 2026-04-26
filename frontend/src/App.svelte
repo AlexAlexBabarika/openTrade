@@ -13,6 +13,7 @@
   import type { ChartType } from '$lib/features/chart/chartColours';
   import { fetchSMA, fetchEMA, fetchBBands } from '$lib/features/chart/indicators';
   import type { IndicatorPoint, BollingerBandsPoint } from '$lib/core/types';
+  import { useIndicatorEffect } from '$lib/features/chart/indicatorEffect.svelte';
   import { ChartController } from '$lib/features/chart/chartController.svelte';
   import { authState, fetchSession } from '$lib/features/auth/auth';
   import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
@@ -131,9 +132,42 @@
     stdDev: 2,
     lineWidth: 1,
   });
-  let smaPoints = $state<IndicatorPoint[]>([]);
-  let emaPoints = $state<IndicatorPoint[]>([]);
-  let bbandsPoints = $state<BollingerBandsPoint[]>([]);
+  const indicatorErrorHandler = (msg: string) => {
+    chart.errorMessage = msg;
+  };
+  const sma = useIndicatorEffect<IndicatorPoint>({
+    enabled: () => smaConfig.enabled,
+    hasCandles: () => hasCandles,
+    symbol: () => chart.loadedSymbol,
+    version: () => chart.marketDataVersion,
+    args: () => [smaConfig.period],
+    fetch: (sym, [period]) =>
+      fetchSMA(sym, period as number).then(r => r.points),
+    onError: indicatorErrorHandler,
+    label: 'SMA',
+  });
+  const ema = useIndicatorEffect<IndicatorPoint>({
+    enabled: () => emaConfig.enabled,
+    hasCandles: () => hasCandles,
+    symbol: () => chart.loadedSymbol,
+    version: () => chart.marketDataVersion,
+    args: () => [emaConfig.period],
+    fetch: (sym, [period]) =>
+      fetchEMA(sym, period as number).then(r => r.points),
+    onError: indicatorErrorHandler,
+    label: 'EMA',
+  });
+  const bbands = useIndicatorEffect<BollingerBandsPoint>({
+    enabled: () => bbandsConfig.enabled,
+    hasCandles: () => hasCandles,
+    symbol: () => chart.loadedSymbol,
+    version: () => chart.marketDataVersion,
+    args: () => [bbandsConfig.period, bbandsConfig.stdDev],
+    fetch: (sym, [period, stdDev]) =>
+      fetchBBands(sym, period as number, stdDev as number).then(r => r.points),
+    onError: indicatorErrorHandler,
+    label: 'Bollinger Bands',
+  });
   let colours = $state<ChartColours>(
     loadChartColoursFromStorage() ?? defaultChartColours(),
   );
@@ -545,70 +579,6 @@
     groups = setTickerProvidersEverywhere(groups, sym, nextProviders);
   }
 
-  const INDICATOR_DEBOUNCE_MS = 300;
-
-  $effect(() => {
-    const enabled = smaConfig.enabled;
-    const period = smaConfig.period;
-    const sym = chart.loadedSymbol;
-    chart.marketDataVersion;
-    if (!enabled || !hasCandles) {
-      smaPoints = [];
-      return;
-    }
-    const id = setTimeout(() => {
-      fetchSMA(sym, period)
-        .then(res => (smaPoints = res.points))
-        .catch(e => {
-          smaPoints = [];
-          chart.errorMessage = e instanceof Error ? e.message : 'Failed to load SMA';
-        });
-    }, INDICATOR_DEBOUNCE_MS);
-    return () => clearTimeout(id);
-  });
-
-  $effect(() => {
-    const enabled = emaConfig.enabled;
-    const period = emaConfig.period;
-    const sym = chart.loadedSymbol;
-    chart.marketDataVersion;
-    if (!enabled || !hasCandles) {
-      emaPoints = [];
-      return;
-    }
-    const id = setTimeout(() => {
-      fetchEMA(sym, period)
-        .then(res => (emaPoints = res.points))
-        .catch(e => {
-          emaPoints = [];
-          chart.errorMessage = e instanceof Error ? e.message : 'Failed to load EMA';
-        });
-    }, INDICATOR_DEBOUNCE_MS);
-    return () => clearTimeout(id);
-  });
-
-  $effect(() => {
-    const enabled = bbandsConfig.enabled;
-    const period = bbandsConfig.period;
-    const stdDev = bbandsConfig.stdDev;
-    const sym = chart.loadedSymbol;
-    chart.marketDataVersion;
-    if (!enabled || !hasCandles) {
-      bbandsPoints = [];
-      return;
-    }
-    const id = setTimeout(() => {
-      fetchBBands(sym, period, stdDev)
-        .then(res => (bbandsPoints = res.points))
-        .catch(e => {
-          bbandsPoints = [];
-          chart.errorMessage =
-            e instanceof Error ? e.message : 'Failed to load Bollinger Bands';
-        });
-    }, INDICATOR_DEBOUNCE_MS);
-    return () => clearTimeout(id);
-  });
-
   // Persist chart colours and settings to localStorage only when the page unloads,
   // avoiding excessive writes during drag operations in colour pickers.
   function persistOnUnload() {
@@ -710,9 +680,9 @@
         {chartType}
         {showArea}
         {showVolume}
-        {smaPoints}
-        {emaPoints}
-        {bbandsPoints}
+        smaPoints={sma.points}
+        emaPoints={ema.points}
+        bbandsPoints={bbands.points}
         smaLineWidth={smaConfig.lineWidth}
         emaLineWidth={emaConfig.lineWidth}
         bbandsLineWidth={bbandsConfig.lineWidth}
