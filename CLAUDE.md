@@ -60,6 +60,12 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+## 5. MCP
+
+**Consult Context7 and other MCP which are available.**
+
+When you're implementing a plan or a big change make sure to consult the context and other MCP which are available. This will help you to avoid making mistakes and to ensure that your changes are consistent with the overall design and architecture of the project.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
