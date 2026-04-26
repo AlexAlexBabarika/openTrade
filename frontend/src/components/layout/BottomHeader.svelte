@@ -2,12 +2,12 @@
   import PanelRight from '@lucide/svelte/icons/panel-right';
   import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
   import { Button } from '$lib/components/ui/button';
-  import ChartOptionsMenu from './ChartOptionsMenu.svelte';
+  import ChartOptionsMenu from '../chart/ChartOptionsMenu.svelte';
   import BottomBarOptionsMenu from './BottomBarOptionsMenu.svelte';
   import type {
     MovingAverageConfig,
     BollingerBandsConfig,
-  } from './ChartOptionsMenu.svelte';
+  } from '../chart/ChartOptionsMenu.svelte';
   import type { ChartColours, ChartType } from '$lib/features/chart/chartColours';
   import type { Theme } from '$lib/features/theme/theme';
 

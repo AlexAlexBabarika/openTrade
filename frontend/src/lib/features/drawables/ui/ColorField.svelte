@@ -1,5 +1,5 @@
 <script lang="ts">
-  import ColourSwatch from '../../../../components/ColourSwatch.svelte';
+  import ColourSwatch from '../../../../components/chart/ColourSwatch.svelte';
   import Field from './Field.svelte';
 
   let {

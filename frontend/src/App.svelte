@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import TopHeader from './components/TopHeader.svelte';
-  import BottomHeader from './components/BottomHeader.svelte';
-  import ErrorMessage from './components/ErrorMessage.svelte';
-  import Chart from './components/Chart.svelte';
-  import Sidebar from './components/Sidebar.svelte';
+  import TopHeader from './components/layout/TopHeader.svelte';
+  import BottomHeader from './components/layout/BottomHeader.svelte';
+  import ErrorMessage from './components/layout/ErrorMessage.svelte';
+  import Chart from './components/chart/Chart.svelte';
+  import Sidebar from './components/sidebar/Sidebar.svelte';
   import type {
     MovingAverageConfig,
     BollingerBandsConfig,
-  } from './components/ChartOptionsMenu.svelte';
+  } from './components/chart/ChartOptionsMenu.svelte';
   import type { ChartType } from '$lib/features/chart/chartColours';
   import { fetchSMA, fetchEMA, fetchBBands } from '$lib/features/chart/indicators';
   import type { IndicatorPoint, BollingerBandsPoint } from '$lib/core/types';
@@ -29,8 +29,6 @@
     TickerGroup,
     FlaggedPriority,
     FlaggedStance,
-    PriorityConflict,
-    StanceConflict,
     TickerPriority,
     TickerStance,
   } from '$lib/features/market/tickers';
@@ -78,11 +76,12 @@
   } from '$lib/features/market/symbols';
   import { fetchLastClose, type TickerQuote } from '$lib/features/market/tickerQuotes';
   import { untrack } from 'svelte';
-  import TextPromptDialog from './components/TextPromptDialog.svelte';
-  import SymbolSearchDialog from './components/SymbolSearchDialog.svelte';
-  import PriorityConflictDialog from './components/PriorityConflictDialog.svelte';
-  import NoteDialog from './components/NoteDialog.svelte';
-  import type { TickerNote, NotesBySymbol } from '$lib/features/notes/notes';
+  import AppDialogs from './components/dialogs/AppDialogs.svelte';
+  import {
+    AppDialogsState,
+    provideAppDialogs,
+  } from './components/dialogs/dialogsContext.svelte';
+  import type { NotesBySymbol } from '$lib/features/notes/notes';
   import {
     loadNotesFromStorage,
     persistNotes,
@@ -91,9 +90,9 @@
     updateNote,
     deleteNote,
   } from '$lib/features/notes/notes';
-  import ToolboxPanel from './components/ToolboxPanel.svelte';
-  import LeftToolbar from './components/LeftToolbar.svelte';
-  import ToolSettingsModal from './components/ToolSettingsModal.svelte';
+  import ToolboxPanel from './components/toolbar/ToolboxPanel.svelte';
+  import LeftToolbar from './components/toolbar/LeftToolbar.svelte';
+  import ToolSettingsModal from './components/toolbar/ToolSettingsModal.svelte';
   import DrawablesPersistence from '$lib/features/drawables/DrawablesPersistence.svelte';
   import type { CrosshairModeName } from '$lib/features/chart/crosshair';
   import {
@@ -197,30 +196,11 @@
   let lastRemoteUserId = $state<string | null>(null);
   let remoteTickerLoadDone = $state(false);
   let sessionReady = $state(false);
-  let groupDialogMode = $state<null | 'add' | 'rename'>(null);
-  let addSymbolDialogOpen = $state(false);
-  type ActiveFlagConflict =
-    | {
-        kind: 'priority';
-        symbol: string;
-        desired: TickerPriority;
-        conflict: PriorityConflict;
-      }
-    | {
-        kind: 'stance';
-        symbol: string;
-        desired: TickerStance;
-        conflict: StanceConflict;
-      };
-  let flagConflict = $state<ActiveFlagConflict | null>(null);
+  const dialogs = new AppDialogsState();
+  provideAppDialogs(dialogs);
 
   let notes = $state<NotesBySymbol>(loadNotesFromStorage());
   let symbolMeta = $state<SymbolSearchResult | null>(null);
-  let noteDialogState = $state<{
-    mode: 'create' | 'edit';
-    symbol: string;
-    note?: TickerNote;
-  } | null>(null);
 
   $effect(() => {
     persistNotes(notes);
@@ -257,24 +237,17 @@
 
   let currentNotes = $derived(notesForSymbol(notes, chart.loadedSymbol));
 
-  function handleAddNote(sym: string) {
-    noteDialogState = { mode: 'create', symbol: sym };
-  }
-
-  function handleEditNote(note: TickerNote) {
-    noteDialogState = { mode: 'edit', symbol: note.symbol, note };
-  }
-
   function handleDeleteNote(id: string) {
     notes = deleteNote(notes, id);
   }
 
   function handleNoteSubmit(title: string | undefined, body: string) {
-    if (!noteDialogState) return;
-    if (noteDialogState.mode === 'create') {
-      notes = addNote(notes, noteDialogState.symbol, body, title);
-    } else if (noteDialogState.note) {
-      notes = updateNote(notes, noteDialogState.note.id, { title, body });
+    const state = dialogs.noteDialogState;
+    if (!state) return;
+    if (state.mode === 'create') {
+      notes = addNote(notes, state.symbol, body, title);
+    } else if (state.note) {
+      notes = updateNote(notes, state.note.id, { title, body });
     }
   }
   let toolboxOpen = $state(false);
@@ -375,21 +348,13 @@
     groups = clearGroup(groups, selectedGroupName);
   }
 
-  function openAddDialog() {
-    groupDialogMode = 'add';
-  }
-
-  function openRenameDialog() {
-    groupDialogMode = 'rename';
-  }
-
   function handleGroupDialogSubmit(name: string) {
-    if (groupDialogMode === 'add') {
+    if (dialogs.groupDialogMode === 'add') {
       groups = addGroup(groups, name);
       selectedGroupName = name;
       selectedPriority = null;
       selectedStance = null;
-    } else if (groupDialogMode === 'rename') {
+    } else if (dialogs.groupDialogMode === 'rename') {
       groups = renameGroup(groups, selectedGroupName, name);
       selectedGroupName = name;
     }
@@ -436,7 +401,7 @@
       selectedGroupName,
     );
     if (conflict) {
-      flagConflict = { kind: 'priority', symbol: sym, desired: priority, conflict };
+      dialogs.showFlagConflict({ kind: 'priority', symbol: sym, desired: priority, conflict });
       return;
     }
     groups = setTickerPriority(groups, selectedGroupName, sym, priority);
@@ -454,41 +419,42 @@
       selectedGroupName,
     );
     if (conflict) {
-      flagConflict = { kind: 'stance', symbol: sym, desired: stance, conflict };
+      dialogs.showFlagConflict({ kind: 'stance', symbol: sym, desired: stance, conflict });
       return;
     }
     groups = setTickerStance(groups, selectedGroupName, sym, stance);
   }
 
   function resolveFlagConflictKeepExisting() {
-    if (!flagConflict) return;
-    if (flagConflict.kind === 'priority') {
+    const c = dialogs.flagConflict;
+    if (!c) return;
+    if (c.kind === 'priority') {
       groups = setTickerPriority(
         groups,
         selectedGroupName,
-        flagConflict.symbol,
-        flagConflict.conflict.existingPriority,
+        c.symbol,
+        c.conflict.existingPriority,
       );
     } else {
       groups = setTickerStance(
         groups,
         selectedGroupName,
-        flagConflict.symbol,
-        flagConflict.conflict.existingStance,
+        c.symbol,
+        c.conflict.existingStance,
       );
     }
-    flagConflict = null;
+    dialogs.clearFlagConflict();
   }
 
   function resolveFlagConflictSwitchGroup(groupName: string) {
     selectedGroupName = groupName;
     selectedPriority = null;
     selectedStance = null;
-    flagConflict = null;
+    dialogs.clearFlagConflict();
   }
 
   let groupDialogInitial = $derived(
-    groupDialogMode === 'rename' ? selectedGroupName : '',
+    dialogs.groupDialogMode === 'rename' ? selectedGroupName : '',
   );
   let groupDialogExistingNames = $derived(groups.map(g => g.name));
   let currentTickers = $derived(currentGroup?.tickers ?? []);
@@ -668,13 +634,13 @@
         quotes={tickerQuotesForGroup}
         groupActions={{
           select: handleSelectGroup,
-          rename: openRenameDialog,
+          rename: dialogs.openRenameGroup,
           duplicate: handleDuplicateGroup,
           clear: handleClearGroup,
-          add: openAddDialog,
+          add: dialogs.openAddGroup,
           delete: handleDeleteGroup,
         }}
-        onaddticker={() => (addSymbolDialogOpen = true)}
+        onaddticker={dialogs.openAddSymbol}
         onselectpriority={handleSelectPriority}
         onselectstance={handleSelectStance}
         onselectticker={sym => {
@@ -685,8 +651,8 @@
         onsetpriority={handleSetPriority}
         onsetstance={handleSetStance}
         notes={currentNotes}
-        onaddnote={handleAddNote}
-        oneditnote={handleEditNote}
+        onaddnote={dialogs.openAddNote}
+        oneditnote={dialogs.openEditNote}
         ondeletenote={handleDeleteNote}
       />
     {/if}
@@ -705,52 +671,14 @@
     ontogglesidebar={() => (sidebarVisible = !sidebarVisible)}
   />
   <ToolboxPanel bind:open={toolboxOpen} {theme} />
-  <TextPromptDialog
-    open={groupDialogMode !== null}
-    onopenchange={v => {
-      if (!v) groupDialogMode = null;
-    }}
-    title={groupDialogMode === 'rename' ? 'Rename group' : 'Add group'}
-    placeholder="Group name"
-    initialValue={groupDialogInitial}
-    existingNames={groupDialogExistingNames}
-    duplicateMessage="A group with this name already exists."
-    onsubmit={handleGroupDialogSubmit}
-  />
-  <PriorityConflictDialog
-    field={flagConflict?.kind ?? 'priority'}
-    open={flagConflict !== null}
-    onopenchange={v => {
-      if (!v) flagConflict = null;
-    }}
-    conflict={flagConflict
-      ? {
-          symbol: flagConflict.conflict.symbol,
-          existing:
-            flagConflict.kind === 'priority'
-              ? flagConflict.conflict.existingPriority
-              : flagConflict.conflict.existingStance,
-          groups: flagConflict.conflict.groups,
-        }
-      : null}
-    onkeepexisting={resolveFlagConflictKeepExisting}
-    onswitchgroup={resolveFlagConflictSwitchGroup}
-  />
-  <SymbolSearchDialog
-    open={addSymbolDialogOpen}
-    onopenchange={v => (addSymbolDialogOpen = v)}
+  <AppDialogs
+    {groupDialogInitial}
+    {groupDialogExistingNames}
     existingSymbols={currentTickerSymbols}
-    onsubmit={handleAddSymbolSubmit}
-  />
-  <NoteDialog
-    open={noteDialogState !== null}
-    onopenchange={v => {
-      if (!v) noteDialogState = null;
-    }}
-    mode={noteDialogState?.mode ?? 'create'}
-    symbol={noteDialogState?.symbol ?? ''}
-    initialTitle={noteDialogState?.note?.title ?? ''}
-    initialBody={noteDialogState?.note?.body ?? ''}
-    onsubmit={handleNoteSubmit}
+    onGroupDialogSubmit={handleGroupDialogSubmit}
+    onAddSymbolSubmit={handleAddSymbolSubmit}
+    onNoteSubmit={handleNoteSubmit}
+    onResolveFlagConflictKeepExisting={resolveFlagConflictKeepExisting}
+    onResolveFlagConflictSwitchGroup={resolveFlagConflictSwitchGroup}
   />
 </div>

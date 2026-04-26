@@ -2,7 +2,7 @@
   import { Command } from 'bits-ui';
   import { Button } from '$lib/components/ui/button';
   import * as Dialog from '$lib/components/ui/dialog';
-  import ProviderBadges from './ProviderBadges.svelte';
+  import ProviderBadges from '../sidebar/ProviderBadges.svelte';
   import {
     searchSymbols,
     type SymbolSearchResult,
