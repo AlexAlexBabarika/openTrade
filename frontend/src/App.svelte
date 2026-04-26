@@ -202,16 +202,20 @@
   let sessionReady = $state(false);
   let groupDialogMode = $state<null | 'add' | 'rename'>(null);
   let addSymbolDialogOpen = $state(false);
-  let priorityConflictState = $state<{
-    symbol: string;
-    desired: TickerPriority;
-    conflict: PriorityConflict;
-  } | null>(null);
-  let stanceConflictState = $state<{
-    symbol: string;
-    desired: TickerStance;
-    conflict: StanceConflict;
-  } | null>(null);
+  type ActiveFlagConflict =
+    | {
+        kind: 'priority';
+        symbol: string;
+        desired: TickerPriority;
+        conflict: PriorityConflict;
+      }
+    | {
+        kind: 'stance';
+        symbol: string;
+        desired: TickerStance;
+        conflict: StanceConflict;
+      };
+  let flagConflict = $state<ActiveFlagConflict | null>(null);
 
   let notes = $state<NotesBySymbol>(loadNotesFromStorage());
   let symbolMeta = $state<SymbolSearchResult | null>(null);
@@ -431,7 +435,7 @@
       selectedGroupName,
     );
     if (conflict) {
-      priorityConflictState = { symbol: sym, desired: priority, conflict };
+      flagConflict = { kind: 'priority', symbol: sym, desired: priority, conflict };
       return;
     }
     groups = setTickerPriority(groups, selectedGroupName, sym, priority);
@@ -449,48 +453,37 @@
       selectedGroupName,
     );
     if (conflict) {
-      stanceConflictState = { symbol: sym, desired: stance, conflict };
+      flagConflict = { kind: 'stance', symbol: sym, desired: stance, conflict };
       return;
     }
     groups = setTickerStance(groups, selectedGroupName, sym, stance);
   }
 
-  function resolveConflictKeepExisting() {
-    if (!priorityConflictState) return;
-    const { symbol: sym, conflict } = priorityConflictState;
-    groups = setTickerPriority(
-      groups,
-      selectedGroupName,
-      sym,
-      conflict.existingPriority,
-    );
-    priorityConflictState = null;
+  function resolveFlagConflictKeepExisting() {
+    if (!flagConflict) return;
+    if (flagConflict.kind === 'priority') {
+      groups = setTickerPriority(
+        groups,
+        selectedGroupName,
+        flagConflict.symbol,
+        flagConflict.conflict.existingPriority,
+      );
+    } else {
+      groups = setTickerStance(
+        groups,
+        selectedGroupName,
+        flagConflict.symbol,
+        flagConflict.conflict.existingStance,
+      );
+    }
+    flagConflict = null;
   }
 
-  function resolveConflictSwitchGroup(groupName: string) {
+  function resolveFlagConflictSwitchGroup(groupName: string) {
     selectedGroupName = groupName;
     selectedPriority = null;
     selectedStance = null;
-    priorityConflictState = null;
-  }
-
-  function resolveStanceConflictKeepExisting() {
-    if (!stanceConflictState) return;
-    const { symbol: sym, conflict } = stanceConflictState;
-    groups = setTickerStance(
-      groups,
-      selectedGroupName,
-      sym,
-      conflict.existingStance,
-    );
-    stanceConflictState = null;
-  }
-
-  function resolveStanceConflictSwitchGroup(groupName: string) {
-    selectedGroupName = groupName;
-    selectedPriority = null;
-    selectedStance = null;
-    stanceConflictState = null;
+    flagConflict = null;
   }
 
   let groupDialogInitial = $derived(
@@ -760,36 +753,23 @@
     onsubmit={handleGroupDialogSubmit}
   />
   <PriorityConflictDialog
-    field="priority"
-    open={priorityConflictState !== null}
+    field={flagConflict?.kind ?? 'priority'}
+    open={flagConflict !== null}
     onopenchange={v => {
-      if (!v) priorityConflictState = null;
+      if (!v) flagConflict = null;
     }}
-    conflict={priorityConflictState
+    conflict={flagConflict
       ? {
-          symbol: priorityConflictState.conflict.symbol,
-          existing: priorityConflictState.conflict.existingPriority,
-          groups: priorityConflictState.conflict.groups,
+          symbol: flagConflict.conflict.symbol,
+          existing:
+            flagConflict.kind === 'priority'
+              ? flagConflict.conflict.existingPriority
+              : flagConflict.conflict.existingStance,
+          groups: flagConflict.conflict.groups,
         }
       : null}
-    onkeepexisting={resolveConflictKeepExisting}
-    onswitchgroup={resolveConflictSwitchGroup}
-  />
-  <PriorityConflictDialog
-    field="stance"
-    open={stanceConflictState !== null}
-    onopenchange={v => {
-      if (!v) stanceConflictState = null;
-    }}
-    conflict={stanceConflictState
-      ? {
-          symbol: stanceConflictState.conflict.symbol,
-          existing: stanceConflictState.conflict.existingStance,
-          groups: stanceConflictState.conflict.groups,
-        }
-      : null}
-    onkeepexisting={resolveStanceConflictKeepExisting}
-    onswitchgroup={resolveStanceConflictSwitchGroup}
+    onkeepexisting={resolveFlagConflictKeepExisting}
+    onswitchgroup={resolveFlagConflictSwitchGroup}
   />
   <SymbolSearchDialog
     open={addSymbolDialogOpen}
