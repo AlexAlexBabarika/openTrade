@@ -308,7 +308,7 @@ async def ws_live(websocket: WebSocket) -> None:
             if isinstance(msg, SubscribeMessage):
                 key = (msg.provider, msg.symbol, msg.interval)
                 try:
-                    await hub.subscribe(session, key)
+                    await hub.subscribe(session, key, since=msg.since)
                 except NotImplementedError as exc:
                     await send(ErrorMessage(code="unsupported", message=str(exc)))
             elif isinstance(msg, UnsubscribeMessage):

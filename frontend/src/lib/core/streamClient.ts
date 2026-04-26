@@ -69,6 +69,10 @@ function candleKey(s: CandleSubscription): string {
 interface CandleEntry {
   sub: CandleSubscription;
   handlers: Set<CandleHandlers>;
+  /** Initial `since` from the first subscriber (REST history end). */
+  initialSince?: string;
+  /** Most recent candle timestamp seen on the wire — used for gap-fill on reconnect. */
+  lastSeenTs?: string;
 }
 
 export class StreamClient {
@@ -86,12 +90,13 @@ export class StreamClient {
   subscribeCandles(
     sub: CandleSubscription,
     handlers: CandleHandlers,
+    opts: { since?: string } = {},
   ): () => void {
     const key = candleKey(sub);
     let entry = this.#candleSubs.get(key);
     const isFirst = !entry;
     if (!entry) {
-      entry = { sub, handlers: new Set() };
+      entry = { sub, handlers: new Set(), initialSince: opts.since };
       this.#candleSubs.set(key, entry);
     }
     entry.handlers.add(handlers);
@@ -103,6 +108,7 @@ export class StreamClient {
         provider: sub.provider,
         symbol: sub.symbol,
         interval: sub.interval,
+        since: entry.lastSeenTs ?? entry.initialSince,
       });
     }
 
@@ -152,6 +158,7 @@ export class StreamClient {
           provider: entry.sub.provider,
           symbol: entry.sub.symbol,
           interval: entry.sub.interval,
+          since: entry.lastSeenTs ?? entry.initialSince,
         });
       }
       // Flush anything queued before open (typically subsumed by re-sub above, but safe).
@@ -238,6 +245,12 @@ export class StreamClient {
       });
       const entry = this.#candleSubs.get(key);
       if (!entry) return;
+      if (msg.type === 'snapshot') {
+        const last = msg.candles[msg.candles.length - 1];
+        if (last) entry.lastSeenTs = maxIso(entry.lastSeenTs, last.timestamp);
+      } else if (msg.type === 'candle') {
+        entry.lastSeenTs = maxIso(entry.lastSeenTs, msg.candle.timestamp);
+      }
       for (const h of entry.handlers) {
         if (msg.type === 'snapshot') h.onSnapshot?.(msg);
         else if (msg.type === 'candle') h.onCandle?.(msg);
@@ -245,6 +258,11 @@ export class StreamClient {
       }
     }
   }
+}
+
+function maxIso(a: string | undefined, b: string): string {
+  if (!a) return b;
+  return Date.parse(b) > Date.parse(a) ? b : a;
 }
 
 let _instance: StreamClient | null = null;
