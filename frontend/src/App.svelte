@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { get } from 'svelte/store';
   import TopHeader from './components/TopHeader.svelte';
   import BottomHeader from './components/BottomHeader.svelte';
   import ErrorMessage from './components/ErrorMessage.svelte';
@@ -45,7 +44,6 @@
     loadSelectedStance,
     persistSelectedStance,
     clearTickerLocalStorage,
-    isDefaultTickerWorkspaceState,
     addGroup,
     renameGroup,
     duplicateGroup,
@@ -69,9 +67,8 @@
   } from '$lib/features/market/tickers';
   import {
     buildTickerWorkspacePayload,
-    fetchTickerWorkspace,
     putTickerWorkspace,
-    workspacePayloadToAppState,
+    syncWorkspaceOnSignIn,
   } from '$lib/features/market/tickerWorkspace';
   import type { SymbolProviders, SymbolSearchResult } from '$lib/features/market/symbols';
   import {
@@ -289,6 +286,7 @@
     persistSelectedPriority(selectedPriority);
     persistSelectedStance(selectedStance);
   });
+  let lastPushedPayloadJson: string | null = null;
   $effect(() => {
     if (!authed || !remoteTickerLoadDone) return;
     const payload = buildTickerWorkspacePayload(
@@ -297,10 +295,16 @@
       selectedPriority,
       selectedStance,
     );
+    const json = JSON.stringify(payload);
+    if (json === lastPushedPayloadJson) return;
     const t = setTimeout(() => {
-      void putTickerWorkspace(payload).catch((err: unknown) => {
-        console.warn('[opentrade] Ticker workspace sync failed', err);
-      });
+      void putTickerWorkspace(payload)
+        .then(() => {
+          lastPushedPayloadJson = json;
+        })
+        .catch((err: unknown) => {
+          console.warn('[opentrade] Ticker workspace sync failed', err);
+        });
     }, 500);
     return () => clearTimeout(t);
   });
@@ -313,30 +317,26 @@
       void (async () => {
         remoteTickerLoadDone = false;
         try {
-          const res = await fetchTickerWorkspace();
-          if (res.from_database) {
-            const next = workspacePayloadToAppState(res.workspace);
+          const next = await syncWorkspaceOnSignIn({
+            groups,
+            selectedGroupName,
+            selectedPriority,
+            selectedStance,
+          });
+          if (next) {
             groups = next.groups;
             selectedGroupName = next.selectedGroupName;
             selectedPriority = next.selectedPriority;
             selectedStance = next.selectedStance;
-          } else if (
-            !isDefaultTickerWorkspaceState(
+          }
+          lastPushedPayloadJson = JSON.stringify(
+            buildTickerWorkspacePayload(
               groups,
               selectedGroupName,
               selectedPriority,
               selectedStance,
-            )
-          ) {
-            await putTickerWorkspace(
-              buildTickerWorkspacePayload(
-                groups,
-                selectedGroupName,
-                selectedPriority,
-                selectedStance,
-              ),
-            );
-          }
+            ),
+          );
         } catch (e) {
           console.warn('[opentrade] Ticker workspace load failed', e);
         }
@@ -350,6 +350,7 @@
       selectedPriority = loadSelectedPriority();
       selectedStance = loadSelectedStance();
       lastRemoteUserId = null;
+      lastPushedPayloadJson = null;
       remoteTickerLoadDone = true;
     }
   });
@@ -593,42 +594,6 @@
     } catch (err) {
       console.warn('Session fetch failed:', err);
     }
-    const u = get(authState).user;
-    if (u) {
-      try {
-        const res = await fetchTickerWorkspace();
-        if (res.from_database) {
-          const next = workspacePayloadToAppState(res.workspace);
-          groups = next.groups;
-          selectedGroupName = next.selectedGroupName;
-          selectedPriority = next.selectedPriority;
-          selectedStance = next.selectedStance;
-        } else if (
-          !isDefaultTickerWorkspaceState(
-            groups,
-            selectedGroupName,
-            selectedPriority,
-            selectedStance,
-          )
-        ) {
-          await putTickerWorkspace(
-            buildTickerWorkspacePayload(
-              groups,
-              selectedGroupName,
-              selectedPriority,
-              selectedStance,
-            ),
-          );
-        }
-      } catch (e) {
-        console.warn('[opentrade] Ticker workspace load failed', e);
-      }
-      clearTickerLocalStorage();
-      lastRemoteUserId = u.id;
-    } else {
-      lastRemoteUserId = null;
-    }
-    remoteTickerLoadDone = true;
     sessionReady = true;
     await chart.loadMarketData();
   });

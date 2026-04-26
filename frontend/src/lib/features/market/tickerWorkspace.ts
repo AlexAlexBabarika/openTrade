@@ -1,6 +1,10 @@
 import { apiJson } from '$lib/core/api';
 import type { TickerGroup, FlaggedPriority, FlaggedStance } from './tickers';
-import { normalizeGroupsList, resolveSelectedGroupName } from './tickers';
+import {
+  isDefaultTickerWorkspaceState,
+  normalizeGroupsList,
+  resolveSelectedGroupName,
+} from './tickers';
 
 export type TickerWorkspacePayload = {
   groups: TickerGroup[];
@@ -50,12 +54,16 @@ export function buildTickerWorkspacePayload(
   };
 }
 
-export function workspacePayloadToAppState(w: TickerWorkspacePayload): {
+export interface TickerWorkspaceState {
   groups: TickerGroup[];
   selectedGroupName: string;
   selectedPriority: FlaggedPriority | null;
   selectedStance: FlaggedStance | null;
-} {
+}
+
+export function workspacePayloadToAppState(
+  w: TickerWorkspacePayload,
+): TickerWorkspaceState {
   const groups = normalizeGroupsList(w.groups);
   return {
     groups,
@@ -63,4 +71,34 @@ export function workspacePayloadToAppState(w: TickerWorkspacePayload): {
     selectedPriority: w.selectedPriority,
     selectedStance: w.selectedStance,
   };
+}
+
+// Hydrate the workspace for a freshly-signed-in user. Returns the remote state
+// to apply, or `null` when the local state was pushed up because the server had
+// nothing yet.
+export async function syncWorkspaceOnSignIn(
+  current: TickerWorkspaceState,
+): Promise<TickerWorkspaceState | null> {
+  const res = await fetchTickerWorkspace();
+  if (res.from_database) {
+    return workspacePayloadToAppState(res.workspace);
+  }
+  if (
+    !isDefaultTickerWorkspaceState(
+      current.groups,
+      current.selectedGroupName,
+      current.selectedPriority,
+      current.selectedStance,
+    )
+  ) {
+    await putTickerWorkspace(
+      buildTickerWorkspacePayload(
+        current.groups,
+        current.selectedGroupName,
+        current.selectedPriority,
+        current.selectedStance,
+      ),
+    );
+  }
+  return null;
 }
