@@ -22,12 +22,15 @@ import asyncio
 import logging
 from collections import deque
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Awaitable, Callable
 
 from backend.market import cache
 from backend.market.data_sources.binance_loader import BinanceProvider
 from backend.market.data_sources.marketdataprovider import MarketDataProvider
+from backend.market.models import OHLCVCandle
 from backend.models.market_data_models import MarketDataProviderEnum
+from backend.streaming.backfill import backfill_candles
 from backend.streaming.protocol import (
     CandleMessage,
     ServerMessage,
@@ -94,35 +97,80 @@ class StreamHub:
     # -- subscription management ------------------------------------------
 
     async def subscribe(
-        self, client: ClientSession, key: SubscriptionKey
+        self,
+        client: ClientSession,
+        key: SubscriptionKey,
+        since: datetime | None = None,
     ) -> SubscriptionGroup:
         """Attach `client` to the group for `key`, spawning upstream if new.
 
-        If the group already has buffered events, replay the most recent
-        candles to the joining client as a snapshot.
+        Snapshot reconciliation:
+          - The ring buffer (last N live events) is replayed as-is.
+          - If `since` is given, REST backfill fills the gap between `since`
+            and the buffer's earliest event so the client doesn't miss bars
+            during a (re)connect window.
         """
         async with self._lock:
             group = self._groups.get(key)
-            spawned = False
             if group is None:
                 group = SubscriptionGroup(key=key)
                 self._groups[key] = group
                 group.upstream_task = asyncio.create_task(self._run_upstream(group))
-                spawned = True
             group.clients.add(client)
             client.subscriptions.add(key)
-            snapshot_candles = [e.candle for e in group.recent if e.candle is not None]
-        if not spawned and snapshot_candles:
-            provider, symbol, interval = key
+            buffered: list[OHLCVCandle] = [
+                e.candle for e in group.recent if e.candle is not None
+            ]
+
+        provider, symbol, interval = key
+        snapshot = await self._build_snapshot(
+            provider, symbol, interval, buffered, since
+        )
+        if snapshot:
             await client.send(
                 SnapshotMessage(
                     provider=provider,
                     symbol=symbol,
                     interval=interval,
-                    candles=snapshot_candles,
+                    candles=snapshot,
                 )
             )
         return group
+
+    @staticmethod
+    async def _build_snapshot(
+        provider: MarketDataProviderEnum,
+        symbol: str,
+        interval: str,
+        buffered: list[OHLCVCandle],
+        since: datetime | None,
+    ) -> list[OHLCVCandle]:
+        """Return ordered, deduped candles to send as the initial snapshot."""
+        if since is not None:
+            buffered = [c for c in buffered if c.timestamp > since]
+
+        rest: list[OHLCVCandle] = []
+        if since is not None:
+            try:
+                rest = await backfill_candles(provider, symbol, interval, since)
+            except NotImplementedError:
+                rest = []
+            except Exception:
+                logger.exception(
+                    "REST backfill failed for %s/%s/%s", provider, symbol, interval
+                )
+                rest = []
+
+        if not rest and not buffered:
+            return []
+
+        merged: dict[datetime, OHLCVCandle] = {}
+        for c in rest:
+            merged[c.timestamp] = c
+        # Live buffer wins on overlap — closer to the truth than REST close.
+        for c in buffered:
+            merged[c.timestamp] = c
+        return [merged[t] for t in sorted(merged)]
 
     async def unsubscribe(self, client: ClientSession, key: SubscriptionKey) -> None:
         """Detach `client`; cancel upstream if no clients remain."""

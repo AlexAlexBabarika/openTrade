@@ -44,6 +44,10 @@ class SubscribeMessage(BaseModel):
     provider: MarketDataProviderEnum
     symbol: str
     interval: str
+    since: datetime | None = None
+    """Optional last-known candle timestamp; the hub backfills via REST so
+    the snapshot bridges any gap between the client's history and the live
+    feed (set on initial subscribe and updated on reconnect)."""
 
 
 class UnsubscribeMessage(BaseModel):
