@@ -3,6 +3,7 @@
   import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
   import { Button } from '$lib/components/ui/button';
   import ChartOptionsMenu from './ChartOptionsMenu.svelte';
+  import BottomBarOptionsMenu from './BottomBarOptionsMenu.svelte';
   import type {
     MovingAverageConfig,
     BollingerBandsConfig,
@@ -55,6 +56,7 @@
   </div>
 
   <div class="flex items-center gap-1">
+    <BottomBarOptionsMenu />
     <Button
       variant="outline"
       size="sm"
