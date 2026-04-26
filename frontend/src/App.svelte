@@ -5,7 +5,6 @@
   import BottomHeader from './components/BottomHeader.svelte';
   import ErrorMessage from './components/ErrorMessage.svelte';
   import Chart from './components/Chart.svelte';
-  import type { ChartApi } from './components/Chart.svelte';
   import Sidebar from './components/Sidebar.svelte';
   import type {
     MovingAverageConfig,
@@ -14,15 +13,9 @@
   import type { ChartType } from '$lib/features/chart/chartColours';
   import { fetchSMA, fetchEMA, fetchBBands } from '$lib/features/chart/indicators';
   import type { IndicatorPoint, BollingerBandsPoint } from '$lib/core/types';
-  import { fetchMarketOHLCV } from '$lib/features/market/marketData';
-  import { apiFetch, readErrorMessage } from '$lib/core/api';
-  import { WSClient } from '$lib/core/ws';
-  import type { ConnectionStatus } from '$lib/core/ws';
-  import type { OHLCVCandle } from '$lib/core/types';
+  import { ChartController } from '$lib/features/chart/chartController.svelte';
   import { authState, fetchSession } from '$lib/features/auth/auth';
   import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
-  import { DEFAULT_MARKET_INTERVAL } from '$lib/features/market/marketIntervals';
-  import { DEFAULT_MARKET_PERIOD } from '$lib/features/market/marketPeriods';
   import type { ChartColours } from '$lib/features/chart/chartColours';
   import {
     defaultChartColours,
@@ -114,17 +107,10 @@
 
   const drawableToolbarCommands = toolbarCommandsFromStore(drawables);
 
-  let symbol = $state('AAPL');
-  let loadedSymbol = $state('');
-  let period = $state(DEFAULT_MARKET_PERIOD);
-  let interval = $state(DEFAULT_MARKET_INTERVAL);
-  let source = $state<MarketDataProviderValue>('yfinance');
-  let autoRefresh = $state(false);
+  const chart = new ChartController({
+    onSymbolFetched: (sym, src, count) => maybeMarkYFinance(sym, src, count),
+  });
 
-  let errorMessage = $state<string | null>(null);
-  let connectionStatus = $state<ConnectionStatus>('disconnected');
-  let candles = $state.raw<OHLCVCandle[]>([]);
-  let chartApi = $state<ChartApi | null>(null);
   const savedSettings = loadChartSettingsFromStorage();
   let chartType = $state<ChartType>(savedSettings?.chartType ?? 'candlestick');
   let showArea = $state(savedSettings?.showArea ?? true);
@@ -159,9 +145,7 @@
     theme = next;
     persistTheme(next);
   }
-  let hasCandles = $derived(candles.length > 0);
-  let marketDataVersion = $state(0);
-  let isLoading = $state(false);
+  let hasCandles = $derived(chart.candles.length > 0);
   let sidebarVisible = $state(true);
   let crosshairMode = $state<CrosshairModeName>('normal');
   let activeTool = $state<ActiveTool>(CURSOR);
@@ -208,8 +192,8 @@
   });
 
   $effect(() => {
-    const sym = loadedSymbol;
-    const src = source;
+    const sym = chart.loadedSymbol;
+    const src = chart.source;
     if (!sym.trim() || src === 'csv') {
       symbolMeta = null;
       return;
@@ -223,7 +207,7 @@
 
   let symbolFullName = $derived.by(() => {
     const m = symbolMeta;
-    const s = loadedSymbol.trim().toUpperCase();
+    const s = chart.loadedSymbol.trim().toUpperCase();
     if (!m || !s) return null;
     const n = m.name.trim();
     if (!n || n.toUpperCase() === s) return null;
@@ -236,7 +220,7 @@
     return ex && ex.length > 0 ? ex : null;
   });
 
-  let currentNotes = $derived(notesForSymbol(notes, loadedSymbol));
+  let currentNotes = $derived(notesForSymbol(notes, chart.loadedSymbol));
 
   function handleAddNote(sym: string) {
     noteDialogState = { mode: 'create', symbol: sym };
@@ -494,7 +478,7 @@
   let tickerQuotes = $state<Record<string, TickerQuote>>({});
 
   $effect(() => {
-    const currentSource = source;
+    const currentSource = chart.source;
     const tickers = displayTickers;
     if (currentSource === 'csv') return;
 
@@ -526,36 +510,14 @@
   let tickerQuotesForGroup = $derived.by(() => {
     const out: Record<string, TickerQuote> = {};
     for (const t of displayTickers) {
-      const entry = tickerQuotes[`${source}:${t.symbol}`];
+      const entry = tickerQuotes[`${chart.source}:${t.symbol}`];
       if (entry) out[t.symbol] = entry;
     }
     return out;
   });
   let lastClose = $derived(
-    candles.length > 0 ? candles[candles.length - 1].close : null,
+    chart.candles.length > 0 ? chart.candles[chart.candles.length - 1].close : null,
   );
-  let wsClient: WSClient | null = null;
-  let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
-
-  async function loadMarketData(): Promise<void> {
-    if (source === 'csv') {
-      errorMessage = 'Choose a CSV file with the Load button, or pick another data source.';
-      return;
-    }
-    errorMessage = null;
-    isLoading = true;
-    try {
-      const data = await fetchMarketOHLCV(symbol, source, period, interval);
-      candles = data.candles ?? [];
-      loadedSymbol = symbol;
-      marketDataVersion += 1;
-      maybeMarkYFinance(symbol, source, data.candles?.length ?? 0);
-    } catch (e) {
-      errorMessage = e instanceof Error ? e.message : 'Failed to load';
-    } finally {
-      isLoading = false;
-    }
-  }
 
   // A successful yfinance fetch is the cheapest proof that yfinance supports
   // this symbol. Once marked, we remember per-session so chart reloads and
@@ -583,84 +545,13 @@
     groups = setTickerProvidersEverywhere(groups, sym, nextProviders);
   }
 
-  function startWsStream(
-    provider: MarketDataProviderValue,
-    sym: string,
-    opts: { reconnectDelayMs?: number; maxReconnectAttempts?: number } = {},
-  ): void {
-    if (wsClient) wsClient.disconnect();
-    const streamCandles: OHLCVCandle[] = [];
-    candles = streamCandles;
-    wsClient = new WSClient({
-      provider,
-      symbol: sym,
-      onCandle: c => {
-        streamCandles.push(c);
-        chartApi?.appendCandle(c);
-      },
-      onStatus: s => {
-        connectionStatus = s;
-      },
-      ...opts,
-    });
-    wsClient.connect();
-  }
-
-  function startStream(): void {
-    const sym = symbol.trim();
-    if (!sym) {
-      errorMessage = 'Enter a symbol';
-      return;
-    }
-    errorMessage = null;
-    startWsStream(source, sym, {
-      reconnectDelayMs: 3000,
-      maxReconnectAttempts: 10,
-    });
-  }
-
-  async function handleCsvUpload(file: File): Promise<void> {
-    const sym = symbol.trim() || 'CSV';
-    errorMessage = null;
-    isLoading = true;
-    const form = new FormData();
-    form.append('file', file);
-    try {
-      const res = await apiFetch(
-        `/data/csv?symbol=${encodeURIComponent(sym)}`,
-        { method: 'POST', body: form },
-      );
-      if (!res.ok) throw new Error(await readErrorMessage(res));
-      await res.json();
-      startWsStream('csv', sym);
-    } catch (e) {
-      errorMessage = e instanceof Error ? e.message : 'Upload failed';
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  $effect(() => {
-    if (refreshIntervalId) {
-      clearInterval(refreshIntervalId);
-      refreshIntervalId = null;
-    }
-    if (autoRefresh) {
-      refreshIntervalId = setInterval(() => {
-        if (source !== 'csv') {
-          void loadMarketData();
-        }
-      }, 60_000);
-    }
-  });
-
   const INDICATOR_DEBOUNCE_MS = 300;
 
   $effect(() => {
     const enabled = smaConfig.enabled;
     const period = smaConfig.period;
-    const sym = loadedSymbol;
-    marketDataVersion;
+    const sym = chart.loadedSymbol;
+    chart.marketDataVersion;
     if (!enabled || !hasCandles) {
       smaPoints = [];
       return;
@@ -670,7 +561,7 @@
         .then(res => (smaPoints = res.points))
         .catch(e => {
           smaPoints = [];
-          errorMessage = e instanceof Error ? e.message : 'Failed to load SMA';
+          chart.errorMessage = e instanceof Error ? e.message : 'Failed to load SMA';
         });
     }, INDICATOR_DEBOUNCE_MS);
     return () => clearTimeout(id);
@@ -679,8 +570,8 @@
   $effect(() => {
     const enabled = emaConfig.enabled;
     const period = emaConfig.period;
-    const sym = loadedSymbol;
-    marketDataVersion;
+    const sym = chart.loadedSymbol;
+    chart.marketDataVersion;
     if (!enabled || !hasCandles) {
       emaPoints = [];
       return;
@@ -690,7 +581,7 @@
         .then(res => (emaPoints = res.points))
         .catch(e => {
           emaPoints = [];
-          errorMessage = e instanceof Error ? e.message : 'Failed to load EMA';
+          chart.errorMessage = e instanceof Error ? e.message : 'Failed to load EMA';
         });
     }, INDICATOR_DEBOUNCE_MS);
     return () => clearTimeout(id);
@@ -700,8 +591,8 @@
     const enabled = bbandsConfig.enabled;
     const period = bbandsConfig.period;
     const stdDev = bbandsConfig.stdDev;
-    const sym = loadedSymbol;
-    marketDataVersion;
+    const sym = chart.loadedSymbol;
+    chart.marketDataVersion;
     if (!enabled || !hasCandles) {
       bbandsPoints = [];
       return;
@@ -711,7 +602,8 @@
         .then(res => (bbandsPoints = res.points))
         .catch(e => {
           bbandsPoints = [];
-          errorMessage = e instanceof Error ? e.message : 'Failed to load Bollinger Bands';
+          chart.errorMessage =
+            e instanceof Error ? e.message : 'Failed to load Bollinger Bands';
         });
     }, INDICATOR_DEBOUNCE_MS);
     return () => clearTimeout(id);
@@ -730,8 +622,6 @@
       bbandsEnabled: bbandsConfig.enabled,
     });
   }
-
-  let initialLoadDone = $state(false);
 
   onMount(async () => {
     window.addEventListener('beforeunload', persistOnUnload);
@@ -777,44 +667,33 @@
     }
     remoteTickerLoadDone = true;
     sessionReady = true;
-    await loadMarketData();
-    initialLoadDone = true;
-  });
-
-  $effect(() => {
-    period;
-    interval;
-    if (!initialLoadDone) return;
-    if (source === 'csv') return;
-    void loadMarketData();
+    await chart.loadMarketData();
   });
 
   onDestroy(() => {
     persistOnUnload();
     window.removeEventListener('beforeunload', persistOnUnload);
-    if (refreshIntervalId) clearInterval(refreshIntervalId);
-    if (wsClient) wsClient.disconnect();
   });
 </script>
 
 <div class="flex flex-col h-screen bg-background">
   <DrawablesPersistence />
   <TopHeader
-    bind:symbol
-    bind:period
-    bind:interval
-    bind:source
-    bind:autoRefresh
-    {connectionStatus}
-    {isLoading}
-    onload={loadMarketData}
-    onstream={startStream}
-    oncsvupload={handleCsvUpload}
+    bind:symbol={chart.symbol}
+    bind:period={chart.period}
+    bind:interval={chart.interval}
+    bind:source={chart.source}
+    bind:autoRefresh={chart.autoRefresh}
+    connectionStatus={chart.connectionStatus}
+    isLoading={chart.isLoading}
+    onload={chart.loadMarketData}
+    onstream={chart.startStream}
+    oncsvupload={chart.handleCsvUpload}
   />
-  <ErrorMessage bind:message={errorMessage} />
+  <ErrorMessage bind:message={chart.errorMessage} />
   <div class="flex flex-1 min-h-0">
     <LeftToolbar
-      chartSymbol={symbol}
+      chartSymbol={chart.symbol}
       bind:crosshairMode
       bind:activeTool
       onToolSettings={openToolSettings}
@@ -826,8 +705,8 @@
     />
     <div class="flex-1 min-w-0 min-h-0 flex flex-col">
       <Chart
-        {candles}
-        {symbol}
+        candles={chart.candles}
+        symbol={chart.symbol}
         {chartType}
         {showArea}
         {showVolume}
@@ -839,15 +718,15 @@
         bbandsLineWidth={bbandsConfig.lineWidth}
         {colours}
         {crosshairMode}
-        provider={source}
-        {interval}
+        provider={chart.source}
+        interval={chart.interval}
         bind:activeTool
-        bind:api={chartApi}
+        bind:api={chart.chartApi}
       />
     </div>
     {#if sidebarVisible}
       <Sidebar
-        symbol={loadedSymbol}
+        symbol={chart.loadedSymbol}
         symbolFullName={symbolFullName}
         symbolExchange={symbolExchangeLabel}
         closePrice={lastClose}
@@ -871,8 +750,8 @@
         onselectpriority={handleSelectPriority}
         onselectstance={handleSelectStance}
         onselectticker={sym => {
-          symbol = sym;
-          void loadMarketData();
+          chart.symbol = sym;
+          void chart.loadMarketData();
         }}
         ondeleteticker={handleDeleteTicker}
         onsetpriority={handleSetPriority}
