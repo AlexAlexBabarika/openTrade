@@ -2,7 +2,7 @@
   import { Button } from '$lib/components/ui/button';
   import * as Dialog from '$lib/components/ui/dialog';
   import * as Select from '$lib/components/ui/select';
-  import TextPromptDialog from './TextPromptDialog.svelte';
+  import TextPromptDialog from '../dialogs/TextPromptDialog.svelte';
   import CandlestickChart from '@lucide/svelte/icons/candlestick-chart';
   import LineChart from '@lucide/svelte/icons/line-chart';
   import AreaChart from '@lucide/svelte/icons/area-chart';
