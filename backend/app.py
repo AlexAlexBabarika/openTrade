@@ -34,6 +34,15 @@ from backend.market.models import OHLCVCandleList
 from backend.market.ohlcv_limits import cap_candles
 from backend.market.shared_config import validate_interval, validate_period
 from backend.websocket import stream_candles
+from backend.streaming.hub import ClientSession, get_hub
+from backend.streaming.protocol import (
+    ClientMessage,
+    ErrorMessage,
+    PongMessage,
+    ServerMessage,
+    SubscribeMessage,
+    UnsubscribeMessage,
+)
 from backend.core.supabase_client import get_supabase_client, is_supabase_configured
 from backend.routes.auth_routes import router as auth_router
 from backend.routes.user_routes import router as user_router
@@ -72,7 +81,12 @@ async def lifespan(app: FastAPI):
             "for auth and user data. Auth features will be unavailable."
         )
 
-    yield
+    hub = get_hub()
+    await hub.start()
+    try:
+        yield
+    finally:
+        await hub.stop()
 
 
 app = FastAPI(
@@ -257,6 +271,64 @@ async def ws_stream(websocket: WebSocket, provider: str, symbol: str) -> None:
 async def ws_stream_legacy(websocket: WebSocket, symbol: str) -> None:
     """Legacy URL: same as ``/ws/stream/yfinance/{symbol}``."""
     await _ws_stream_impl(websocket, "yfinance", symbol)
+
+
+@app.websocket("/ws/live")
+async def ws_live(websocket: WebSocket) -> None:
+    """
+    Multiplexed live market-data stream.
+
+    Protocol: see ``backend/streaming/protocol.py``. Clients send
+    ``subscribe`` / ``unsubscribe`` / ``ping`` JSON messages; server replies
+    with ``snapshot`` / ``candle`` / ``status`` / ``error`` / ``pong``.
+    Auth (token query param + per-user gating) lands in a later step;
+    happy-path is anonymous Binance public data.
+    """
+    from pydantic import TypeAdapter, ValidationError
+
+    await websocket.accept()
+    hub = get_hub()
+    client_id = f"{id(websocket):x}"
+
+    async def send(msg: ServerMessage) -> None:
+        await websocket.send_json(msg.model_dump(mode="json"))
+
+    session = ClientSession(client_id=client_id, send=send)
+    client_msg_adapter: TypeAdapter[ClientMessage] = TypeAdapter(ClientMessage)
+
+    try:
+        while True:
+            raw = await websocket.receive_json()
+            try:
+                msg = client_msg_adapter.validate_python(raw)
+            except ValidationError as exc:
+                await send(ErrorMessage(code="bad_message", message=str(exc)))
+                continue
+
+            if isinstance(msg, SubscribeMessage):
+                key = (msg.provider, msg.symbol, msg.interval)
+                try:
+                    await hub.subscribe(session, key)
+                except NotImplementedError as exc:
+                    await send(ErrorMessage(code="unsupported", message=str(exc)))
+            elif isinstance(msg, UnsubscribeMessage):
+                key = (msg.provider, msg.symbol, msg.interval)
+                await hub.unsubscribe(session, key)
+            else:
+                # PingMessage (and quote subs, which land in step 7)
+                if msg.type == "ping":
+                    await send(PongMessage())
+                else:
+                    await send(
+                        ErrorMessage(
+                            code="not_implemented",
+                            message=f"'{msg.type}' not yet supported",
+                        )
+                    )
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await hub.disconnect(session)
 
 
 # Mount static files (must be at the end of the file to capture all remaining routes)
