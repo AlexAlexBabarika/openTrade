@@ -19,12 +19,24 @@ lifespan.
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Awaitable, Callable
 
+from backend.market import cache
+from backend.market.data_sources.binance_loader import BinanceProvider
+from backend.market.data_sources.marketdataprovider import MarketDataProvider
 from backend.models.market_data_models import MarketDataProviderEnum
-from backend.streaming.protocol import ServerMessage, StreamEvent
+from backend.streaming.protocol import (
+    CandleMessage,
+    ServerMessage,
+    SnapshotMessage,
+    StatusMessage,
+    StreamEvent,
+)
+
+logger = logging.getLogger(__name__)
 
 SubscriptionKey = tuple[
     MarketDataProviderEnum, str, str
@@ -37,7 +49,7 @@ SNAPSHOT_BUFFER_SIZE = 128
 SendFn = Callable[[ServerMessage], Awaitable[None]]
 
 
-@dataclass
+@dataclass(eq=False)
 class ClientSession:
     """One browser tab. Owns its own send coroutine and tracked subscriptions."""
 
@@ -84,16 +96,33 @@ class StreamHub:
     async def subscribe(
         self, client: ClientSession, key: SubscriptionKey
     ) -> SubscriptionGroup:
-        """Attach `client` to the group for `key`, spawning upstream if new."""
+        """Attach `client` to the group for `key`, spawning upstream if new.
+
+        If the group already has buffered events, replay the most recent
+        candles to the joining client as a snapshot.
+        """
         async with self._lock:
             group = self._groups.get(key)
+            spawned = False
             if group is None:
                 group = SubscriptionGroup(key=key)
                 self._groups[key] = group
                 group.upstream_task = asyncio.create_task(self._run_upstream(group))
+                spawned = True
             group.clients.add(client)
             client.subscriptions.add(key)
-            return group
+            snapshot_candles = [e.candle for e in group.recent if e.candle is not None]
+        if not spawned and snapshot_candles:
+            provider, symbol, interval = key
+            await client.send(
+                SnapshotMessage(
+                    provider=provider,
+                    symbol=symbol,
+                    interval=interval,
+                    candles=snapshot_candles,
+                )
+            )
+        return group
 
     async def unsubscribe(self, client: ClientSession, key: SubscriptionKey) -> None:
         """Detach `client`; cancel upstream if no clients remain."""
@@ -113,20 +142,66 @@ class StreamHub:
         for key in list(client.subscriptions):
             await self.unsubscribe(client, key)
 
-    # -- internals (provider wiring lands later) ---------------------------
+    # -- internals --------------------------------------------------------
 
     async def _run_upstream(self, group: SubscriptionGroup) -> None:
-        """Pull events from the provider and fan out to subscribers.
+        """Pull events from the provider and fan out to subscribers."""
+        provider_enum, symbol, interval = group.key
+        provider = _resolve_streaming_provider(provider_enum)
+        try:
+            async for event in provider.stream_ohlcv(symbol, interval):
+                group.recent.append(event)
+                if event.kind == "candle_close" and event.candle is not None:
+                    # Keep cache consistent with REST/replay paths.
+                    existing = cache.get_cached(provider_enum.value, symbol) or []
+                    cache.set_cached(
+                        provider_enum.value, symbol, [*existing, event.candle]
+                    )
+                if event.candle is not None:
+                    msg: ServerMessage = CandleMessage(
+                        provider=provider_enum,
+                        symbol=symbol,
+                        interval=interval,
+                        candle=event.candle,
+                        is_final=event.is_final,
+                    )
+                    await self._broadcast(group, msg)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.exception("Upstream stream failed for %s", group.key)
+            await self._broadcast(
+                group,
+                StatusMessage(
+                    provider=provider_enum,
+                    symbol=symbol,
+                    interval=interval,
+                    state="closed",
+                ),
+            )
+            # Reconnect/backoff lands in step 6; for the happy path we let the
+            # task end and rely on a fresh subscribe to retry.
+            raise exc
 
-        Provider wiring is intentionally absent in this skeleton. The real
-        implementation will:
-          1. Resolve the provider, call `provider.stream_ohlcv(symbol, interval)`.
-          2. For each StreamEvent: append to `group.recent`, translate to a
-             ServerMessage, and `await client.send(...)` for each subscriber.
-          3. On upstream error: emit a `status: reconnecting` to all clients
-             and reconnect with backoff.
-        """
-        raise NotImplementedError("Provider wiring lands in a later step")
+    @staticmethod
+    async def _broadcast(group: SubscriptionGroup, msg: ServerMessage) -> None:
+        for client in list(group.clients):
+            try:
+                await client.send(msg)
+            except Exception:
+                logger.debug("Send failed; client will be cleaned up on disconnect")
+
+
+def _resolve_streaming_provider(
+    name: MarketDataProviderEnum,
+) -> MarketDataProvider:
+    """Map provider enum → provider instance for streaming.
+
+    Happy-path scope: Binance only. Twelve Data lands in step 8.
+    """
+    if name == MarketDataProviderEnum.binance:
+        return BinanceProvider()
+    raise NotImplementedError(f"Streaming not implemented for provider '{name}'")
 
 
 _hub: StreamHub | None = None

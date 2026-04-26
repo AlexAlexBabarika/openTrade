@@ -112,6 +112,15 @@ class BinanceProvider(MarketDataProvider):
             return []
         return [_parse_kline(k, symbol) for k in klines]
 
+    def supports_streaming(self) -> bool:
+        return True
+
+    def stream_ohlcv(self, symbol: str, interval: str):
+        # Imported lazily to avoid pulling the streaming module on REST-only paths.
+        from backend.streaming.binance_stream import stream_binance_klines
+
+        return stream_binance_klines(symbol, interval)
+
     def list_symbols(self) -> list[SymbolRecord]:
         client = self._make_client()
         info = client.get_exchange_info()
