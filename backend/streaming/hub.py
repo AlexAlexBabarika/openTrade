@@ -34,6 +34,7 @@ from backend.models.market_data_models import MarketDataProviderEnum
 from backend.streaming.backfill import backfill_candles
 from backend.streaming.protocol import (
     CandleMessage,
+    QuoteMessage,
     ServerMessage,
     SnapshotMessage,
     StatusMessage,
@@ -45,6 +46,8 @@ logger = logging.getLogger(__name__)
 SubscriptionKey = tuple[
     MarketDataProviderEnum, str, str
 ]  # (provider, symbol, interval)
+
+QuoteSubscriptionKey = tuple[MarketDataProviderEnum, str]  # (provider, symbol)
 
 # Bounded ring buffer of recent events per subscription, replayed on join.
 SNAPSHOT_BUFFER_SIZE = 128
@@ -74,6 +77,7 @@ class ClientSession:
     client_id: str
     send: SendFn
     subscriptions: set[SubscriptionKey] = field(default_factory=set)
+    quote_subscriptions: set[QuoteSubscriptionKey] = field(default_factory=set)
 
 
 @dataclass
@@ -88,11 +92,22 @@ class SubscriptionGroup:
     upstream_task: asyncio.Task[None] | None = None
 
 
+@dataclass
+class QuoteSubscriptionGroup:
+    """All clients sharing one upstream (provider, symbol) quote stream."""
+
+    key: QuoteSubscriptionKey
+    clients: set[ClientSession] = field(default_factory=set)
+    last: QuoteMessage | None = None
+    upstream_task: asyncio.Task[None] | None = None
+
+
 class StreamHub:
     """Per-process singleton. Not thread-safe; assumes single asyncio loop."""
 
     def __init__(self) -> None:
         self._groups: dict[SubscriptionKey, SubscriptionGroup] = {}
+        self._quote_groups: dict[QuoteSubscriptionKey, QuoteSubscriptionGroup] = {}
         self._lock = asyncio.Lock()
 
     # -- lifecycle ---------------------------------------------------------
@@ -108,6 +123,10 @@ class StreamHub:
                 if group.upstream_task is not None:
                     group.upstream_task.cancel()
             self._groups.clear()
+            for qgroup in self._quote_groups.values():
+                if qgroup.upstream_task is not None:
+                    qgroup.upstream_task.cancel()
+            self._quote_groups.clear()
 
     # -- subscription management ------------------------------------------
 
@@ -209,6 +228,89 @@ class StreamHub:
         """Drop all of a client's subscriptions (e.g. on socket close)."""
         for key in list(client.subscriptions):
             await self.unsubscribe(client, key)
+        for qkey in list(client.quote_subscriptions):
+            await self.unsubscribe_quote(client, qkey)
+
+    # -- quote subscriptions ---------------------------------------------
+
+    async def subscribe_quote(
+        self, client: ClientSession, key: QuoteSubscriptionKey
+    ) -> QuoteSubscriptionGroup:
+        """Attach `client` to the quote group for `key`, spawning upstream if new."""
+        async with self._lock:
+            group = self._quote_groups.get(key)
+            if group is None:
+                group = QuoteSubscriptionGroup(key=key)
+                self._quote_groups[key] = group
+                group.upstream_task = asyncio.create_task(
+                    self._run_quote_upstream(group)
+                )
+            group.clients.add(client)
+            client.quote_subscriptions.add(key)
+            cached = group.last
+
+        if cached is not None:
+            await client.send(cached)
+        return group
+
+    async def unsubscribe_quote(
+        self, client: ClientSession, key: QuoteSubscriptionKey
+    ) -> None:
+        async with self._lock:
+            group = self._quote_groups.get(key)
+            if group is None:
+                client.quote_subscriptions.discard(key)
+                return
+            group.clients.discard(client)
+            client.quote_subscriptions.discard(key)
+            if not group.clients:
+                if group.upstream_task is not None:
+                    group.upstream_task.cancel()
+                del self._quote_groups[key]
+
+    async def _run_quote_upstream(self, group: QuoteSubscriptionGroup) -> None:
+        """Pull quote ticks from the provider and fan out to subscribers."""
+        provider_enum, symbol = group.key
+        provider = _resolve_streaming_provider(provider_enum)
+        if not provider.supports_streaming_quotes():
+            raise NotImplementedError(
+                f"Quote streaming not supported for provider '{provider_enum}'"
+            )
+        attempt = 0
+
+        while True:
+            try:
+                async for event in provider.stream_quotes(symbol):
+                    if event.price is None:
+                        continue
+                    msg = QuoteMessage(
+                        provider=provider_enum,
+                        symbol=symbol,
+                        price=event.price,
+                        ts=datetime.now(timezone.utc),
+                    )
+                    group.last = msg
+                    attempt = 0
+                    await self._broadcast_quote(group, msg)
+                return
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Upstream quote stream failed for %s", group.key)
+                attempt += 1
+                if attempt > MAX_UPSTREAM_RECONNECT_ATTEMPTS:
+                    return
+                await asyncio.sleep(_upstream_backoff_delay(attempt))
+
+    @staticmethod
+    async def _broadcast_quote(
+        group: QuoteSubscriptionGroup, msg: QuoteMessage
+    ) -> None:
+        for client in list(group.clients):
+            try:
+                await client.send(msg)
+            except Exception:
+                logger.debug("Quote send failed; client cleanup on disconnect")
 
     # -- internals --------------------------------------------------------
 

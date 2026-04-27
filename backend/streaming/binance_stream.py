@@ -48,6 +48,32 @@ def _kline_to_event(msg: dict, symbol: str, interval: str) -> StreamEvent | None
     )
 
 
+async def stream_binance_quotes(symbol: str) -> AsyncIterator[StreamEvent]:
+    """Yield last-price ticks from Binance's per-symbol ticker stream.
+
+    The `!ticker@<symbol>` stream emits one update per second with the
+    current last trade price (`c`) — the right granularity for sidebar
+    quotes (cheaper than the trade stream, fresher than 24h miniticker).
+    """
+    sym_norm = _normalize_binance_symbol(symbol)
+    client = await AsyncClient.create()
+    try:
+        bm = BinanceSocketManager(client)
+        async with bm.symbol_ticker_socket(symbol=sym_norm) as stream:
+            while True:
+                msg = await stream.recv()
+                price = msg.get("c")
+                if price is None:
+                    continue
+                yield StreamEvent(
+                    kind="tick",
+                    symbol=sym_norm,
+                    price=float(price),
+                )
+    finally:
+        await client.close_connection()
+
+
 async def stream_binance_klines(
     symbol: str, interval: str
 ) -> AsyncIterator[StreamEvent]:

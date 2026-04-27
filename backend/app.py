@@ -41,7 +41,9 @@ from backend.streaming.protocol import (
     PongMessage,
     ServerMessage,
     SubscribeMessage,
+    SubscribeQuoteMessage,
     UnsubscribeMessage,
+    UnsubscribeQuoteMessage,
 )
 from backend.core.supabase_client import get_supabase_client, is_supabase_configured
 from backend.routes.auth_routes import router as auth_router
@@ -321,17 +323,28 @@ async def ws_live(websocket: WebSocket) -> None:
             elif isinstance(msg, UnsubscribeMessage):
                 key = (msg.provider, msg.symbol, msg.interval)
                 await hub.unsubscribe(session, key)
+            elif isinstance(msg, SubscribeQuoteMessage):
+                qkey = (msg.provider, msg.symbol)
+                try:
+                    await hub.subscribe_quote(session, qkey)
+                except NotImplementedError as exc:
+                    await send(ErrorMessage(code="unsupported", message=str(exc)))
+                except Exception as exc:
+                    logger.exception("subscribe_quote failed for %s", qkey)
+                    await hub.unsubscribe_quote(session, qkey)
+                    await send(ErrorMessage(code="subscribe_failed", message=str(exc)))
+            elif isinstance(msg, UnsubscribeQuoteMessage):
+                qkey = (msg.provider, msg.symbol)
+                await hub.unsubscribe_quote(session, qkey)
+            elif msg.type == "ping":
+                await send(PongMessage())
             else:
-                # PingMessage (and quote subs, which land in step 7)
-                if msg.type == "ping":
-                    await send(PongMessage())
-                else:
-                    await send(
-                        ErrorMessage(
-                            code="not_implemented",
-                            message=f"'{msg.type}' not yet supported",
-                        )
+                await send(
+                    ErrorMessage(
+                        code="not_implemented",
+                        message=f"'{msg.type}' not yet supported",
                     )
+                )
     except WebSocketDisconnect:
         pass
     finally:
