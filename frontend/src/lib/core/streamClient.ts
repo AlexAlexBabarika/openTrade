@@ -80,12 +80,17 @@ export class StreamClient {
   #candleSubs = new Map<string, CandleEntry>();
   #reconnectAttempts = 0;
   #reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  #pingTimer: ReturnType<typeof setInterval> | null = null;
+  #silenceTimer: ReturnType<typeof setTimeout> | null = null;
   #intentionalClose = false;
   #pendingSends: string[] = [];
 
   readonly reconnectDelayMs = 1000;
   readonly maxReconnectDelayMs = 30000;
   readonly maxReconnectAttempts = 10;
+  readonly pingIntervalMs = 20000;
+  /** If no message arrives within this window, treat the socket as dead. */
+  readonly silenceTimeoutMs = 45000;
 
   subscribeCandles(
     sub: CandleSubscription,
@@ -151,6 +156,8 @@ export class StreamClient {
     ws.onopen = () => {
       this.#reconnectAttempts = 0;
       this.#emitConnectionState('connected');
+      this.#startHeartbeat();
+      this.#armSilenceTimer();
       // Re-subscribe everything (covers reconnect; on first connect sends queued subs).
       for (const entry of this.#candleSubs.values()) {
         this.#sendJsonRaw({
@@ -168,6 +175,7 @@ export class StreamClient {
     };
 
     ws.onmessage = ev => {
+      this.#armSilenceTimer();
       let msg: ServerMsg;
       try {
         msg = JSON.parse(ev.data as string) as ServerMsg;
@@ -179,6 +187,8 @@ export class StreamClient {
 
     ws.onclose = () => {
       this.#ws = null;
+      this.#stopHeartbeat();
+      this.#clearSilenceTimer();
       this.#emitConnectionState('closed');
       if (this.#intentionalClose) return;
       if (this.#candleSubs.size === 0) return;
@@ -201,11 +211,45 @@ export class StreamClient {
       clearTimeout(this.#reconnectTimer);
       this.#reconnectTimer = null;
     }
+    this.#stopHeartbeat();
+    this.#clearSilenceTimer();
     if (this.#ws) {
       this.#ws.close();
       this.#ws = null;
     }
     this.#pendingSends = [];
+  }
+
+  #startHeartbeat(): void {
+    this.#stopHeartbeat();
+    this.#pingTimer = setInterval(() => {
+      if (this.#ws?.readyState === WebSocket.OPEN) {
+        this.#ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, this.pingIntervalMs);
+  }
+
+  #stopHeartbeat(): void {
+    if (this.#pingTimer) {
+      clearInterval(this.#pingTimer);
+      this.#pingTimer = null;
+    }
+  }
+
+  #armSilenceTimer(): void {
+    this.#clearSilenceTimer();
+    this.#silenceTimer = setTimeout(() => {
+      // No data within window — proxies/NAT may have silently dropped the
+      // connection. Force-close so onclose triggers the reconnect path.
+      this.#ws?.close();
+    }, this.silenceTimeoutMs);
+  }
+
+  #clearSilenceTimer(): void {
+    if (this.#silenceTimer) {
+      clearTimeout(this.#silenceTimer);
+      this.#silenceTimer = null;
+    }
   }
 
   #nextReconnectDelay(): number {

@@ -10,7 +10,7 @@ Kept deliberately small: one provider lookup, one REST call, one filter.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from starlette.concurrency import run_in_threadpool
 
@@ -56,4 +56,8 @@ async def backfill_candles(
     period = _BACKFILL_PERIOD.get(interval, "1mo")
     p = _resolve_provider(provider)
     candles = await run_in_threadpool(p.get_ohlcv, symbol, period, interval)
+    # Candle timestamps are naive UTC; client-supplied `since` is typically
+    # aware. Normalize so the comparison doesn't crash.
+    if since.tzinfo is not None:
+        since = since.astimezone(timezone.utc).replace(tzinfo=None)
     return [c for c in candles if c.timestamp > since]
