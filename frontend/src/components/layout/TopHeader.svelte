@@ -7,6 +7,7 @@
   import { authState, logout } from '$lib/features/auth/auth';
   import {
     MARKET_DATA_PROVIDERS,
+    providerSupportsWs,
     type MarketDataProviderValue,
   } from '$lib/features/market/marketDataProviders';
   import { DEFAULT_MARKET_INTERVAL } from '$lib/features/market/marketIntervals';
@@ -63,6 +64,8 @@
     if (!file) return;
     oncsvupload(file);
   }
+
+  let streamable = $derived(source === 'csv' || providerSupportsWs(source));
 </script>
 
 <div
@@ -108,10 +111,12 @@
     variant="secondary"
     size="sm"
     onclick={onstream}
-    disabled={source === 'csv' ? false : !symbol.trim()}
-    title={connectionStatus === 'connected' || connectionStatus === 'connecting'
-      ? 'Stop the live stream'
-      : 'Start a live stream (load data first unless using yfinance)'}
+    disabled={!streamable || (source !== 'csv' && !symbol.trim())}
+    title={!streamable
+      ? `Live streaming is not available for ${source}.`
+      : connectionStatus === 'connected' || connectionStatus === 'connecting'
+        ? 'Stop the live stream'
+        : 'Start a live stream (load data first unless using yfinance)'}
   >
     {connectionStatus === 'connected' || connectionStatus === 'connecting'
       ? 'Stop'

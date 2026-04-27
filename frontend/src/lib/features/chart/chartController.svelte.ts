@@ -5,17 +5,16 @@ import type { OHLCVCandle } from '$lib/core/types';
 import { fetchMarketOHLCV } from '$lib/features/market/marketData';
 import { DEFAULT_MARKET_INTERVAL } from '$lib/features/market/marketIntervals';
 import { DEFAULT_MARKET_PERIOD } from '$lib/features/market/marketPeriods';
-import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
+import {
+  providerSupportsWs,
+  type MarketDataProviderValue,
+} from '$lib/features/market/marketDataProviders';
 import {
   subscribeMarketStream,
   type StreamStatus,
 } from '$lib/features/market/streaming';
 
 export type ChartApiLike = { appendCandle: (c: OHLCVCandle) => void };
-
-const PROVIDERS_WITH_STREAMING: ReadonlySet<MarketDataProviderValue> = new Set([
-  'binance',
-]);
 
 export interface ChartControllerOptions {
   initialSymbol?: string;
@@ -106,7 +105,7 @@ export class ChartController {
         this.source,
         data.candles?.length ?? 0,
       );
-      if (PROVIDERS_WITH_STREAMING.has(this.source)) {
+      if (providerSupportsWs(this.source)) {
         this.#startLiveStream(this.source, this.symbol.trim(), this.interval);
       } else if (this.#liveUnsubscribe) {
         this.#liveUnsubscribe();
@@ -134,6 +133,10 @@ export class ChartController {
     this.errorMessage = null;
     if (this.source === 'csv') {
       this.#startWsStream('csv', sym);
+      return;
+    }
+    if (!providerSupportsWs(this.source)) {
+      this.errorMessage = `Live streaming is not available for ${this.source}.`;
       return;
     }
     this.#startLiveStream(this.source, sym, this.interval);

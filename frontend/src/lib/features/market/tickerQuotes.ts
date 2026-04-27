@@ -1,18 +1,14 @@
 import { fetchMarketOHLCV, type RemoteMarketProvider } from './marketData';
 import { getStreamClient } from '$lib/core/streamClient';
+import { providerSupportsWs } from './marketDataProviders';
 
 export type TickerQuote =
   | { status: 'loading' }
   | { status: 'ok'; close: number | null }
   | { status: 'error' };
 
-/** Providers whose quotes can be streamed via `/ws/live` `subscribe_quote`. */
-const STREAMING_QUOTE_PROVIDERS: ReadonlySet<RemoteMarketProvider> = new Set([
-  'binance',
-]);
-
 export function providerSupportsQuoteStream(p: RemoteMarketProvider): boolean {
-  return STREAMING_QUOTE_PROVIDERS.has(p);
+  return providerSupportsWs(p);
 }
 
 export async function fetchLastClose(
