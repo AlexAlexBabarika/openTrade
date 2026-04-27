@@ -15,7 +15,10 @@
   import { useIndicatorEffect } from '$lib/features/chart/indicatorEffect.svelte';
   import { ChartController } from '$lib/features/chart/chartController.svelte';
   import { authState, fetchSession } from '$lib/features/auth/auth';
-  import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
+  import {
+    pickProviderForSymbol,
+    type MarketDataProviderValue,
+  } from '$lib/features/market/marketDataProviders';
   import type { ChartColours } from '$lib/features/chart/chartColours';
   import {
     defaultChartColours,
@@ -682,6 +685,9 @@
         onselectstance={handleSelectStance}
         onselectticker={sym => {
           chart.symbol = sym;
+          const providers = findTickerProviders(groups, sym);
+          const next = pickProviderForSymbol(chart.source, providers);
+          if (next !== chart.source) chart.source = next;
           void chart.loadMarketData();
         }}
         ondeleteticker={handleDeleteTicker}
