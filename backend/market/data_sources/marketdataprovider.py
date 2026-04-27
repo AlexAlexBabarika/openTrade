@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
+from typing import AsyncIterator, TYPE_CHECKING
 
 from backend.market.models import OHLCVCandle
 from backend.models.market_data_models import SymbolRecord
+
+if TYPE_CHECKING:
+    from backend.streaming.protocol import StreamEvent
 
 
 class MarketDataProvider(ABC):
@@ -26,4 +30,12 @@ class MarketDataProvider(ABC):
 
     def list_symbols(self) -> list[SymbolRecord]:
         """Enumerate all symbols this provider supports. Optional."""
+        raise NotImplementedError
+
+    def supports_streaming(self) -> bool:
+        """Whether the provider can stream live OHLCV via stream_ohlcv()."""
+        return False
+
+    def stream_ohlcv(self, symbol: str, interval: str) -> AsyncIterator["StreamEvent"]:
+        """Async iterator yielding live StreamEvents. Optional."""
         raise NotImplementedError
