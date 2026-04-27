@@ -6,6 +6,10 @@ import { fetchMarketOHLCV } from '$lib/features/market/marketData';
 import { DEFAULT_MARKET_INTERVAL } from '$lib/features/market/marketIntervals';
 import { DEFAULT_MARKET_PERIOD } from '$lib/features/market/marketPeriods';
 import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
+import {
+  subscribeMarketStream,
+  type StreamStatus,
+} from '$lib/features/market/streaming';
 
 export type ChartApiLike = { appendCandle: (c: OHLCVCandle) => void };
 
@@ -36,6 +40,7 @@ export class ChartController {
   initialLoadDone = $state(false);
 
   #wsClient: WSClient | null = null;
+  #liveUnsubscribe: (() => void) | null = null;
   #refreshIntervalId: ReturnType<typeof setInterval> | null = null;
   #onSymbolFetched?: ChartControllerOptions['onSymbolFetched'];
 
@@ -69,6 +74,7 @@ export class ChartController {
     onDestroy(() => {
       if (this.#refreshIntervalId) clearInterval(this.#refreshIntervalId);
       if (this.#wsClient) this.#wsClient.disconnect();
+      if (this.#liveUnsubscribe) this.#liveUnsubscribe();
     });
   }
 
@@ -111,11 +117,62 @@ export class ChartController {
       return;
     }
     this.errorMessage = null;
-    this.#startWsStream(this.source, sym, {
-      reconnectDelayMs: 3000,
-      maxReconnectAttempts: 10,
-    });
+    if (this.source === 'csv') {
+      this.#startWsStream('csv', sym);
+      return;
+    }
+    this.#startLiveStream(this.source, sym, this.interval);
   };
+
+  #startLiveStream(
+    provider: MarketDataProviderValue,
+    sym: string,
+    interval: string,
+  ): void {
+    if (this.#wsClient) {
+      this.#wsClient.disconnect();
+      this.#wsClient = null;
+    }
+    if (this.#liveUnsubscribe) {
+      this.#liveUnsubscribe();
+      this.#liveUnsubscribe = null;
+    }
+
+    const existing = this.candles ?? [];
+    const historyEndIso = existing.length
+      ? existing[existing.length - 1].timestamp
+      : undefined;
+    const liveCandles: OHLCVCandle[] = existing.slice();
+    this.candles = liveCandles;
+
+    const mapStatus = (s: StreamStatus): ConnectionStatus =>
+      s === 'connected'
+        ? 'connected'
+        : s === 'connecting'
+          ? 'connecting'
+          : s === 'error'
+            ? 'error'
+            : 'disconnected';
+
+    this.#liveUnsubscribe = subscribeMarketStream({
+      provider,
+      symbol: sym,
+      interval,
+      historyEndIso,
+      onCandle: (c, _isFinal) => {
+        const last = liveCandles[liveCandles.length - 1];
+        if (last && last.timestamp === c.timestamp) {
+          liveCandles[liveCandles.length - 1] = c;
+        } else {
+          liveCandles.push(c);
+        }
+        this.chartApi?.appendCandle(c);
+      },
+      onStatus: s => {
+        this.connectionStatus = mapStatus(s);
+      },
+    });
+  }
 
   handleCsvUpload = async (file: File): Promise<void> => {
     const sym = this.symbol.trim() || 'CSV';
@@ -143,6 +200,10 @@ export class ChartController {
     sym: string,
     opts: { reconnectDelayMs?: number; maxReconnectAttempts?: number } = {},
   ): void {
+    if (this.#liveUnsubscribe) {
+      this.#liveUnsubscribe();
+      this.#liveUnsubscribe = null;
+    }
     if (this.#wsClient) this.#wsClient.disconnect();
     const streamCandles: OHLCVCandle[] = [];
     this.candles = streamCandles;
