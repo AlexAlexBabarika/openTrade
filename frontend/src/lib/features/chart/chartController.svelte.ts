@@ -13,6 +13,10 @@ import {
 
 export type ChartApiLike = { appendCandle: (c: OHLCVCandle) => void };
 
+const PROVIDERS_WITH_STREAMING: ReadonlySet<MarketDataProviderValue> = new Set([
+  'binance',
+]);
+
 export interface ChartControllerOptions {
   initialSymbol?: string;
   initialSource?: MarketDataProviderValue;
@@ -102,6 +106,12 @@ export class ChartController {
         this.source,
         data.candles?.length ?? 0,
       );
+      if (PROVIDERS_WITH_STREAMING.has(this.source)) {
+        this.#startLiveStream(this.source, this.symbol.trim(), this.interval);
+      } else if (this.#liveUnsubscribe) {
+        this.#liveUnsubscribe();
+        this.#liveUnsubscribe = null;
+      }
     } catch (e) {
       this.errorMessage = e instanceof Error ? e.message : 'Failed to load';
     } finally {

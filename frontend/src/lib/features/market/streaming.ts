@@ -40,22 +40,26 @@ export function subscribeMarketStream(
         ? 'connecting'
         : 'disconnected';
 
-  return getStreamClient().subscribeCandles(sub, {
-    onSnapshot: msg => {
-      for (const c of msg.candles) {
-        if (Date.parse(c.timestamp) > cutoff) onCandle(c, true);
-      }
+  return getStreamClient().subscribeCandles(
+    sub,
+    {
+      onSnapshot: msg => {
+        for (const c of msg.candles) {
+          if (Date.parse(c.timestamp) > cutoff) onCandle(c, true);
+        }
+      },
+      onCandle: msg => {
+        onCandle(msg.candle, msg.is_final);
+      },
+      onConnectionChange: state => {
+        onStatus?.(mapState(state));
+      },
+      onStatus: msg => {
+        if (msg.state === 'closed') onStatus?.('disconnected');
+        else if (msg.state === 'reconnecting') onStatus?.('connecting');
+        else onStatus?.('connected');
+      },
     },
-    onCandle: msg => {
-      onCandle(msg.candle, msg.is_final);
-    },
-    onConnectionChange: state => {
-      onStatus?.(mapState(state));
-    },
-    onStatus: msg => {
-      if (msg.state === 'closed') onStatus?.('disconnected');
-      else if (msg.state === 'reconnecting') onStatus?.('connecting');
-      else onStatus?.('connected');
-    },
-  });
+    { since: historyEndIso },
+  );
 }
