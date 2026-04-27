@@ -20,9 +20,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
 from backend.market import cache
@@ -47,6 +48,20 @@ SubscriptionKey = tuple[
 
 # Bounded ring buffer of recent events per subscription, replayed on join.
 SNAPSHOT_BUFFER_SIZE = 128
+
+# Upstream reconnect policy — exponential backoff with jitter.
+MAX_UPSTREAM_RECONNECT_ATTEMPTS = 6
+UPSTREAM_RECONNECT_BASE_DELAY_S = 1.0
+UPSTREAM_RECONNECT_MAX_DELAY_S = 30.0
+
+
+def _upstream_backoff_delay(attempt: int) -> float:
+    """Exponential backoff (base 2) with full jitter, capped at MAX."""
+    cap = min(
+        UPSTREAM_RECONNECT_BASE_DELAY_S * (2 ** (attempt - 1)),
+        UPSTREAM_RECONNECT_MAX_DELAY_S,
+    )
+    return random.random() * cap
 
 
 SendFn = Callable[[ServerMessage], Awaitable[None]]
@@ -146,6 +161,11 @@ class StreamHub:
         since: datetime | None,
     ) -> list[OHLCVCandle]:
         """Return ordered, deduped candles to send as the initial snapshot."""
+        # Candle timestamps are stored naive (UTC); clients send ISO-8601 with
+        # an offset, so Pydantic hands us an aware datetime. Normalize to naive
+        # UTC for comparison.
+        if since is not None and since.tzinfo is not None:
+            since = since.astimezone(timezone.utc).replace(tzinfo=None)
         if since is not None:
             buffered = [c for c in buffered if c.timestamp > since]
 
@@ -193,43 +213,84 @@ class StreamHub:
     # -- internals --------------------------------------------------------
 
     async def _run_upstream(self, group: SubscriptionGroup) -> None:
-        """Pull events from the provider and fan out to subscribers."""
+        """Pull events from the provider and fan out to subscribers.
+
+        Retries with exponential backoff on upstream failure; emits per-symbol
+        `status` events so clients can reflect connected/reconnecting/closed.
+        """
         provider_enum, symbol, interval = group.key
         provider = _resolve_streaming_provider(provider_enum)
-        try:
-            async for event in provider.stream_ohlcv(symbol, interval):
-                group.recent.append(event)
-                if event.kind == "candle_close" and event.candle is not None:
-                    # Keep cache consistent with REST/replay paths.
-                    existing = cache.get_cached(provider_enum.value, symbol) or []
-                    cache.set_cached(
-                        provider_enum.value, symbol, [*existing, event.candle]
-                    )
-                if event.candle is not None:
-                    msg: ServerMessage = CandleMessage(
+        attempt = 0
+
+        while True:
+            connected_emitted = False
+            try:
+                async for event in provider.stream_ohlcv(symbol, interval):
+                    if not connected_emitted:
+                        await self._broadcast(
+                            group,
+                            StatusMessage(
+                                provider=provider_enum,
+                                symbol=symbol,
+                                interval=interval,
+                                state="connected",
+                            ),
+                        )
+                        connected_emitted = True
+                        attempt = 0
+                    group.recent.append(event)
+                    if event.kind == "candle_close" and event.candle is not None:
+                        # Keep cache consistent with REST/replay paths.
+                        existing = cache.get_cached(provider_enum.value, symbol) or []
+                        cache.set_cached(
+                            provider_enum.value, symbol, [*existing, event.candle]
+                        )
+                    if event.candle is not None:
+                        msg: ServerMessage = CandleMessage(
+                            provider=provider_enum,
+                            symbol=symbol,
+                            interval=interval,
+                            candle=event.candle,
+                            is_final=event.is_final,
+                        )
+                        await self._broadcast(group, msg)
+                # Iterator returned without raising — upstream closed cleanly.
+                await self._broadcast(
+                    group,
+                    StatusMessage(
                         provider=provider_enum,
                         symbol=symbol,
                         interval=interval,
-                        candle=event.candle,
-                        is_final=event.is_final,
+                        state="closed",
+                    ),
+                )
+                return
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Upstream stream failed for %s", group.key)
+                attempt += 1
+                if attempt > MAX_UPSTREAM_RECONNECT_ATTEMPTS:
+                    await self._broadcast(
+                        group,
+                        StatusMessage(
+                            provider=provider_enum,
+                            symbol=symbol,
+                            interval=interval,
+                            state="closed",
+                        ),
                     )
-                    await self._broadcast(group, msg)
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            logger.exception("Upstream stream failed for %s", group.key)
-            await self._broadcast(
-                group,
-                StatusMessage(
-                    provider=provider_enum,
-                    symbol=symbol,
-                    interval=interval,
-                    state="closed",
-                ),
-            )
-            # Reconnect/backoff lands in step 6; for the happy path we let the
-            # task end and rely on a fresh subscribe to retry.
-            raise exc
+                    return
+                await self._broadcast(
+                    group,
+                    StatusMessage(
+                        provider=provider_enum,
+                        symbol=symbol,
+                        interval=interval,
+                        state="reconnecting",
+                    ),
+                )
+                await asyncio.sleep(_upstream_backoff_delay(attempt))
 
     @staticmethod
     async def _broadcast(group: SubscriptionGroup, msg: ServerMessage) -> None:

@@ -311,6 +311,13 @@ async def ws_live(websocket: WebSocket) -> None:
                     await hub.subscribe(session, key, since=msg.since)
                 except NotImplementedError as exc:
                     await send(ErrorMessage(code="unsupported", message=str(exc)))
+                except Exception as exc:
+                    # Don't tear down the socket on a single bad subscribe —
+                    # the client would just reconnect and re-fire the same
+                    # request, producing a tight failure loop.
+                    logger.exception("subscribe failed for %s", key)
+                    await hub.unsubscribe(session, key)
+                    await send(ErrorMessage(code="subscribe_failed", message=str(exc)))
             elif isinstance(msg, UnsubscribeMessage):
                 key = (msg.provider, msg.symbol, msg.interval)
                 await hub.unsubscribe(session, key)

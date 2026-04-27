@@ -121,6 +121,11 @@ export class ChartController {
   };
 
   startStream = (): void => {
+    // Toggle: if a stream is already active, clicking Stream stops it.
+    if (this.#liveUnsubscribe || this.#wsClient) {
+      this.stopStream();
+      return;
+    }
     const sym = this.symbol.trim();
     if (!sym) {
       this.errorMessage = 'Enter a symbol';
@@ -132,6 +137,18 @@ export class ChartController {
       return;
     }
     this.#startLiveStream(this.source, sym, this.interval);
+  };
+
+  stopStream = (): void => {
+    if (this.#liveUnsubscribe) {
+      this.#liveUnsubscribe();
+      this.#liveUnsubscribe = null;
+    }
+    if (this.#wsClient) {
+      this.#wsClient.disconnect();
+      this.#wsClient = null;
+    }
+    this.connectionStatus = 'disconnected';
   };
 
   #startLiveStream(

@@ -109,9 +109,13 @@
     size="sm"
     onclick={onstream}
     disabled={source === 'csv' ? false : !symbol.trim()}
-    title="Replay cached OHLCV over WebSocket (load data first unless using yfinance)"
+    title={connectionStatus === 'connected' || connectionStatus === 'connecting'
+      ? 'Stop the live stream'
+      : 'Start a live stream (load data first unless using yfinance)'}
   >
-    Stream
+    {connectionStatus === 'connected' || connectionStatus === 'connecting'
+      ? 'Stop'
+      : 'Stream'}
     {#if connectionStatus === 'connecting'}
       <span class="ml-1 text-xs text-muted-foreground">…</span>
     {:else if connectionStatus === 'connected'}
