@@ -1,4 +1,5 @@
 export const MARKET_DATA_PROVIDERS = [
+  // TwelveData does support WebSockets, but only for paid plans, so let it be false here for now
   { value: 'twelvedata', label: 'Twelve Data', supportsWs: false },
   { value: 'yfinance', label: 'YFinance', supportsWs: false },
   { value: 'binance', label: 'Binance', supportsWs: true },
