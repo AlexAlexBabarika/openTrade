@@ -41,19 +41,30 @@ export interface ErrorMsg {
   message: string;
 }
 
+export interface QuoteMsg {
+  type: 'quote';
+  provider: MarketDataProviderValue;
+  symbol: string;
+  price: number;
+  ts: string;
+}
+
 type ServerMsg =
   | SnapshotMsg
   | CandleMsg
   | StatusMsg
   | ErrorMsg
-  | { type: 'pong' }
-  | {
-      type: 'quote';
-      provider: string;
-      symbol: string;
-      price: number;
-      ts: string;
-    };
+  | QuoteMsg
+  | { type: 'pong' };
+
+export interface QuoteSubscription {
+  provider: MarketDataProviderValue;
+  symbol: string;
+}
+
+export interface QuoteHandlers {
+  onQuote?: (msg: QuoteMsg) => void;
+}
 
 export interface CandleHandlers {
   onSnapshot?: (msg: SnapshotMsg) => void;
@@ -66,6 +77,10 @@ function candleKey(s: CandleSubscription): string {
   return `c:${s.provider}:${s.symbol}:${s.interval}`;
 }
 
+function quoteKey(s: QuoteSubscription): string {
+  return `q:${s.provider}:${s.symbol}`;
+}
+
 interface CandleEntry {
   sub: CandleSubscription;
   handlers: Set<CandleHandlers>;
@@ -75,9 +90,15 @@ interface CandleEntry {
   lastSeenTs?: string;
 }
 
+interface QuoteEntry {
+  sub: QuoteSubscription;
+  handlers: Set<QuoteHandlers>;
+}
+
 export class StreamClient {
   #ws: WebSocket | null = null;
   #candleSubs = new Map<string, CandleEntry>();
+  #quoteSubs = new Map<string, QuoteEntry>();
   #reconnectAttempts = 0;
   #reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   #pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -129,11 +150,50 @@ export class StreamClient {
           symbol: sub.symbol,
           interval: sub.interval,
         });
-        if (this.#candleSubs.size === 0) {
-          this.#disconnect();
-        }
+        this.#maybeDisconnect();
       }
     };
+  }
+
+  subscribeQuote(sub: QuoteSubscription, handlers: QuoteHandlers): () => void {
+    const key = quoteKey(sub);
+    let entry = this.#quoteSubs.get(key);
+    const isFirst = !entry;
+    if (!entry) {
+      entry = { sub, handlers: new Set() };
+      this.#quoteSubs.set(key, entry);
+    }
+    entry.handlers.add(handlers);
+
+    this.#ensureConnected();
+    if (isFirst) {
+      this.#sendJson({
+        type: 'subscribe_quote',
+        provider: sub.provider,
+        symbol: sub.symbol,
+      });
+    }
+
+    return () => {
+      const e = this.#quoteSubs.get(key);
+      if (!e) return;
+      e.handlers.delete(handlers);
+      if (e.handlers.size === 0) {
+        this.#quoteSubs.delete(key);
+        this.#sendJson({
+          type: 'unsubscribe_quote',
+          provider: sub.provider,
+          symbol: sub.symbol,
+        });
+        this.#maybeDisconnect();
+      }
+    };
+  }
+
+  #maybeDisconnect(): void {
+    if (this.#candleSubs.size === 0 && this.#quoteSubs.size === 0) {
+      this.#disconnect();
+    }
   }
 
   #ensureConnected(): void {
@@ -168,6 +228,13 @@ export class StreamClient {
           since: entry.lastSeenTs ?? entry.initialSince,
         });
       }
+      for (const entry of this.#quoteSubs.values()) {
+        this.#sendJsonRaw({
+          type: 'subscribe_quote',
+          provider: entry.sub.provider,
+          symbol: entry.sub.symbol,
+        });
+      }
       // Flush anything queued before open (typically subsumed by re-sub above, but safe).
       const queued = this.#pendingSends;
       this.#pendingSends = [];
@@ -191,7 +258,7 @@ export class StreamClient {
       this.#clearSilenceTimer();
       this.#emitConnectionState('closed');
       if (this.#intentionalClose) return;
-      if (this.#candleSubs.size === 0) return;
+      if (this.#candleSubs.size === 0 && this.#quoteSubs.size === 0) return;
       if (this.#reconnectAttempts >= this.maxReconnectAttempts) return;
       const delay = this.#nextReconnectDelay();
       this.#reconnectTimer = setTimeout(() => {
@@ -300,6 +367,13 @@ export class StreamClient {
         else if (msg.type === 'candle') h.onCandle?.(msg);
         else h.onStatus?.(msg);
       }
+      return;
+    }
+    if (msg.type === 'quote') {
+      const key = quoteKey({ provider: msg.provider, symbol: msg.symbol });
+      const entry = this.#quoteSubs.get(key);
+      if (!entry) return;
+      for (const h of entry.handlers) h.onQuote?.(msg);
     }
   }
 }

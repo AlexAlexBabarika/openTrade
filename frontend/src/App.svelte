@@ -74,7 +74,12 @@
     DEFAULT_PROVIDERS,
     fetchSymbolMeta,
   } from '$lib/features/market/symbols';
-  import { fetchLastClose, type TickerQuote } from '$lib/features/market/tickerQuotes';
+  import {
+    fetchLastClose,
+    providerSupportsQuoteStream,
+    subscribeQuoteStream,
+    type TickerQuote,
+  } from '$lib/features/market/tickerQuotes';
   import { untrack } from 'svelte';
   import AppDialogs from './components/dialogs/AppDialogs.svelte';
   import {
@@ -476,6 +481,38 @@
     const tickers = displayTickers;
     if (currentSource === 'csv') return;
 
+    if (providerSupportsQuoteStream(currentSource)) {
+      // Stream quotes for visible tickers; sync subscriptions to the set.
+      const snapshot = untrack(() => tickerQuotes);
+      const seeded: Record<string, TickerQuote> = { ...snapshot };
+      let changed = false;
+      for (const t of tickers) {
+        const key = `${currentSource}:${t.symbol}`;
+        if (!seeded[key] || seeded[key].status === 'error') {
+          seeded[key] = { status: 'loading' };
+          changed = true;
+        }
+      }
+      if (changed) tickerQuotes = seeded;
+
+      const unsubs: Array<() => void> = [];
+      for (const t of tickers) {
+        const key = `${currentSource}:${t.symbol}`;
+        unsubs.push(
+          subscribeQuoteStream(t.symbol, currentSource, price => {
+            tickerQuotes = {
+              ...tickerQuotes,
+              [key]: { status: 'ok', close: price },
+            };
+          }),
+        );
+      }
+      return () => {
+        for (const u of unsubs) u();
+      };
+    }
+
+    // Non-streaming providers: keep REST fallback.
     const snapshot = untrack(() => tickerQuotes);
     const missing = tickers.filter(t => {
       const entry = snapshot[`${currentSource}:${t.symbol}`];

@@ -39,3 +39,11 @@ class MarketDataProvider(ABC):
     def stream_ohlcv(self, symbol: str, interval: str) -> AsyncIterator["StreamEvent"]:
         """Async iterator yielding live StreamEvents. Optional."""
         raise NotImplementedError
+
+    def supports_streaming_quotes(self) -> bool:
+        """Whether the provider can stream last-price ticks via stream_quotes()."""
+        return False
+
+    def stream_quotes(self, symbol: str) -> AsyncIterator["StreamEvent"]:
+        """Async iterator yielding tick StreamEvents (kind='tick'). Optional."""
+        raise NotImplementedError

@@ -121,6 +121,14 @@ class BinanceProvider(MarketDataProvider):
 
         return stream_binance_klines(symbol, interval)
 
+    def supports_streaming_quotes(self) -> bool:
+        return True
+
+    def stream_quotes(self, symbol: str):
+        from backend.streaming.binance_stream import stream_binance_quotes
+
+        return stream_binance_quotes(symbol)
+
     def list_symbols(self) -> list[SymbolRecord]:
         client = self._make_client()
         info = client.get_exchange_info()
