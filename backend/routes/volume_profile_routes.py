@@ -11,7 +11,7 @@ import logging
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from backend.market import cache
 from backend.market.volume_profile import (
@@ -29,8 +29,7 @@ class ProfileBinDTO(BaseModel):
     up_vol: float = Field(..., alias="upVol")
     down_vol: float = Field(..., alias="downVol")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class ProfileResponse(BaseModel):
@@ -43,8 +42,7 @@ class ProfileResponse(BaseModel):
     val: float
     source: Literal["candle-distribution"]
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 def _to_dto(r: ProfileResult) -> ProfileResponse:

@@ -6,7 +6,7 @@ All timestamps are UTC, ISO8601.
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 class OHLCVCandle(BaseModel):
@@ -20,8 +20,9 @@ class OHLCVCandle(BaseModel):
     close: float = Field(..., gt=0, description="Close price")
     volume: float = Field(..., ge=0, description="Volume")
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.strftime("%Y-%m-%dT%H:%M:%SZ")}
+    @field_serializer("timestamp")
+    def _ser_ts(self, v: datetime) -> str:
+        return v.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class OHLCVCandleList(BaseModel):

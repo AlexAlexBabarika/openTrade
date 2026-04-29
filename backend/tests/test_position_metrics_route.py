@@ -17,15 +17,10 @@ def test_post_long_ok():
             "entryPrice": 100,
             "stopPrice": 95,
             "targetPrice": 110,
-            "riskAmount": 100,
         },
     )
     assert r.status_code == 200
-    body = r.json()
-    assert body["riskPriceDistance"] == 5.0
-    assert body["rewardPriceDistance"] == 10.0
-    assert body["riskRewardRatio"] == 2.0
-    assert body["quantity"] == 20.0
+    assert r.json() == {"riskRewardRatio": 2.0}
 
 
 def test_post_invalid_long_levels_422():

@@ -12,7 +12,7 @@ import logging
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 from backend.market import cache
 from backend.market.indicators import (
@@ -30,8 +30,9 @@ class IndicatorPoint(BaseModel):
     timestamp: datetime = Field(..., description="Point time, UTC ISO8601")
     value: float = Field(..., description="Indicator value")
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.strftime("%Y-%m-%dT%H:%M:%SZ")}
+    @field_serializer("timestamp")
+    def _ser_ts(self, v: datetime) -> str:
+        return v.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class IndicatorResponse(BaseModel):
@@ -47,8 +48,9 @@ class BollingerBandsPoint(BaseModel):
     middle: float = Field(..., description="Middle band (SMA) value")
     lower: float = Field(..., description="Lower band value")
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.strftime("%Y-%m-%dT%H:%M:%SZ")}
+    @field_serializer("timestamp")
+    def _ser_ts(self, v: datetime) -> str:
+        return v.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class BollingerBandsResponse(BaseModel):

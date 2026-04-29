@@ -73,7 +73,6 @@ export async function computePositionMetrics(
       entryPrice: d.geometry.entryPrice,
       stopPrice: d.geometry.stopPrice,
       targetPrice: d.geometry.targetPrice,
-      leverage: 1,
     },
     ctx.signal,
   );
