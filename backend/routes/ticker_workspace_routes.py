@@ -6,8 +6,7 @@ User scoping is enforced in Python; PostgREST uses the service role client.
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from postgrest.exceptions import APIError
+from fastapi import APIRouter, Depends
 
 from backend.core.auth_deps import get_current_user
 from backend.core.supabase_client import get_service_postgrest
@@ -17,9 +16,14 @@ from backend.models.ticker_workspace_models import (
     TickerWorkspaceResponse,
     default_ticker_workspace,
 )
+from backend.routes.db_error_handlers.ticker_workspace_db_error_handler import (
+    TickerWorkspaceDBErrorHandler,
+)
 
-logger = logging.getLogger(__name__)
-
+logger: logging.Logger = logging.getLogger(__name__)
+tickerWorkspaceDBErrorHandler: TickerWorkspaceDBErrorHandler = (
+    TickerWorkspaceDBErrorHandler(logger)
+)
 router = APIRouter(prefix="/user", tags=["user"])
 
 
@@ -30,21 +34,6 @@ def _parse_workspace_payload(raw: object) -> TickerWorkspaceBody | None:
         return TickerWorkspaceBody.model_validate(raw)
     except Exception:
         return None
-
-
-def _handle_ticker_workspace_error(exc: Exception, operation: str) -> HTTPException:
-    if isinstance(exc, APIError):
-        code = getattr(exc, "code", None) or "unknown"
-        msg = getattr(exc, "message", None) or str(exc)
-        return HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Database error {operation} [code {code}]: {msg}",
-        )
-    logger.exception("Ticker workspace %s failed", operation)
-    return HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail=f"Failed to {operation}.",
-    )
 
 
 @router.get("/ticker-workspace", response_model=TickerWorkspaceResponse)
@@ -61,7 +50,9 @@ def get_ticker_workspace(
             .execute()
         )
     except Exception as e:
-        raise _handle_ticker_workspace_error(e, "read ticker workspace") from e
+        raise tickerWorkspaceDBErrorHandler.handle_db_error(
+            e, "read ticker workspace"
+        ) from e
 
     rows = resp.data or []
     if not rows:
@@ -115,7 +106,9 @@ def put_ticker_workspace(
             .execute()
         )
     except Exception as e:
-        raise _handle_ticker_workspace_error(e, "save ticker workspace") from e
+        raise tickerWorkspaceDBErrorHandler.handle_db_error(
+            e, "save ticker workspace"
+        ) from e
 
     try:
         reread = (
@@ -126,7 +119,7 @@ def put_ticker_workspace(
             .execute()
         )
     except Exception as e:
-        raise _handle_ticker_workspace_error(
+        raise tickerWorkspaceDBErrorHandler.handle_db_error(
             e, "read ticker workspace after save"
         ) from e
     reread_rows = reread.data or []
