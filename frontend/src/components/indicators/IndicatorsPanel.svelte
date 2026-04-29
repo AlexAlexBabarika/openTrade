@@ -16,15 +16,17 @@
     provider,
     period,
     interval,
+    indicators,
   }: {
     open?: boolean;
     symbol: string;
     provider: MarketDataProviderValue;
     period: string;
     interval: string;
+    indicators: IndicatorState;
   } = $props();
 
-  const ind = new IndicatorState();
+  const ind = $derived(indicators);
 
   let splitPct = $state(60);
   let dragging = $state(false);

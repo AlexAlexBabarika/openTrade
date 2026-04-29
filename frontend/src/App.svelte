@@ -100,6 +100,7 @@
   } from '$lib/features/notes/notes';
   import ToolboxPanel from './components/toolbar/ToolboxPanel.svelte';
   import IndicatorsPanel from './components/indicators/IndicatorsPanel.svelte';
+  import { IndicatorState } from '$lib/features/indicators/indicatorState.svelte';
   import LeftToolbar from './components/toolbar/LeftToolbar.svelte';
   import ToolSettingsModal from './components/toolbar/ToolSettingsModal.svelte';
   import DrawablesPersistence from '$lib/features/drawables/DrawablesPersistence.svelte';
@@ -261,6 +262,7 @@
   }
   let toolboxOpen = $state(false);
   let indicatorsOpen = $state(false);
+  const indicators = new IndicatorState();
 
   const toolboxTileHandlers: Record<string, () => void> = {
     Indicators: () => (indicatorsOpen = true),
@@ -664,6 +666,7 @@
         {crosshairMode}
         provider={chart.source}
         interval={chart.interval}
+        scriptOutputs={indicators.lastResult?.outputs ?? []}
         bind:activeTool
         bind:api={chart.chartApi}
       />
@@ -734,6 +737,7 @@
     provider={chart.source}
     period={chart.period}
     interval={chart.interval}
+    {indicators}
   />
   <AppDialogs
     {groupDialogInitial}
