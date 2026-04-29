@@ -18,10 +18,12 @@
     open = $bindable(false),
     api = $bindable<ToolboxPanelApi | null>(null),
     theme,
+    onTileSelect,
   }: {
     open?: boolean;
     api?: ToolboxPanelApi | null;
     theme: Theme;
+    onTileSelect?: (title: string) => void;
   } = $props();
 
   // 0 = closed, 1 = open. May briefly overshoot for the bounce.
@@ -269,6 +271,12 @@
             rotation={30 * i}
             autoRotate={3 + i * 2}
             showBends={theme !== 'light'}
+            onclick={onTileSelect
+              ? () => {
+                  onTileSelect(card.title);
+                  close();
+                }
+              : undefined}
           />
         {/each}
       </div>

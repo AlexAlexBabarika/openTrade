@@ -8,6 +8,7 @@
     rotation = 0,
     autoRotate = 0,
     showBends = true,
+    onclick,
     children,
   }: {
     colors: string[];
@@ -15,12 +16,31 @@
     rotation?: number;
     autoRotate?: number;
     showBends?: boolean;
+    onclick?: () => void;
     children?: Snippet;
   } = $props();
+
+  const interactive = $derived(typeof onclick === 'function');
+
+  function handleKey(e: KeyboardEvent) {
+    if (!onclick) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onclick();
+    }
+  }
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
-  class="relative isolate overflow-hidden rounded-lg border border-border bg-foreground/5 p-6 aspect-square font-mono"
+  class="relative isolate overflow-hidden rounded-lg border border-border bg-foreground/5 p-6 aspect-square font-mono transition-transform"
+  class:cursor-pointer={interactive}
+  class:hover-lift={interactive}
+  role={interactive ? 'button' : undefined}
+  tabindex={interactive ? 0 : -1}
+  aria-label={interactive && title ? `Open ${title}` : undefined}
+  onclick={onclick}
+  onkeydown={handleKey}
 >
   {#if showBends}
     <div
@@ -53,3 +73,13 @@
     </h3>
   {/if}
 </div>
+
+<style>
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+  .hover-lift:focus-visible {
+    outline: 2px solid color-mix(in oklab, oklch(var(--primary)) 80%, transparent);
+    outline-offset: 3px;
+  }
+</style>
