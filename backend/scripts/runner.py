@@ -33,7 +33,7 @@ from backend.scripts.sandbox_globals import build_globals
 logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT_S = 5.0
-DEFAULT_MEMORY_MB = 256
+DEFAULT_MEMORY_MB = 512
 
 
 def _apply_resource_limits(memory_mb: int) -> None:
