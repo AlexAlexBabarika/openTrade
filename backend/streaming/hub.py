@@ -342,11 +342,22 @@ class StreamHub:
                         attempt = 0
                     group.recent.append(event)
                     if event.kind == "candle_close" and event.candle is not None:
-                        # Keep cache consistent with REST/replay paths.
-                        existing = cache.get_cached(provider_enum.value, symbol) or []
-                        cache.set_cached(
-                            provider_enum.value, symbol, [*existing, event.candle]
-                        )
+                        # Keep cache consistent with REST/replay paths, but
+                        # only when the cached entry was fetched at this
+                        # subscription's interval — otherwise we'd splice
+                        # bars from a different timeframe into the list.
+                        meta = cache.get_cached_meta(provider_enum.value, symbol)
+                        if meta is not None and meta[1] == interval:
+                            existing = (
+                                cache.get_cached(provider_enum.value, symbol) or []
+                            )
+                            cache.set_cached(
+                                provider_enum.value,
+                                symbol,
+                                [*existing, event.candle],
+                                period=meta[0],
+                                interval=meta[1],
+                            )
                     if event.candle is not None:
                         msg: ServerMessage = CandleMessage(
                             provider=provider_enum,

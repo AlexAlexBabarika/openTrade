@@ -155,7 +155,7 @@ async def get_yfinance(
         interval,
     )
     candles = cap_candles(candles)
-    cache.set_cached("yfinance", sym, candles)
+    cache.set_cached("yfinance", sym, candles, period=period, interval=interval)
     body = OHLCVCandleList(symbol=sym, candles=candles)
     return JSONResponse(
         content=body.model_dump(mode="json"),

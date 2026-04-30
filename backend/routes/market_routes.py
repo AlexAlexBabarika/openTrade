@@ -161,5 +161,5 @@ async def get_market_ohlcv(
         response.headers["X-OHLCV-Truncated"] = "true"
         response.headers["X-OHLCV-Truncated-From"] = str(before)
 
-    cache.set_cached(provider.value, sym, candles)
+    cache.set_cached(provider.value, sym, candles, period=period, interval=interval)
     return OHLCVCandleList(symbol=sym, candles=candles)

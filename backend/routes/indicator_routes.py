@@ -66,7 +66,8 @@ def _find_candles(symbol: str) -> list:
     sym = symbol.strip()
     for key in cache.list_cached_keys():
         if key.endswith(f":{sym}"):
-            candles = cache._data_cache.get(key)
+            provider = key.split(":", 1)[0]
+            candles = cache.get_cached(provider, sym)
             if candles:
                 return candles
     return []
