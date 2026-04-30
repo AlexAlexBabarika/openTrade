@@ -272,6 +272,31 @@
     toolboxTileHandlers[title]?.();
   }
 
+  let lastAutoRunVersion: number | null = null;
+  $effect(() => {
+    const v = chart.marketDataVersion;
+    if (lastAutoRunVersion === null) {
+      lastAutoRunVersion = v;
+      return;
+    }
+    if (v === lastAutoRunVersion) return;
+    if (
+      !chart.loadedSymbol ||
+      !indicators.activeId ||
+      indicators.lastResult?.status !== 'ok' ||
+      indicators.isRunning
+    ) {
+      return;
+    }
+    lastAutoRunVersion = v;
+    void indicators.run({
+      symbol: chart.loadedSymbol,
+      provider: chart.source,
+      period: chart.period,
+      interval: chart.interval,
+    });
+  });
+
   $effect(() => {
     if (authed) return;
     persistGroups(groups);
