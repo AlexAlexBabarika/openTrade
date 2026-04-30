@@ -134,8 +134,8 @@
     aria-modal="true"
     aria-label="Indicators workbench"
   >
-    <span class="corner tl" aria-hidden="true"></span>
-    <span class="corner tr" aria-hidden="true"></span>
+    <!-- <span class="corner tl" aria-hidden="true"></span>
+    <span class="corner tr" aria-hidden="true"></span> -->
 
     <header class="topbar">
       <div class="brand">
