@@ -107,6 +107,8 @@ def _coerce_markers(data: Any) -> list[MarkerPoint]:
             else:
                 t = item
             out.append(MarkerPoint(time=_to_unix_seconds(t)))
+            if len(out) > MAX_ROWS_PER_SERIES:
+                raise DisplayError(f"markers exceed max rows ({MAX_ROWS_PER_SERIES})")
         return out
     raise DisplayError("markers data must be a boolean Series or list of times")
 
@@ -192,12 +194,8 @@ class DisplayCollector:
         title: str = "histogram",
         pane_id: str | None = None,
     ) -> None:
-        if isinstance(data, pd.Series):
-            pts = _series_to_points(data)
-            hist = [HistogramPoint(time=p.time, value=p.value) for p in pts]
-        else:
-            base = _pairs_to_series_points(data)
-            hist = [HistogramPoint(time=p.time, value=p.value) for p in base]
+        pts = _coerce_series(data)
+        hist = [HistogramPoint(time=p.time, value=p.value) for p in pts]
         self._push(HistogramOutput(title=title, data=hist, pane_id=pane_id))
 
     def markers(

@@ -76,12 +76,11 @@ _SAFE_BUILTIN_NAMES: frozenset[str] = frozenset(
 )
 
 
-def _safe_builtins() -> dict[str, Any]:
-    return {
-        name: getattr(builtins, name)
-        for name in _SAFE_BUILTIN_NAMES
-        if hasattr(builtins, name)
-    }
+_SAFE_BUILTINS: dict[str, Any] = {
+    name: getattr(builtins, name)
+    for name in _SAFE_BUILTIN_NAMES
+    if hasattr(builtins, name)
+}
 
 
 def build_globals(df: pd.DataFrame, collector: DisplayCollector) -> dict[str, Any]:
@@ -91,7 +90,7 @@ def build_globals(df: pd.DataFrame, collector: DisplayCollector) -> dict[str, An
     columns (UTC).
     """
     return {
-        "__builtins__": _safe_builtins(),
+        "__builtins__": _SAFE_BUILTINS,
         # data
         "df": df,
         "open": df["open"],
