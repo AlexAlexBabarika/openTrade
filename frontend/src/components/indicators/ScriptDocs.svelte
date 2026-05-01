@@ -9,46 +9,47 @@
   };
 
   const dataGlobals: Param[] = [
-    { name: 'df', type: 'pd.DataFrame', desc: 'OHLCV frame, indexed by tz-aware UTC DatetimeIndex; columns: open, high, low, close, volume.' },
-    { name: 'open', type: 'pd.Series', desc: 'Bar open prices.' },
-    { name: 'high', type: 'pd.Series', desc: 'Bar high prices.' },
-    { name: 'low', type: 'pd.Series', desc: 'Bar low prices.' },
-    { name: 'close', type: 'pd.Series', desc: 'Bar close prices.' },
-    { name: 'price', type: 'pd.Series', desc: 'Alias for close.' },
-    { name: 'volume', type: 'pd.Series', desc: 'Bar volume.' },
-    { name: 'pd', type: 'module', desc: 'pandas — full API available.' },
+    { name: 'df', type: 'pl.DataFrame', desc: 'OHLCV frame; columns: timestamp (tz-aware UTC), open, high, low, close, volume.' },
+    { name: 'time', type: 'pl.Series', desc: 'Bar timestamps (tz-aware UTC). Alias for df["timestamp"].' },
+    { name: 'open', type: 'pl.Series', desc: 'Bar open prices.' },
+    { name: 'high', type: 'pl.Series', desc: 'Bar high prices.' },
+    { name: 'low', type: 'pl.Series', desc: 'Bar low prices.' },
+    { name: 'close', type: 'pl.Series', desc: 'Bar close prices.' },
+    { name: 'price', type: 'pl.Series', desc: 'Alias for close.' },
+    { name: 'volume', type: 'pl.Series', desc: 'Bar volume.' },
+    { name: 'pl', type: 'module', desc: 'polars — full API available.' },
     { name: 'np', type: 'module', desc: 'numpy — full API available.' },
   ];
 
   const helpers: Helper[] = [
     {
       name: 'crossover',
-      sig: 'crossover(a: Series, b: Series) -> Series[bool]',
+      sig: 'crossover(a: pl.Series, b: pl.Series) -> pl.Series[bool]',
       desc: 'True where a crosses above b (current >= b, previous < b).',
     },
     {
       name: 'crossunder',
-      sig: 'crossunder(a: Series, b: Series) -> Series[bool]',
+      sig: 'crossunder(a: pl.Series, b: pl.Series) -> pl.Series[bool]',
       desc: 'True where a crosses below b.',
     },
     {
       name: 'compute_rsi',
-      sig: 'compute_rsi(series, period=14) -> Series',
+      sig: 'compute_rsi(series: pl.Series, period=14) -> pl.Series',
       desc: 'Wilder-style RSI on a price series.',
     },
     {
       name: 'compute_macd',
-      sig: 'compute_macd(series, fast=12, slow=26, signal=9) -> (line, signal, hist)',
+      sig: 'compute_macd(series: pl.Series, fast=12, slow=26, signal=9) -> (line, signal, hist)',
       desc: 'MACD line, signal line, and histogram (line - signal).',
     },
     {
       name: 'compute_bbands',
-      sig: 'compute_bbands(series, period=20, num_std=2.0) -> (upper, middle, lower)',
+      sig: 'compute_bbands(series: pl.Series, period=20, num_std=2.0) -> (upper, middle, lower)',
       desc: 'Bollinger Bands using SMA and population std.',
     },
     {
       name: 'compute_atr',
-      sig: 'compute_atr(high, low, close, period=14) -> Series',
+      sig: 'compute_atr(high: pl.Series, low: pl.Series, close: pl.Series, period=14) -> pl.Series',
       desc: 'Average True Range (Wilder smoothing).',
     },
   ];
@@ -57,7 +58,7 @@
     {
       name: 'display.line',
       sig: 'display.line(data, *, title="series", color=None, line_width=None, line_style=None)',
-      desc: 'Overlay a line on the price pane. data: Series indexed by DatetimeIndex, or list of (time, value).',
+      desc: 'Overlay a line on the price pane. data: pl.Series aligned with df, or list of (time, value).',
     },
     {
       name: 'display.pane',
@@ -72,12 +73,12 @@
     {
       name: 'display.markers',
       sig: 'display.markers(data, *, shape=None, position=None, color=None, text=None)',
-      desc: 'Mark events on the price pane. data: boolean Series (markers where True), or list of timestamps.',
+      desc: 'Mark events on the price pane. data: boolean pl.Series (markers where True), or list of timestamps.',
     },
     {
       name: 'display.table',
       sig: 'display.table(columns: list[str], rows: list[list])',
-      desc: 'Render a small read-only table in the output console.',
+      desc: 'Render a small read-only table in the output console. Pass pl.DataFrame rows via .rows() / .iter_rows().',
     },
     {
       name: 'display.text',
@@ -107,8 +108,8 @@
   const examples: { title: string; code: string }[] = [
     {
       title: 'SMA overlay',
-      code: `sma20 = price.rolling(20).mean()
-sma50 = price.rolling(50).mean()
+      code: `sma20 = price.rolling_mean(20)
+sma50 = price.rolling_mean(50)
 display.line(sma20, title="SMA 20", color="#7dd3fc")
 display.line(sma50, title="SMA 50", color="#fbbf24")`,
     },
@@ -126,8 +127,8 @@ display.histogram(hist, title="hist", pane_id="macd")`,
     },
     {
       title: 'Crossover markers',
-      code: `fast = price.ewm(span=12, adjust=False).mean()
-slow = price.ewm(span=26, adjust=False).mean()
+      code: `fast = price.ewm_mean(span=12, adjust=False)
+slow = price.ewm_mean(span=26, adjust=False)
 ups   = crossover(fast, slow)
 downs = crossunder(fast, slow)
 display.markers(ups,   shape="arrowUp",   position="belowBar", color="#34d399")
@@ -135,8 +136,8 @@ display.markers(downs, shape="arrowDown", position="aboveBar", color="#f87171")`
     },
     {
       title: 'Diagnostic table',
-      code: `last = price.tail(5)
-display.table(["time", "close"], [[str(t), float(v)] for t, v in last.items()])`,
+      code: `last = df.tail(5)
+display.table(["time", "close"], [[str(t), float(c)] for t, c in zip(last["timestamp"], last["close"])])`,
     },
   ];
 </script>
