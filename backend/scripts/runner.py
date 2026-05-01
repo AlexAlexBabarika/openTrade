@@ -22,7 +22,7 @@ import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
 
-import pandas as pd
+import polars as pl
 
 from backend.scripts.ast_guard import ScriptValidationError, validate
 from backend.scripts.display import DisplayCollector, DisplayError
@@ -40,7 +40,7 @@ def _apply_resource_limits(memory_mb: int) -> None:
     """Best-effort POSIX resource caps. Silently skipped where unsupported.
 
     Note on memory: ``memory_mb`` is intentionally **not** enforced here.
-    ``RLIMIT_AS`` caps total virtual address space — which numpy/pandas
+    ``RLIMIT_AS`` caps total virtual address space — which numpy/polars
     blow past at import time via library mmaps — so on Linux it produced
     spurious ``MemoryError`` after a few KB of user allocations, and on
     macOS it silently failed (current limit > new max). ``RLIMIT_DATA``
@@ -79,7 +79,7 @@ def _block_network() -> None:
 def _child_main(
     conn,  # multiprocessing.connection.Connection
     code: str,
-    df: pd.DataFrame,
+    df: pl.DataFrame,
     memory_mb: int,
 ) -> None:
     """Top-level (picklable) entrypoint executed inside the spawned child."""
@@ -91,7 +91,7 @@ def _child_main(
     except OSError:
         pass
 
-    collector = DisplayCollector()
+    collector = DisplayCollector(df["timestamp"])
     g = build_globals(df, collector)
     stdout_buf = io.StringIO()
     stderr_buf = io.StringIO()
@@ -134,7 +134,7 @@ def _child_main(
 
 def run_script(
     code: str,
-    df: pd.DataFrame,
+    df: pl.DataFrame,
     *,
     timeout_s: float = DEFAULT_TIMEOUT_S,
     memory_mb: int = DEFAULT_MEMORY_MB,

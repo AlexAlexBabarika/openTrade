@@ -7,10 +7,9 @@ spinning up Supabase.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
-import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -206,24 +205,25 @@ def test_other_user_cannot_access(fake_db, auth_user_a, client):
 
 
 def test_execute_by_script_id_round_trip(fake_db, auth_user_a, client, monkeypatch):
-    code = "display.line(price.rolling(3).mean(), title='SMA3')"
+    code = "display.line(price.rolling_mean(3), title='SMA3')"
     r = client.post("/scripts", json={"name": "sma3", "code": code})
     assert r.status_code == 201
     sid = r.json()["id"]
 
-    idx = pd.date_range("2024-01-01", periods=10, freq="1D", tz="UTC")
+    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    timestamps = [start + timedelta(days=i) for i in range(10)]
     closes = np.linspace(100.0, 110.0, 10)
     candles = [
         OHLCVCandle(
             symbol="TEST",
-            timestamp=ts.to_pydatetime(),
+            timestamp=ts,
             open=float(c),
             high=float(c) + 1,
             low=float(c) - 1,
             close=float(c),
             volume=1000.0,
         )
-        for ts, c in zip(idx, closes)
+        for ts, c in zip(timestamps, closes)
     ]
     monkeypatch.setattr(script_routes.cache, "get_cached", lambda *a, **kw: candles)
 

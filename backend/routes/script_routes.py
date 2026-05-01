@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+from datetime import timezone
 
-import pandas as pd
+import polars as pl
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from postgrest.exceptions import APIError
@@ -48,26 +49,36 @@ class ExecuteRequest(BaseModel):
     memory_mb: int = Field(256, gt=0, le=1024)
 
 
-def _candles_to_df(candles) -> pd.DataFrame:
+def _candles_to_df(candles) -> pl.DataFrame:
+    schema = {
+        "timestamp": pl.Datetime("us", "UTC"),
+        "open": pl.Float64,
+        "high": pl.Float64,
+        "low": pl.Float64,
+        "close": pl.Float64,
+        "volume": pl.Float64,
+    }
     if not candles:
-        return pd.DataFrame(columns=["open", "high", "low", "close", "volume"]).astype(
-            float
+        return pl.DataFrame(schema=schema)
+    rows = []
+    for c in candles:
+        ts = c.timestamp
+        if ts.tzinfo is not None:
+            ts = ts.astimezone(timezone.utc).replace(tzinfo=None)
+        rows.append(
+            {
+                "timestamp": ts,
+                "open": float(c.open),
+                "high": float(c.high),
+                "low": float(c.low),
+                "close": float(c.close),
+                "volume": float(c.volume),
+            }
         )
-    rows = [
-        {
-            "timestamp": c.timestamp,
-            "open": c.open,
-            "high": c.high,
-            "low": c.low,
-            "close": c.close,
-            "volume": c.volume,
-        }
-        for c in candles
-    ]
-    df = pd.DataFrame(rows)
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
-    df = df.set_index("timestamp").sort_index()
-    return df
+    df = pl.DataFrame(rows).with_columns(
+        pl.col("timestamp").cast(pl.Datetime("us")).dt.replace_time_zone("UTC")
+    )
+    return df.sort("timestamp")
 
 
 def _row_to_info(row: dict) -> ScriptInfo:

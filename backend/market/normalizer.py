@@ -5,10 +5,8 @@ Ensures UTC ISO8601 timestamps.
 """
 
 import math
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
-
-import pandas as pd
 
 from backend.market.models import OHLCVCandle
 
@@ -51,7 +49,7 @@ def _is_null(value: Any) -> bool:
         return True
     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
         return True
-    return bool(pd.isna(value))
+    return False
 
 
 def parse_timestamp(value: Any) -> datetime:
@@ -63,6 +61,8 @@ def parse_timestamp(value: Any) -> datetime:
         )
     if isinstance(value, datetime):
         dt = value
+    elif isinstance(value, date):
+        dt = datetime(value.year, value.month, value.day)
     elif isinstance(value, (int, float)):
         if value > 1e12:
             value = value / 1000.0
