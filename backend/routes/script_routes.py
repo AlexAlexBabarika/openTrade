@@ -333,7 +333,6 @@ def delete_script(
             .delete()
             .eq("user_id", user.id)
             .eq("id", script_id)
-            .select("id")
             .execute()
         )
     except Exception as e:
