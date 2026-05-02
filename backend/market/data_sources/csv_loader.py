@@ -1,23 +1,35 @@
 """
-CSV data loader using pandas. Auto-detects column names and normalizes to unified schema.
+CSV data loader using polars. Auto-detects column names and normalizes to unified schema.
 """
 
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
+import polars as pl
 
 from backend.market.models import OHLCVCandle
-from backend.market.normalizer import normalize_column_name, normalize_rows
+from backend.market.normalizer import normalize_column_name, normalize_row
 from backend.market.data_sources.marketdataprovider import MarketDataProvider
 
 
-def _detect_time_column(df: pd.DataFrame) -> str | None:
+def _detect_time_column(df: pl.DataFrame) -> str | None:
     """Return first column that normalizes to 'timestamp'."""
     for c in df.columns:
         if normalize_column_name(c) == "timestamp":
             return c
     return None
+
+
+def _normalize_with_row_index(
+    rows: list[dict[str, Any]], symbol: str
+) -> list[OHLCVCandle]:
+    out: list[OHLCVCandle] = []
+    for i, row in enumerate(rows):
+        try:
+            out.append(normalize_row(row, symbol))
+        except ValueError as e:
+            raise ValueError(f"CSV row {i}: {e}") from e
+    return out
 
 
 class CsvLoader(MarketDataProvider):
@@ -39,8 +51,8 @@ class CsvLoader(MarketDataProvider):
     ) -> list[OHLCVCandle]:
         if not self._path.exists():
             raise FileNotFoundError(str(self._path))
-        df = pd.read_csv(self._path)
-        if df.empty:
+        df = pl.read_csv(self._path, try_parse_dates=True)
+        if df.is_empty():
             return []
 
         time_col = _detect_time_column(df)
@@ -49,20 +61,8 @@ class CsvLoader(MarketDataProvider):
                 "CSV must have a date/time column (Date, Datetime, time, timestamp, dt, t)"
             )
 
-        df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
-        null_mask = df[time_col].isnull()
-        if null_mask.any():
-            bad_rows = [i for i, v in enumerate(null_mask.tolist()) if v]
-            sample = bad_rows[:5]
-            raise ValueError(
-                f"CSV has unparseable timestamps in {time_col} at row(s) {sample}"
-                f"{'...' if len(bad_rows) > 5 else ''}. "
-                f"Total invalid rows: {len(bad_rows)}. "
-                "Check date format (e.g. YYYY-MM-DD, DD/MM/YYYY) or ensure no empty/invalid cells."
-            )
-
-        rows: list[dict[str, Any]] = df.to_dict(orient="records")
-        return normalize_rows(rows, symbol)
+        rows: list[dict[str, Any]] = df.to_dicts()
+        return _normalize_with_row_index(rows, symbol)
 
 
 def load_csv(path: str | Path, symbol: str) -> list[OHLCVCandle]:
@@ -77,10 +77,7 @@ def csv_preview(
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(str(path))
-    df = pd.read_csv(path, nrows=max_rows + 10)
-    time_col = _detect_time_column(df)
-    if time_col is not None:
-        df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
+    df = pl.read_csv(path, n_rows=max_rows + 10, try_parse_dates=True)
     columns = list(df.columns)
-    rows = df.head(max_rows).to_dict(orient="records")
+    rows = df.head(max_rows).to_dicts()
     return columns, rows

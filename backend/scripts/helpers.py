@@ -1,62 +1,68 @@
-"""Pure-pandas helpers exposed to user scripts."""
+"""Pure-polars helpers exposed to user scripts."""
 
 from __future__ import annotations
 
-import pandas as pd
+import polars as pl
 
 
-def crossover(a: pd.Series, b: pd.Series) -> pd.Series:
+def crossover(a: pl.Series, b: pl.Series) -> pl.Series:
     """True where `a` crosses above `b` (current >= b, previous < b)."""
-    a, b = a.align(b, join="inner")
     prev_a = a.shift(1)
     prev_b = b.shift(1)
     return (a >= b) & (prev_a < prev_b)
 
 
-def crossunder(a: pd.Series, b: pd.Series) -> pd.Series:
+def crossunder(a: pl.Series, b: pl.Series) -> pl.Series:
     """True where `a` crosses below `b`."""
     return crossover(b, a)
 
 
-def rsi(series: pd.Series, period: int = 14) -> pd.Series:
+def rsi(series: pl.Series, period: int = 14) -> pl.Series:
     delta = series.diff()
-    gain = delta.clip(lower=0.0)
-    loss = -delta.clip(upper=0.0)
-    avg_gain = gain.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
-    avg_loss = loss.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
-    rs = avg_gain / avg_loss.replace(0.0, float("nan"))
+    gain = delta.clip(lower_bound=0.0)
+    loss = (-delta).clip(lower_bound=0.0)
+    avg_gain = gain.ewm_mean(alpha=1 / period, adjust=False, min_periods=period)
+    avg_loss = loss.ewm_mean(alpha=1 / period, adjust=False, min_periods=period)
+    avg_loss_safe = pl.select(
+        pl.when(avg_loss == 0.0).then(float("nan")).otherwise(avg_loss)
+    ).to_series()
+    rs = avg_gain / avg_loss_safe
     return 100.0 - (100.0 / (1.0 + rs))
 
 
 def macd(
-    series: pd.Series,
+    series: pl.Series,
     fast: int = 12,
     slow: int = 26,
     signal: int = 9,
-) -> tuple[pd.Series, pd.Series, pd.Series]:
+) -> tuple[pl.Series, pl.Series, pl.Series]:
     """Returns (macd_line, signal_line, histogram)."""
-    ema_fast = series.ewm(span=fast, adjust=False).mean()
-    ema_slow = series.ewm(span=slow, adjust=False).mean()
+    ema_fast = series.ewm_mean(span=fast, adjust=False)
+    ema_slow = series.ewm_mean(span=slow, adjust=False)
     line = ema_fast - ema_slow
-    sig = line.ewm(span=signal, adjust=False).mean()
+    sig = line.ewm_mean(span=signal, adjust=False)
     return line, sig, line - sig
 
 
 def bbands(
-    series: pd.Series, period: int = 20, num_std: float = 2.0
-) -> tuple[pd.Series, pd.Series, pd.Series]:
+    series: pl.Series, period: int = 20, num_std: float = 2.0
+) -> tuple[pl.Series, pl.Series, pl.Series]:
     """Returns (upper, middle, lower)."""
-    middle = series.rolling(period).mean()
-    std = series.rolling(period).std(ddof=0)
+    middle = series.rolling_mean(period)
+    std = series.rolling_std(period, ddof=0)
     return middle + num_std * std, middle, middle - num_std * std
 
 
 def atr(
-    high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14
-) -> pd.Series:
+    high: pl.Series, low: pl.Series, close: pl.Series, period: int = 14
+) -> pl.Series:
     prev_close = close.shift(1)
-    tr = pd.concat(
-        [(high - low).abs(), (high - prev_close).abs(), (low - prev_close).abs()],
-        axis=1,
-    ).max(axis=1)
-    return tr.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    tr1 = (high - low).abs()
+    tr2 = (high - prev_close).abs()
+    tr3 = (low - prev_close).abs()
+    tr = (
+        pl.DataFrame({"a": tr1, "b": tr2, "c": tr3})
+        .select(pl.max_horizontal("a", "b", "c"))
+        .to_series()
+    )
+    return tr.ewm_mean(alpha=1 / period, adjust=False, min_periods=period)

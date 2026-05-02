@@ -6,7 +6,7 @@ import builtins
 from typing import Any
 
 import numpy as np
-import pandas as pd
+import polars as pl
 
 from backend.scripts import helpers
 from backend.scripts.display import DisplayCollector
@@ -83,16 +83,17 @@ _SAFE_BUILTINS: dict[str, Any] = {
 }
 
 
-def build_globals(df: pd.DataFrame, collector: DisplayCollector) -> dict[str, Any]:
+def build_globals(df: pl.DataFrame, collector: DisplayCollector) -> dict[str, Any]:
     """Build the globals dict for `exec(code, globals)`.
 
-    `df` is expected to be DatetimeIndex-indexed with `open/high/low/close/volume`
-    columns (UTC).
+    `df` is expected to be a polars DataFrame with columns
+    `timestamp/open/high/low/close/volume` (timestamp UTC).
     """
     return {
         "__builtins__": _SAFE_BUILTINS,
         # data
         "df": df,
+        "time": df["timestamp"],
         "open": df["open"],
         "high": df["high"],
         "low": df["low"],
@@ -100,7 +101,7 @@ def build_globals(df: pd.DataFrame, collector: DisplayCollector) -> dict[str, An
         "price": df["close"],
         "volume": df["volume"],
         # libs
-        "pd": pd,
+        "pl": pl,
         "np": np,
         # helpers
         "display": collector,
