@@ -16,6 +16,8 @@ export interface SubscribeMarketStreamOptions extends CandleSubscription {
   historyEndIso?: string;
   /** Fired for every candle that should be applied to the chart (snapshot tail + live updates). */
   onCandle: (c: OHLCVCandle, isFinal: boolean) => void;
+  /** Fired only when the live stream delivers a final (closed) candle. Snapshot replay does NOT trigger this. */
+  onCandleClose?: (c: OHLCVCandle) => void;
   onStatus?: (s: StreamStatus) => void;
 }
 
@@ -28,7 +30,7 @@ export interface SubscribeMarketStreamOptions extends CandleSubscription {
 export function subscribeMarketStream(
   opts: SubscribeMarketStreamOptions,
 ): () => void {
-  const { historyEndIso, onCandle, onStatus, ...sub } = opts;
+  const { historyEndIso, onCandle, onCandleClose, onStatus, ...sub } = opts;
   const cutoff = historyEndIso
     ? Date.parse(historyEndIso)
     : Number.NEGATIVE_INFINITY;
@@ -50,6 +52,7 @@ export function subscribeMarketStream(
       },
       onCandle: msg => {
         onCandle(msg.candle, msg.is_final);
+        if (msg.is_final) onCandleClose?.(msg.candle);
       },
       onConnectionChange: state => {
         onStatus?.(mapState(state));
