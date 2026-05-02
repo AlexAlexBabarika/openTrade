@@ -33,19 +33,25 @@ from backend.scripts.sandbox_globals import build_globals
 logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT_S = 5.0
-DEFAULT_MEMORY_MB = 256
+DEFAULT_MEMORY_MB = 512
 
 
 def _apply_resource_limits(memory_mb: int) -> None:
-    """Best-effort POSIX resource caps. Silently skipped where unsupported."""
+    """Best-effort POSIX resource caps. Silently skipped where unsupported.
+
+    Note on memory: ``memory_mb`` is intentionally **not** enforced here.
+    ``RLIMIT_AS`` caps total virtual address space — which numpy/pandas
+    blow past at import time via library mmaps — so on Linux it produced
+    spurious ``MemoryError`` after a few KB of user allocations, and on
+    macOS it silently failed (current limit > new max). ``RLIMIT_DATA``
+    misses anything numpy mmaps (i.e. most arrays). The real memory bound
+    is the wallclock timeout plus, in production, a container/cgroup limit
+    (see plan §Security and phase 6 hardening).
+    """
+    del memory_mb  # accepted for forward-compat (e.g. cgroup-driven runner)
     try:
         import resource
 
-        mem_bytes = memory_mb * 1024 * 1024
-        try:
-            resource.setrlimit(resource.RLIMIT_AS, (mem_bytes, mem_bytes))
-        except (ValueError, OSError):
-            pass
         try:
             # CPU-seconds upper bound — wallclock timeout is the real one.
             resource.setrlimit(resource.RLIMIT_CPU, (30, 30))

@@ -15,10 +15,7 @@ def crossover(a: pd.Series, b: pd.Series) -> pd.Series:
 
 def crossunder(a: pd.Series, b: pd.Series) -> pd.Series:
     """True where `a` crosses below `b`."""
-    a, b = a.align(b, join="inner")
-    prev_a = a.shift(1)
-    prev_b = b.shift(1)
-    return (a <= b) & (prev_a > prev_b)
+    return crossover(b, a)
 
 
 def rsi(series: pd.Series, period: int = 14) -> pd.Series:

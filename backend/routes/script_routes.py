@@ -147,7 +147,9 @@ async def execute(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    candles = cache.get_cached(body.provider.value, sym)
+    candles = cache.get_cached(
+        body.provider.value, sym, period=body.period, interval=body.interval
+    )
     if not candles:
         try:
             candles = await run_in_threadpool(
@@ -174,7 +176,13 @@ async def execute(
                 detail="Failed to load market data",
             ) from e
         candles = cap_candles(candles)
-        cache.set_cached(body.provider.value, sym, candles)
+        cache.set_cached(
+            body.provider.value,
+            sym,
+            candles,
+            period=body.period,
+            interval=body.interval,
+        )
 
     if not candles:
         raise HTTPException(

@@ -9,8 +9,8 @@ export type ScriptOutput =
       data: ScriptOutputPoint[];
       color: string | null;
       title: string;
-      line_width: number;
-      line_style: string;
+      line_width: number | null;
+      line_style: string | null;
     }
   | {
       type: 'pane';
@@ -23,8 +23,8 @@ export type ScriptOutput =
   | {
       type: 'markers';
       data: { time: number }[];
-      shape: string;
-      position: string;
+      shape: string | null;
+      position: string | null;
       color: string | null;
       text: string | null;
     }
@@ -32,7 +32,7 @@ export type ScriptOutput =
   | { type: 'text'; text: string; level: 'info' | 'warn' | 'error' }
   | {
       type: 'histogram';
-      data: { time: number; value: number; color?: string | null }[];
+      data: (ScriptOutputPoint & { color?: string | null })[];
       pane_id: string | null;
       title: string;
     };

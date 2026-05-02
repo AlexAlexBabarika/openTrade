@@ -45,35 +45,6 @@ FORBIDDEN_NAMES: frozenset[str] = frozenset(
     }
 )
 
-FORBIDDEN_ATTRS: frozenset[str] = frozenset(
-    {
-        "__class__",
-        "__bases__",
-        "__base__",
-        "__mro__",
-        "__subclasses__",
-        "__globals__",
-        "__builtins__",
-        "__import__",
-        "__getattribute__",
-        "__getattr__",
-        "__setattr__",
-        "__delattr__",
-        "__dict__",
-        "__code__",
-        "__closure__",
-        "__func__",
-        "__self__",
-        "__module__",
-        "__loader__",
-        "__spec__",
-        "__init_subclass__",
-        "__class_getitem__",
-        "__reduce__",
-        "__reduce_ex__",
-    }
-)
-
 
 class ScriptValidationError(ValueError):
     """Raised when a user script contains a disallowed construct."""
