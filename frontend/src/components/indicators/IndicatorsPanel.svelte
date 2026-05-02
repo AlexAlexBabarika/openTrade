@@ -16,15 +16,17 @@
     provider,
     period,
     interval,
+    indicators,
   }: {
     open?: boolean;
     symbol: string;
     provider: MarketDataProviderValue;
     period: string;
     interval: string;
+    indicators: IndicatorState;
   } = $props();
 
-  const ind = new IndicatorState();
+  const ind = $derived(indicators);
 
   let splitPct = $state(60);
   let dragging = $state(false);
@@ -132,8 +134,8 @@
     aria-modal="true"
     aria-label="Indicators workbench"
   >
-    <span class="corner tl" aria-hidden="true"></span>
-    <span class="corner tr" aria-hidden="true"></span>
+    <!-- <span class="corner tl" aria-hidden="true"></span>
+    <span class="corner tr" aria-hidden="true"></span> -->
 
     <header class="topbar">
       <div class="brand">

@@ -24,9 +24,13 @@ from backend.core.auth_deps import get_current_user
 from backend.models.auth_models import AuthUserInfo
 from backend.core.encryption import encrypt_api_key, make_key_prefix
 from backend.core.supabase_client import get_service_postgrest
+from backend.routes.db_error_handlers.api_key_db_error_handler import (
+    ApiKeyDBErrorHandler,
+)
 
-logger = logging.getLogger(__name__)
-
+apiKeyDBErrorHandler: ApiKeyDBErrorHandler = ApiKeyDBErrorHandler(
+    logging.getLogger(__name__)
+)
 router = APIRouter(prefix="/user/api-keys", tags=["api-keys"])
 
 
@@ -37,53 +41,6 @@ def _row_to_info(row: dict) -> ApiKeyInfo:
         key_prefix=row["key_prefix"],
         created_at=str(row["created_at"]),
         updated_at=str(row["updated_at"]),
-    )
-
-
-def _handle_api_key_error(exc: Exception, operation: str) -> HTTPException:
-    """
-    Map PostgREST/encryption errors to HTTPException with actionable detail.
-    Logs full error for debugging.
-    """
-    if isinstance(exc, APIError):
-        code = getattr(exc, "code", None) or "unknown"
-        msg = getattr(exc, "message", None) or str(exc)
-        hint = getattr(exc, "hint", None)
-        details = getattr(exc, "details", None)
-        logger.exception(
-            "API key %s failed: code=%s message=%r hint=%r details=%r",
-            operation,
-            code,
-            msg,
-            hint,
-            details,
-        )
-        # Map known Postgres/PostgREST codes to user-facing messages (include code for debugging)
-        code_suffix = f" [code {code}]" if code else ""
-        if code == "42501":
-            detail = f"Permission denied: {msg}. Ensure your session is valid and try again.{code_suffix}"
-        elif code == "23503":
-            detail = f"Referenced user or resource not found.{code_suffix}"
-        elif code == "23505":
-            detail = f"Duplicate entry: {msg}{code_suffix}"
-        elif code == "42P01":
-            detail = f"Database schema issue. {code_suffix}"
-        elif str(code).startswith("PGRST"):
-            detail = f"Request error: {msg}{code_suffix}"
-        else:
-            detail = f"{msg}" + (f" ({hint})" if hint else "") + code_suffix
-        return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
-    if isinstance(exc, RuntimeError) and "API_KEYS_ENCRYPTION_KEY" in str(exc):
-        logger.exception("API key %s failed: encryption not configured", operation)
-        return HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="API key storage is not configured.",
-        )
-    logger.exception("API key %s failed: %s", operation, exc)
-    # Never expose internal exception details to the client.
-    return HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail=f"Failed to {operation}.",
     )
 
 
@@ -101,7 +58,7 @@ def list_api_keys(
             .execute()
         )
     except Exception as e:
-        raise _handle_api_key_error(e, "list API keys")
+        raise apiKeyDBErrorHandler.handle_db_error(e, "list API keys")
     rows = resp.data or []
     return ApiKeyListResponse(keys=[_row_to_info(r) for r in rows])
 
@@ -117,7 +74,7 @@ def create_api_key(
         encrypted = encrypt_api_key(body.api_key)
         prefix = make_key_prefix(body.api_key)
     except Exception as e:
-        raise _handle_api_key_error(e, "encrypt API key")
+        raise apiKeyDBErrorHandler.handle_db_error(e, "encrypt API key")
 
     try:
         resp = (
@@ -138,9 +95,9 @@ def create_api_key(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"API key for {body.provider.value} already exists. Use PUT to update.",
             ) from e
-        raise _handle_api_key_error(e, "create API key")
+        raise apiKeyDBErrorHandler.handle_db_error(e, "create API key")
     except Exception as e:
-        raise _handle_api_key_error(e, "create API key")
+        raise apiKeyDBErrorHandler.handle_db_error(e, "create API key")
 
     row = resp.data[0] if resp.data else None
     if not row:
@@ -168,7 +125,9 @@ def update_api_key(
             .execute()
         )
     except Exception as e:
-        raise _handle_api_key_error(e, "check existing API key for update")
+        raise apiKeyDBErrorHandler.handle_db_error(
+            e, "check existing API key for update"
+        )
     if not existing.data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -179,7 +138,7 @@ def update_api_key(
         encrypted = encrypt_api_key(body.api_key)
         prefix = make_key_prefix(body.api_key)
     except Exception as e:
-        raise _handle_api_key_error(e, "encrypt API key")
+        raise apiKeyDBErrorHandler.handle_db_error(e, "encrypt API key")
 
     try:
         resp = (
@@ -195,7 +154,7 @@ def update_api_key(
             .execute()
         )
     except Exception as e:
-        raise _handle_api_key_error(e, "update API key")
+        raise apiKeyDBErrorHandler.handle_db_error(e, "update API key")
     row = resp.data[0] if resp.data else None
     if not row:
         raise HTTPException(
@@ -221,7 +180,7 @@ def delete_api_key(
             .execute()
         )
     except Exception as e:
-        raise _handle_api_key_error(e, "delete API key")
+        raise apiKeyDBErrorHandler.handle_db_error(e, "delete API key")
     if not resp.data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -246,7 +205,7 @@ def list_audit_log(
             .execute()
         )
     except Exception as e:
-        raise _handle_api_key_error(e, "list audit log")
+        raise apiKeyDBErrorHandler.handle_db_error(e, "list audit log")
     rows = resp.data or []
     entries = [
         ApiKeyAuditEntry(

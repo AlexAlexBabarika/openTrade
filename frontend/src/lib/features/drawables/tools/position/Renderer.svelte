@@ -65,27 +65,19 @@
 
   let metrics = $derived(data ?? null);
 
-  /** Same math as backend when API omits or nulls `riskRewardRatio`. */
+  /** Fallback when API hasn't replied yet (data is null on first render). */
   function riskRewardFromGeometry(g: PositionGeo, long: boolean): number | null {
-    if (long) {
-      const risk = g.entryPrice - g.stopPrice;
-      const reward = g.targetPrice - g.entryPrice;
-      if (!(risk > 0 && reward > 0)) return null;
-      return reward / risk;
-    }
-    const risk = g.stopPrice - g.entryPrice;
-    const reward = g.entryPrice - g.targetPrice;
+    const risk = long ? g.entryPrice - g.stopPrice : g.stopPrice - g.entryPrice;
+    const reward = long
+      ? g.targetPrice - g.entryPrice
+      : g.entryPrice - g.targetPrice;
     if (!(risk > 0 && reward > 0)) return null;
     return reward / risk;
   }
 
   let displayRiskReward = $derived.by(() => {
-    const m = metrics;
-    if (!m) return null;
-    const camel = m.riskRewardRatio;
-    if (camel != null && Number.isFinite(camel)) return camel;
-    const snake = (m as { risk_reward_ratio?: number | null }).risk_reward_ratio;
-    if (snake != null && Number.isFinite(snake)) return snake;
+    const rr = metrics?.riskRewardRatio;
+    if (rr != null && Number.isFinite(rr)) return rr;
     return riskRewardFromGeometry(drawable.geometry, isLong);
   });
 

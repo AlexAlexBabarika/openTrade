@@ -28,10 +28,12 @@ from backend.models.script_models import (
 from backend.routes.market_routes import _fetch_candles_blocking
 from backend.scripts.output_models import RunResult
 from backend.scripts.runner import run_script
+from backend.routes.db_error_handlers.script_db_error_handler import (
+    ScriptDBErrorHandler,
+)
 
-
-logger = logging.getLogger(__name__)
-
+logger: logging.Logger = logging.getLogger(__name__)
+scriptDBErrorHandler: ScriptDBErrorHandler = ScriptDBErrorHandler(logger)
 router = APIRouter(prefix="/scripts", tags=["scripts"])
 
 
@@ -78,27 +80,6 @@ def _row_to_info(row: dict) -> ScriptInfo:
     )
 
 
-def _handle_db_error(exc: Exception, operation: str) -> HTTPException:
-    if isinstance(exc, APIError):
-        code = getattr(exc, "code", None) or "unknown"
-        msg = getattr(exc, "message", None) or str(exc)
-        logger.exception("user_scripts %s failed: code=%s msg=%r", operation, code, msg)
-        if code == "23505":
-            return HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"A script with this name already exists [code {code}]",
-            )
-        return HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Database error {operation} [code {code}]: {msg}",
-        )
-    logger.exception("user_scripts %s failed: %s", operation, exc)
-    return HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail=f"Failed to {operation}.",
-    )
-
-
 def _load_script_code(user_id: str, script_id: str) -> str:
     db = get_service_postgrest()
     try:
@@ -111,7 +92,7 @@ def _load_script_code(user_id: str, script_id: str) -> str:
             .execute()
         )
     except Exception as e:
-        raise _handle_db_error(e, "load script") from e
+        raise scriptDBErrorHandler.handle_db_error(e, "load script") from e
     rows = resp.data or []
     if not rows:
         raise HTTPException(
@@ -225,7 +206,7 @@ def list_scripts(
             .execute()
         )
     except Exception as e:
-        raise _handle_db_error(e, "list scripts") from e
+        raise scriptDBErrorHandler.handle_db_error(e, "list scripts") from e
     return ScriptListResponse(scripts=[_row_to_info(r) for r in resp.data or []])
 
 
@@ -248,7 +229,7 @@ def create_script(
             .execute()
         )
     except Exception as e:
-        raise _handle_db_error(e, "create script") from e
+        raise scriptDBErrorHandler.handle_db_error(e, "create script") from e
     row = resp.data[0] if resp.data else None
     if not row:
         raise HTTPException(
@@ -274,7 +255,7 @@ def get_script(
             .execute()
         )
     except Exception as e:
-        raise _handle_db_error(e, "read script") from e
+        raise scriptDBErrorHandler.handle_db_error(e, "read script") from e
     rows = resp.data or []
     if not rows:
         raise HTTPException(
@@ -311,7 +292,7 @@ def update_script(
             .execute()
         )
     except Exception as e:
-        raise _handle_db_error(e, "update script") from e
+        raise scriptDBErrorHandler.handle_db_error(e, "update script") from e
     rows = resp.data or []
     if not rows:
         raise HTTPException(
@@ -337,7 +318,7 @@ def delete_script(
             .execute()
         )
     except Exception as e:
-        raise _handle_db_error(e, "delete script") from e
+        raise scriptDBErrorHandler.handle_db_error(e, "delete script") from e
     if not resp.data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
