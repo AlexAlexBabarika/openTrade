@@ -7,6 +7,7 @@
   import X from '@lucide/svelte/icons/x';
   import ScriptEditor from './ScriptEditor.svelte';
   import ScriptOutputs from './ScriptOutputs.svelte';
+  import ScriptDocs from './ScriptDocs.svelte';
   import { IndicatorState } from '$lib/features/indicators/indicatorState.svelte';
   import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
 
@@ -28,6 +29,7 @@
 
   const ind = $derived(indicators);
 
+  let tab = $state<'editor' | 'docs'>('editor');
   let splitPct = $state(60);
   let dragging = $state(false);
   let panelEl = $state<HTMLDivElement | null>(null);
@@ -144,6 +146,21 @@
         <span class="brand-sub">/ workbench</span>
       </div>
 
+      <nav class="tabs" aria-label="Workbench tabs">
+        <button
+          type="button"
+          class="tab"
+          class:active={tab === 'editor'}
+          onclick={() => (tab = 'editor')}
+        >editor</button>
+        <button
+          type="button"
+          class="tab"
+          class:active={tab === 'docs'}
+          onclick={() => (tab = 'docs')}
+        >docs</button>
+      </nav>
+
       <div class="ctx" aria-label="Active market context">
         <span class="ctx-label">CTX</span>
         <span class="ctx-pair">
@@ -162,7 +179,10 @@
       </button>
     </header>
 
-    <div class="body">
+    <div class="body" class:docs-mode={tab === 'docs'}>
+      {#if tab === 'docs'}
+        <ScriptDocs />
+      {:else}
       <aside class="rail" aria-label="Saved scripts">
         <div class="rail-head">
           <span class="rail-title">scripts</span>
@@ -327,6 +347,7 @@
           </div>
         </div>
       </main>
+      {/if}
     </div>
   </div>
 {/if}
@@ -393,7 +414,7 @@
 
   .topbar {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto auto 1fr auto;
     align-items: center;
     gap: 16px;
     padding: 14px 22px;
@@ -476,11 +497,44 @@
     background: color-mix(in oklab, #ff7373 12%, transparent);
   }
 
+  .tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid color-mix(in oklab, oklch(var(--border)) 100%, transparent);
+    border-radius: 4px;
+    background: color-mix(in oklab, oklch(var(--background)) 70%, black 30%);
+  }
+  .tab {
+    appearance: none;
+    border: 0;
+    padding: 4px 12px;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: lowercase;
+    color: oklch(var(--muted-foreground));
+    background: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 120ms ease;
+  }
+  .tab:hover { color: oklch(var(--foreground)); }
+  .tab.active {
+    color: oklch(var(--primary-foreground));
+    background: oklch(var(--primary));
+    font-weight: 700;
+  }
+
   .body {
     flex: 1 1 auto;
     min-height: 0;
     display: grid;
     grid-template-columns: 280px 1fr;
+  }
+  .body.docs-mode {
+    grid-template-columns: 1fr;
   }
 
   .rail {
