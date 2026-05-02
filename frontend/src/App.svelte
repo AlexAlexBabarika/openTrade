@@ -99,6 +99,7 @@
     deleteNote,
   } from '$lib/features/notes/notes';
   import ToolboxPanel from './components/toolbar/ToolboxPanel.svelte';
+  import IndicatorsPanel from './components/indicators/IndicatorsPanel.svelte';
   import LeftToolbar from './components/toolbar/LeftToolbar.svelte';
   import ToolSettingsModal from './components/toolbar/ToolSettingsModal.svelte';
   import DrawablesPersistence from '$lib/features/drawables/DrawablesPersistence.svelte';
@@ -259,6 +260,15 @@
     }
   }
   let toolboxOpen = $state(false);
+  let indicatorsOpen = $state(false);
+
+  const toolboxTileHandlers: Record<string, () => void> = {
+    Indicators: () => (indicatorsOpen = true),
+  };
+
+  function handleToolboxTile(title: string) {
+    toolboxTileHandlers[title]?.();
+  }
 
   $effect(() => {
     if (authed) return;
@@ -713,7 +723,18 @@
     {sidebarVisible}
     ontogglesidebar={() => (sidebarVisible = !sidebarVisible)}
   />
-  <ToolboxPanel bind:open={toolboxOpen} {theme} />
+  <ToolboxPanel
+    bind:open={toolboxOpen}
+    {theme}
+    onTileSelect={handleToolboxTile}
+  />
+  <IndicatorsPanel
+    bind:open={indicatorsOpen}
+    symbol={chart.loadedSymbol || chart.symbol}
+    provider={chart.source}
+    period={chart.period}
+    interval={chart.interval}
+  />
   <AppDialogs
     {groupDialogInitial}
     {groupDialogExistingNames}
