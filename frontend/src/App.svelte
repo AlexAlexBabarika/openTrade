@@ -280,16 +280,9 @@
       return;
     }
     if (v === lastAutoRunVersion) return;
-    if (
-      !chart.loadedSymbol ||
-      !indicators.activeId ||
-      indicators.lastResult?.status !== 'ok' ||
-      indicators.isRunning
-    ) {
-      return;
-    }
+    if (!chart.loadedSymbol) return;
     lastAutoRunVersion = v;
-    void indicators.run({
+    indicators.rerunAll({
       symbol: chart.loadedSymbol,
       provider: chart.source,
       period: chart.period,
@@ -297,26 +290,19 @@
     });
   });
 
-  let lastAutoRunBarTs: number | null = null;
   $effect(() => {
     const ts = chart.liveBarCloseTs;
     if (ts === null) return;
-    if (lastAutoRunBarTs !== null && ts <= lastAutoRunBarTs) return;
-    if (
-      !chart.loadedSymbol ||
-      !indicators.activeId ||
-      indicators.lastResult?.status !== 'ok' ||
-      indicators.isRunning
-    ) {
-      return;
-    }
-    lastAutoRunBarTs = ts;
-    void indicators.run({
-      symbol: chart.loadedSymbol,
-      provider: chart.source,
-      period: chart.period,
-      interval: chart.interval,
-    });
+    if (!chart.loadedSymbol) return;
+    indicators.tickAll(
+      {
+        symbol: chart.loadedSymbol,
+        provider: chart.source,
+        period: chart.period,
+        interval: chart.interval,
+      },
+      ts,
+    );
   });
 
   $effect(() => {
@@ -713,7 +699,7 @@
         {crosshairMode}
         provider={chart.source}
         interval={chart.interval}
-        scriptOutputs={indicators.lastResult?.outputs ?? []}
+        runningScripts={indicators.runningOutputs}
         bind:activeTool
         bind:api={chart.chartApi}
       />

@@ -95,10 +95,13 @@ export type ExecuteParams = {
   timeout_s?: number;
 };
 
-export function executeScript(params: ExecuteParams): Promise<RunResult> {
+export function executeScript(
+  params: ExecuteParams,
+  signal?: AbortSignal,
+): Promise<RunResult> {
   return apiJson<RunResult>(
     '/scripts/execute',
-    { method: 'POST', body: JSON.stringify(params) },
+    { method: 'POST', body: JSON.stringify(params), signal },
     true,
   );
 }

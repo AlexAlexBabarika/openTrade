@@ -47,7 +47,8 @@
   } from '$lib/features/drawables';
   import ChartViewport from './ChartViewport.svelte';
   import ChartScriptOverlay from './ChartScriptOverlay.svelte';
-  import type { ScriptOutput } from '$lib/features/indicators/scripts';
+  import ChartScriptMarkers from './ChartScriptMarkers.svelte';
+  import type { RunningScript } from '$lib/features/indicators/indicatorState.svelte';
 
   export type ChartApi = { appendCandle: (c: OHLCVCandle) => void };
 
@@ -67,7 +68,7 @@
     crosshairMode = 'magnet' as CrosshairModeName,
     provider = 'yfinance' as string,
     interval = '1d' as string,
-    scriptOutputs = [] as ScriptOutput[],
+    runningScripts = [] as RunningScript[],
     activeTool = $bindable<ActiveTool>(CURSOR),
     api = $bindable<ChartApi | null>(null),
   }: {
@@ -86,7 +87,7 @@
     crosshairMode?: CrosshairModeName;
     provider: string;
     interval: string;
-    scriptOutputs?: ScriptOutput[];
+    runningScripts?: RunningScript[];
     activeTool: ActiveTool;
     api?: ChartApi | null;
   } = $props();
@@ -592,8 +593,14 @@
   legendTextColour={colours?.textColour}
 />
 
-<ChartScriptOverlay
-  chartFn={() => chart}
+{#each runningScripts as rs (rs.scriptId)}
+  <ChartScriptOverlay
+    chartFn={() => chart}
+    scriptId={rs.scriptId}
+    outputs={rs.outputs}
+  />
+{/each}
+<ChartScriptMarkers
   priceSeriesFn={() => priceSeries()}
-  outputs={scriptOutputs}
+  {runningScripts}
 />

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import Plus from '@lucide/svelte/icons/plus';
   import Play from '@lucide/svelte/icons/play';
+  import Square from '@lucide/svelte/icons/square';
   import Save from '@lucide/svelte/icons/save';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
@@ -87,6 +88,22 @@
 
   async function runNow() {
     await ind.run({ symbol, provider, period, interval });
+  }
+
+  function stopNow() {
+    if (ind.activeId) ind.stop(ind.activeId);
+  }
+
+  async function toggleScriptRun(id: string) {
+    if (ind.runners[id]) {
+      ind.stop(id);
+      return;
+    }
+    if (id === ind.activeId) {
+      await runNow();
+      return;
+    }
+    await ind.start(id, { symbol, provider, period, interval });
   }
 
   async function saveNow() {
@@ -217,7 +234,25 @@
               class:active={ind.activeId === s.id}
               onclick={() => ind.openScript(s.id)}
             >
-              <span class="ri-mark" aria-hidden="true">·</span>
+              <span
+                class="ri-status"
+                class:running={ind.isRunningOk(s.id)}
+                role="button"
+                tabindex="-1"
+                aria-label={ind.runners[s.id] ? 'stop script' : 'start script'}
+                title={ind.runners[s.id] ? 'stop script' : 'start script'}
+                onclick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  void toggleScriptRun(s.id);
+                }}
+                onkeydown={(e: KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    void toggleScriptRun(s.id);
+                  }
+                }}
+              ></span>
               <span class="ri-name">{s.name}</span>
               <span class="ri-time">{fmtRelative(s.updated_at)}</span>
               <span
@@ -293,16 +328,28 @@
               <span>save &amp; run</span>
             </button>
 
-            <button
-              type="button"
-              class="btn primary"
-              onclick={runNow}
-              disabled={ind.isRunning || !symbol}
-              title="Run (⌘↵)"
-            >
-              <Play class="h-3.5 w-3.5" />
-              <span>{ind.isRunning ? 'running…' : 'run'}</span>
-            </button>
+            {#if ind.runningId && ind.runningId === ind.activeId}
+              <button
+                type="button"
+                class="btn primary stop"
+                onclick={stopNow}
+                title="Stop"
+              >
+                <Square class="h-3.5 w-3.5" />
+                <span>stop</span>
+              </button>
+            {:else}
+              <button
+                type="button"
+                class="btn primary"
+                onclick={runNow}
+                disabled={ind.isRunning || !symbol}
+                title="Run (⌘↵)"
+              >
+                <Play class="h-3.5 w-3.5" />
+                <span>{ind.isRunning ? 'running…' : 'run'}</span>
+              </button>
+            {/if}
           </div>
         </div>
 
@@ -612,11 +659,28 @@
     background: color-mix(in oklab, oklch(var(--primary)) 14%, transparent);
     border-color: color-mix(in oklab, oklch(var(--primary)) 45%, transparent);
   }
-  .rail-item.active .ri-mark { color: oklch(var(--primary)); }
-  .ri-mark {
-    color: color-mix(in oklab, oklch(var(--foreground)) 30%, transparent);
-    font-size: 14px;
-    line-height: 1;
+  .ri-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #ef4444;
+    box-shadow: 0 0 0 2px color-mix(in oklab, #ef4444 22%, transparent);
+    transition: background 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+    align-self: center;
+    justify-self: center;
+    cursor: pointer;
+  }
+  .ri-status:hover {
+    transform: scale(1.25);
+  }
+  .ri-status.running {
+    background: #22c55e;
+    box-shadow: 0 0 0 2px color-mix(in oklab, #22c55e 28%, transparent);
+    animation: pulseDot 1.6s ease-in-out infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { box-shadow: 0 0 0 2px color-mix(in oklab, #22c55e 22%, transparent); }
+    50% { box-shadow: 0 0 0 4px color-mix(in oklab, #22c55e 32%, transparent); }
   }
   .ri-name {
     overflow: hidden;
@@ -770,6 +834,14 @@
     transform: translateY(-1px);
   }
   .btn.primary:active:not(:disabled) { transform: translateY(0); }
+  .btn.primary.stop {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #fff;
+  }
+  .btn.primary.stop:hover:not(:disabled) {
+    box-shadow: 0 6px 18px -6px color-mix(in oklab, #ef4444 60%, transparent);
+  }
 
   .split {
     flex: 1 1 auto;
