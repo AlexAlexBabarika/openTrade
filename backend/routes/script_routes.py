@@ -1,8 +1,4 @@
-"""User-script execution endpoint (phase 1 — no persistence).
-
-Resolves OHLCV server-side for the requested (provider, symbol, interval,
-period) and runs the supplied Python `code` in a sandboxed subprocess.
-"""
+"""User-script execution and CRUD endpoints."""
 
 from __future__ import annotations
 
@@ -15,13 +11,20 @@ from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from backend.core.auth_deps import optional_current_user
+from backend.core.auth_deps import get_current_user, optional_current_user
 from backend.core.rate_limit import allow, client_key, retry_after_seconds
+from backend.core.supabase_client import get_service_postgrest
 from backend.market import cache
 from backend.market.ohlcv_limits import cap_candles
 from backend.market.shared_config import validate_interval, validate_period
 from backend.models.auth_models import AuthUserInfo
 from backend.models.market_data_models import MarketDataProviderEnum
+from backend.models.script_models import (
+    ScriptCreateRequest,
+    ScriptInfo,
+    ScriptListResponse,
+    ScriptUpdateRequest,
+)
 from backend.routes.market_routes import _fetch_candles_blocking
 from backend.scripts.output_models import RunResult
 from backend.scripts.runner import run_script
@@ -33,7 +36,8 @@ router = APIRouter(prefix="/scripts", tags=["scripts"])
 
 
 class ExecuteRequest(BaseModel):
-    code: str = Field(..., min_length=1, max_length=200_000)
+    code: str | None = Field(None, min_length=1, max_length=200_000)
+    script_id: str | None = None
     symbol: str = Field(..., min_length=1)
     provider: MarketDataProviderEnum
     period: str = "1mo"
@@ -64,6 +68,59 @@ def _candles_to_df(candles) -> pd.DataFrame:
     return df
 
 
+def _row_to_info(row: dict) -> ScriptInfo:
+    return ScriptInfo(
+        id=str(row["id"]),
+        name=row["name"],
+        code=row["code"],
+        created_at=str(row["created_at"]),
+        updated_at=str(row["updated_at"]),
+    )
+
+
+def _handle_db_error(exc: Exception, operation: str) -> HTTPException:
+    if isinstance(exc, APIError):
+        code = getattr(exc, "code", None) or "unknown"
+        msg = getattr(exc, "message", None) or str(exc)
+        logger.exception("user_scripts %s failed: code=%s msg=%r", operation, code, msg)
+        if code == "23505":
+            return HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A script with this name already exists [code {code}]",
+            )
+        return HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Database error {operation} [code {code}]: {msg}",
+        )
+    logger.exception("user_scripts %s failed: %s", operation, exc)
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=f"Failed to {operation}.",
+    )
+
+
+def _load_script_code(user_id: str, script_id: str) -> str:
+    db = get_service_postgrest()
+    try:
+        resp = (
+            db.from_("user_scripts")
+            .select("code")
+            .eq("user_id", user_id)
+            .eq("id", script_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        raise _handle_db_error(e, "load script") from e
+    rows = resp.data or []
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Script {script_id} not found",
+        )
+    return rows[0]["code"]
+
+
 @router.post("/execute", response_model=RunResult)
 async def execute(
     body: ExecuteRequest,
@@ -75,6 +132,22 @@ async def execute(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many script runs. Try again shortly.",
             headers={"Retry-After": str(retry_after_seconds())},
+        )
+
+    if body.script_id is not None:
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to run a saved script.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        code = await run_in_threadpool(_load_script_code, user.id, body.script_id)
+    elif body.code is not None:
+        code = body.code
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either 'code' or 'script_id' must be provided.",
         )
 
     sym = body.symbol.strip()
@@ -131,8 +204,142 @@ async def execute(
     df = _candles_to_df(candles)
     return await run_in_threadpool(
         run_script,
-        body.code,
+        code,
         df,
         timeout_s=body.timeout_s,
         memory_mb=body.memory_mb,
     )
+
+
+@router.get("", response_model=ScriptListResponse)
+def list_scripts(
+    user: AuthUserInfo = Depends(get_current_user),
+) -> ScriptListResponse:
+    db = get_service_postgrest()
+    try:
+        resp = (
+            db.from_("user_scripts")
+            .select("id, name, code, created_at, updated_at")
+            .eq("user_id", user.id)
+            .order("updated_at", desc=True)
+            .execute()
+        )
+    except Exception as e:
+        raise _handle_db_error(e, "list scripts") from e
+    return ScriptListResponse(scripts=[_row_to_info(r) for r in resp.data or []])
+
+
+@router.post("", response_model=ScriptInfo, status_code=status.HTTP_201_CREATED)
+def create_script(
+    body: ScriptCreateRequest,
+    user: AuthUserInfo = Depends(get_current_user),
+) -> ScriptInfo:
+    db = get_service_postgrest()
+    try:
+        resp = (
+            db.from_("user_scripts")
+            .insert(
+                {
+                    "user_id": user.id,
+                    "name": body.name,
+                    "code": body.code,
+                }
+            )
+            .execute()
+        )
+    except Exception as e:
+        raise _handle_db_error(e, "create script") from e
+    row = resp.data[0] if resp.data else None
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to store script (no response).",
+        )
+    return _row_to_info(row)
+
+
+@router.get("/{script_id}", response_model=ScriptInfo)
+def get_script(
+    script_id: str,
+    user: AuthUserInfo = Depends(get_current_user),
+) -> ScriptInfo:
+    db = get_service_postgrest()
+    try:
+        resp = (
+            db.from_("user_scripts")
+            .select("id, name, code, created_at, updated_at")
+            .eq("user_id", user.id)
+            .eq("id", script_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        raise _handle_db_error(e, "read script") from e
+    rows = resp.data or []
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Script {script_id} not found",
+        )
+    return _row_to_info(rows[0])
+
+
+@router.put("/{script_id}", response_model=ScriptInfo)
+def update_script(
+    script_id: str,
+    body: ScriptUpdateRequest,
+    user: AuthUserInfo = Depends(get_current_user),
+) -> ScriptInfo:
+    patch: dict[str, str] = {}
+    if body.name is not None:
+        patch["name"] = body.name
+    if body.code is not None:
+        patch["code"] = body.code
+    if not patch:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one of 'name' or 'code' must be provided.",
+        )
+
+    db = get_service_postgrest()
+    try:
+        resp = (
+            db.from_("user_scripts")
+            .update(patch)
+            .eq("user_id", user.id)
+            .eq("id", script_id)
+            .execute()
+        )
+    except Exception as e:
+        raise _handle_db_error(e, "update script") from e
+    rows = resp.data or []
+    if not rows:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Script {script_id} not found",
+        )
+    return _row_to_info(rows[0])
+
+
+@router.delete("/{script_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_script(
+    script_id: str,
+    user: AuthUserInfo = Depends(get_current_user),
+) -> None:
+    db = get_service_postgrest()
+    try:
+        resp = (
+            db.from_("user_scripts")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("id", script_id)
+            .select("id")
+            .execute()
+        )
+    except Exception as e:
+        raise _handle_db_error(e, "delete script") from e
+    if not resp.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Script {script_id} not found",
+        )
