@@ -195,8 +195,9 @@
     font-family: 'Space Mono', ui-monospace, SFMono-Regular, monospace;
     color: oklch(var(--foreground));
   }
-  :global(.light) .console {
-    background: color-mix(in oklab, oklch(var(--background)) 94%, black 6%);
+  :global(html:not(.dark)) .console {
+    background: #ffffff;
+    border-top: 1px solid #000;
   }
 
   .status {
@@ -210,8 +211,54 @@
       color-mix(in oklab, oklch(var(--border)) 80%, transparent);
     background: color-mix(in oklab, oklch(var(--background)) 70%, black 30%);
   }
-  :global(.light) .status {
-    background: color-mix(in oklab, oklch(var(--background)) 90%, black 10%);
+  :global(html:not(.dark)) .status {
+    background: #ffffff;
+    border-bottom: 1px dashed #000;
+  }
+  :global(html:not(.dark)) .meta { color: #000; opacity: 0.7; }
+  :global(html:not(.dark)) .tone-muted { color: #000; opacity: 0.5; }
+  :global(html:not(.dark)) .meta kbd {
+    background: #ffffff;
+    border-color: #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) .empty,
+  :global(html:not(.dark)) .empty-line.muted {
+    color: #000;
+    opacity: 0.55;
+  }
+  :global(html:not(.dark)) .empty-line .ink {
+    background: #ffffff;
+    color: #000;
+    border: 1px solid #000;
+  }
+  :global(html:not(.dark)) .block-head,
+  :global(html:not(.dark)) .prefix {
+    color: #000;
+    opacity: 0.7;
+  }
+  :global(html:not(.dark)) .block-title { color: #000; opacity: 1; }
+  :global(html:not(.dark)) .trace {
+    background: #ffffff;
+    border-left: 2px solid #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) .table-block .table-scroll {
+    background: #ffffff;
+    border-color: #000;
+  }
+  :global(html:not(.dark)) th {
+    background: #ffffff;
+    color: #000;
+    border-bottom: 1px solid #000;
+  }
+  :global(html:not(.dark)) tbody tr:nth-child(odd) td { background: #ffffff; }
+  :global(html:not(.dark)) tbody tr:hover td {
+    background: color-mix(in oklab, oklch(var(--primary)) 12%, #ffffff);
+  }
+  :global(html:not(.dark)) .deferred .deferred-list {
+    border-color: #000;
+    color: #000;
   }
   .dot {
     width: 8px;

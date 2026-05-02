@@ -813,4 +813,95 @@
     .body { grid-template-columns: 1fr; }
     .rail { display: none; }
   }
+
+  /* ---------------------------------------------------------------- */
+  /* Light theme: pure white chrome, no greys, no top vignette.       */
+  /* The default styles above target dark mode; this block strips the */
+  /* radial-gradient halo, the heavy upward box-shadow, and every     */
+  /* color-mix(...black...) grey wash from the panel surfaces.        */
+  /* ---------------------------------------------------------------- */
+  :global(html:not(.dark)) .panel {
+    background: #ffffff;
+    box-shadow:
+      0 -1px 0 0 #000 inset,
+      0 -8px 24px -16px rgba(0, 0, 0, 0.18);
+    border-top: 1px solid #000;
+  }
+  :global(html:not(.dark)) .topbar {
+    background: #ffffff;
+    border-bottom: 1px dashed #000;
+  }
+  :global(html:not(.dark)) .ctx {
+    background: #ffffff;
+    border-color: #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) .ctx-label,
+  :global(html:not(.dark)) .ctx-sep {
+    color: #000;
+    opacity: 0.55;
+  }
+  :global(html:not(.dark)) .tabs {
+    background: #ffffff;
+    border-color: #000;
+  }
+  :global(html:not(.dark)) .tab { color: #000; opacity: 0.5; }
+  :global(html:not(.dark)) .tab:hover { opacity: 1; }
+  :global(html:not(.dark)) .tab.active { opacity: 1; }
+  :global(html:not(.dark)) .iconbtn {
+    border-color: #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) .iconbtn:hover {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+  }
+  :global(html:not(.dark)) .rail {
+    background: #ffffff;
+    border-right: 1px solid #000;
+  }
+  :global(html:not(.dark)) .rail-head {
+    border-bottom: 1px dashed #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) .rail-count {
+    border-color: #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) .rail-foot {
+    border-top: 1px dashed #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) .kbd {
+    background: #ffffff;
+    border-color: #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) .work-head {
+    background: #ffffff;
+    border-bottom: 1px solid #000;
+  }
+  :global(html:not(.dark)) .btn {
+    background: #ffffff;
+    border-color: #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) .btn.ghost:hover:not(:disabled) {
+    background: #000;
+    border-color: #000;
+    color: #fff;
+  }
+  :global(html:not(.dark)) .splitter {
+    background: #ffffff;
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+  }
+  :global(html:not(.dark)) .splitter:hover,
+  :global(html:not(.dark)) .splitter.dragging {
+    background: color-mix(in oklab, oklch(var(--primary)) 14%, #ffffff);
+  }
+  :global(html:not(.dark)) .grip i {
+    background: #000;
+  }
 </style>
