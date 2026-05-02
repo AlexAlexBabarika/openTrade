@@ -41,6 +41,7 @@ export class ChartController {
   isLoading = $state(false);
   marketDataVersion = $state(0);
   initialLoadDone = $state(false);
+  liveBarCloseTs = $state<number | null>(null);
 
   #wsClient: WSClient | null = null;
   #liveUnsubscribe: (() => void) | null = null;
@@ -197,6 +198,10 @@ export class ChartController {
           liveCandles.push(c);
         }
         this.chartApi?.appendCandle(c);
+      },
+      onCandleClose: c => {
+        const ts = Date.parse(c.timestamp);
+        if (Number.isFinite(ts)) this.liveBarCloseTs = ts;
       },
       onStatus: s => {
         this.connectionStatus = mapStatus(s);

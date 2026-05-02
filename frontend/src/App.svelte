@@ -297,6 +297,28 @@
     });
   });
 
+  let lastAutoRunBarTs: number | null = null;
+  $effect(() => {
+    const ts = chart.liveBarCloseTs;
+    if (ts === null) return;
+    if (lastAutoRunBarTs !== null && ts <= lastAutoRunBarTs) return;
+    if (
+      !chart.loadedSymbol ||
+      !indicators.activeId ||
+      indicators.lastResult?.status !== 'ok' ||
+      indicators.isRunning
+    ) {
+      return;
+    }
+    lastAutoRunBarTs = ts;
+    void indicators.run({
+      symbol: chart.loadedSymbol,
+      provider: chart.source,
+      period: chart.period,
+      interval: chart.interval,
+    });
+  });
+
   $effect(() => {
     if (authed) return;
     persistGroups(groups);
