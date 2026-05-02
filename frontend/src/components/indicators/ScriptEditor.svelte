@@ -34,35 +34,34 @@
   let view: EditorView | null = null;
   let updatingFromOutside = false;
 
-  // Tokyo-night-ish palette tuned to the app's existing chrome. Uses
-  // CSS variables for the chrome (background, gutter) so the editor swaps
-  // automatically with theme; syntax tokens use a fixed palette so Python
-  // reads consistently in either theme.
+  // Class-based highlighter so the palette can swap with the app theme via
+  // CSS. Dark theme keeps a Tokyo-Night-ish palette; light theme uses a
+  // GitHub-Light-inspired set tuned for legibility on a near-white panel.
   const highlight = HighlightStyle.define([
-    { tag: t.keyword, color: '#c792ea', fontStyle: 'italic' },
-    { tag: [t.name, t.deleted, t.character, t.macroName], color: '#e8e6f0' },
-    { tag: [t.function(t.variableName), t.labelName], color: '#82aaff' },
+    { tag: t.keyword, class: 'tok-kw' },
+    { tag: [t.name, t.deleted, t.character, t.macroName], class: 'tok-name' },
+    { tag: [t.function(t.variableName), t.labelName], class: 'tok-fn' },
     {
       tag: [t.color, t.constant(t.name), t.standard(t.name)],
-      color: '#f78c6c',
+      class: 'tok-const',
     },
-    { tag: [t.definition(t.name), t.separator], color: '#e8e6f0' },
+    { tag: [t.definition(t.name), t.separator], class: 'tok-name' },
     {
       tag: [t.typeName, t.className, t.number, t.changed, t.annotation, t.modifier, t.self, t.namespace],
-      color: '#ffcb6b',
+      class: 'tok-type',
     },
     {
       tag: [t.operator, t.operatorKeyword, t.url, t.escape, t.regexp, t.link, t.special(t.string)],
-      color: '#89ddff',
+      class: 'tok-op',
     },
-    { tag: [t.meta, t.comment], color: '#637085', fontStyle: 'italic' },
-    { tag: t.strong, fontWeight: 'bold' },
-    { tag: t.emphasis, fontStyle: 'italic' },
-    { tag: t.link, color: '#82aaff', textDecoration: 'underline' },
-    { tag: t.heading, fontWeight: 'bold', color: '#82aaff' },
-    { tag: [t.atom, t.bool, t.special(t.variableName)], color: '#f78c6c' },
-    { tag: [t.processingInstruction, t.string, t.inserted], color: '#c3e88d' },
-    { tag: t.invalid, color: '#ff5370' },
+    { tag: [t.meta, t.comment], class: 'tok-comment' },
+    { tag: t.strong, class: 'tok-strong' },
+    { tag: t.emphasis, class: 'tok-em' },
+    { tag: t.link, class: 'tok-link' },
+    { tag: t.heading, class: 'tok-heading' },
+    { tag: [t.atom, t.bool, t.special(t.variableName)], class: 'tok-atom' },
+    { tag: [t.processingInstruction, t.string, t.inserted], class: 'tok-string' },
+    { tag: t.invalid, class: 'tok-invalid' },
   ]);
 
   const editorTheme = EditorView.theme(
@@ -94,22 +93,22 @@
         },
       '.cm-gutters': {
         background: 'transparent',
-        color: 'color-mix(in oklab, oklch(var(--foreground)) 28%, transparent)',
+        color: '#000',
         border: 'none',
-        borderRight:
-          '1px dashed color-mix(in oklab, oklch(var(--border)) 90%, transparent)',
+        borderRight: '1px dashed #000',
         paddingRight: '10px',
         paddingLeft: '14px',
         fontVariantNumeric: 'tabular-nums',
         userSelect: 'none',
+        fontWeight: '700',
       },
       '.cm-activeLineGutter': {
-        background: 'transparent',
-        color: 'oklch(var(--foreground))',
+        background: '#000',
+        color: '#fff',
       },
       '.cm-activeLine': {
-        background:
-          'color-mix(in oklab, oklch(var(--foreground)) 4%, transparent)',
+        background: 'transparent',
+        boxShadow: 'inset 2px 0 0 #000',
       },
       '.cm-lineNumbers .cm-gutterElement': { padding: '0 8px 0 0' },
       '.cm-matchingBracket': {
@@ -119,7 +118,6 @@
           '1px solid color-mix(in oklab, oklch(var(--primary)) 55%, transparent)',
       },
     },
-    { dark: true },
   );
 
   const updateListener = EditorView.updateListener.of(u => {
@@ -201,16 +199,21 @@
     height: 100%;
     width: 100%;
     overflow: hidden;
+    /* Light theme: pure white. Dark theme override below. */
+    background: #ffffff;
+  }
+  :global(html.dark) .editor-shell {
     background: color-mix(in oklab, oklch(var(--background)) 92%, black 8%);
   }
-  :global(.light) .editor-shell {
-    background: color-mix(in oklab, oklch(var(--background)) 96%, black 4%);
-  }
-  /* Subtle dot grid evokes engineering paper without competing with code. */
+  /* Engineering-paper dot grid — only in dark mode. Light mode is clean white. */
   .editor-grid {
     position: absolute;
     inset: 0;
     pointer-events: none;
+    display: none;
+  }
+  :global(html.dark) .editor-grid {
+    display: block;
     background-image: radial-gradient(
       color-mix(in oklab, oklch(var(--foreground)) 8%, transparent) 1px,
       transparent 1px
@@ -226,5 +229,72 @@
   }
   .editor-host :global(.cm-editor) {
     height: 100%;
+  }
+
+  /* Dark-mode chrome — restore the soft greys that read well on dark bg. */
+  :global(html.dark) .editor-host :global(.cm-gutters) {
+    color: color-mix(in oklab, oklch(var(--foreground)) 28%, transparent);
+    border-right: 1px dashed
+      color-mix(in oklab, oklch(var(--border)) 90%, transparent);
+    font-weight: 400;
+  }
+  :global(html.dark) .editor-host :global(.cm-activeLineGutter) {
+    background: transparent;
+    color: oklch(var(--foreground));
+  }
+  :global(html.dark) .editor-host :global(.cm-activeLine) {
+    background: color-mix(in oklab, oklch(var(--foreground)) 4%, transparent);
+    box-shadow: none;
+  }
+
+  /* Light palette (default) — colorful syntax on pure white. */
+  .editor-host :global(.cm-content),
+  .editor-host :global(.cm-line) {
+    color: #1f2328;
+  }
+  .editor-host :global(.tok-kw)      { color: #cf222e; font-style: italic; }
+  .editor-host :global(.tok-name)    { color: #1f2328; }
+  .editor-host :global(.tok-fn)      { color: #6639ba; font-weight: 600; }
+  .editor-host :global(.tok-const)   { color: #953800; }
+  .editor-host :global(.tok-type)    { color: #953800; }
+  .editor-host :global(.tok-op)      { color: #0550ae; }
+  .editor-host :global(.tok-comment) { color: #57606a; font-style: italic; }
+  .editor-host :global(.tok-strong)  { font-weight: 700; }
+  .editor-host :global(.tok-em)      { font-style: italic; }
+  .editor-host :global(.tok-link)    { color: #0969da; text-decoration: underline; }
+  .editor-host :global(.tok-heading) { color: #0969da; font-weight: 700; }
+  .editor-host :global(.tok-atom)    { color: #953800; font-weight: 600; }
+  .editor-host :global(.tok-string)  { color: #0a3069; }
+  .editor-host :global(.tok-invalid) { color: #cf222e; text-decoration: underline wavy; }
+
+  /* Dark palette — Tokyo-Night-ish, kept from previous design. */
+  :global(html.dark) .editor-host :global(.cm-content),
+  :global(html.dark) .editor-host :global(.cm-line) {
+    color: #e8e6f0;
+  }
+  :global(html.dark) .editor-host :global(.tok-kw)      { color: #c792ea; font-style: italic; font-weight: 400; text-decoration: none; background: transparent; }
+  :global(html.dark) .editor-host :global(.tok-name)    { color: #e8e6f0; font-weight: 400; }
+  :global(html.dark) .editor-host :global(.tok-fn)      { color: #82aaff; font-weight: 400; }
+  :global(html.dark) .editor-host :global(.tok-const)   { color: #f78c6c; font-weight: 400; }
+  :global(html.dark) .editor-host :global(.tok-type)    { color: #ffcb6b; font-weight: 400; }
+  :global(html.dark) .editor-host :global(.tok-op)      { color: #89ddff; }
+  :global(html.dark) .editor-host :global(.tok-comment) {
+    color: #637085;
+    font-style: italic;
+    text-decoration: none;
+  }
+  :global(html.dark) .editor-host :global(.tok-link)    { color: #82aaff; text-decoration: underline; }
+  :global(html.dark) .editor-host :global(.tok-heading) { color: #82aaff; font-weight: bold; }
+  :global(html.dark) .editor-host :global(.tok-atom)    { color: #f78c6c; font-weight: 400; font-style: normal; }
+  :global(html.dark) .editor-host :global(.tok-string)  {
+    color: #c3e88d;
+    font-style: normal;
+    background: transparent;
+    padding: 0;
+  }
+  :global(html.dark) .editor-host :global(.tok-invalid) {
+    color: #ff5370;
+    background: transparent;
+    text-decoration: none;
   }
 </style>

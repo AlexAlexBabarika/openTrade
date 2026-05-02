@@ -381,4 +381,26 @@ display.table(["time", "close"], [[str(t), float(c)] for t, c in zip(last["times
     line-height: 1.55;
   }
   pre code { color: oklch(var(--foreground)); }
+
+  /* Light theme: pure white surfaces, black hairlines, no greys. */
+  :global(html:not(.dark)) .docs { background: #ffffff; }
+  :global(html:not(.dark)) .hero { border-bottom: 1px dashed #000; }
+  :global(html:not(.dark)) .defs li {
+    background: #ffffff;
+    border-left: 2px solid #000;
+  }
+  :global(html:not(.dark)) .defs .type {
+    background: #ffffff;
+    border-color: #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) .tag {
+    background: #ffffff;
+    border-color: #000;
+    color: #000;
+  }
+  :global(html:not(.dark)) pre {
+    background: #ffffff;
+    border-color: #000;
+  }
 </style>
