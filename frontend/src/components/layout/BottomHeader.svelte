@@ -1,6 +1,7 @@
 <script lang="ts">
   import PanelRight from '@lucide/svelte/icons/panel-right';
   import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
+  import GitCompare from '@lucide/svelte/icons/git-compare';
   import { Button } from '$lib/components/ui/button';
   import ChartOptionsMenu from '../chart/ChartOptionsMenu.svelte';
   import BottomBarOptionsMenu from './BottomBarOptionsMenu.svelte';
@@ -10,6 +11,7 @@
   } from '../chart/ChartOptionsMenu.svelte';
   import type { ChartColours, ChartType } from '$lib/features/chart/chartColours';
   import type { Theme } from '$lib/features/theme/theme';
+  import { MAX_COMPARISONS } from '$lib/features/chart/comparisonController.svelte';
 
   let {
     chartType = $bindable(),
@@ -23,6 +25,8 @@
     onthemechange,
     sidebarVisible,
     ontogglesidebar,
+    comparisonCount = 0,
+    oncompare,
   }: {
     chartType: ChartType;
     showArea: boolean;
@@ -35,7 +39,11 @@
     onthemechange: (theme: Theme) => void;
     sidebarVisible: boolean;
     ontogglesidebar: () => void;
+    comparisonCount?: number;
+    oncompare?: () => void;
   } = $props();
+
+  const atLimit = $derived(comparisonCount >= MAX_COMPARISONS);
 </script>
 
 <div
@@ -53,6 +61,20 @@
       {theme}
       {onthemechange}
     />
+    {#if oncompare}
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={atLimit}
+        onclick={oncompare}
+        aria-label="Add comparison symbol"
+        title={atLimit
+          ? `Maximum ${MAX_COMPARISONS} comparisons`
+          : 'Add comparison symbol'}
+      >
+        <GitCompare class="h-4 w-4" />
+      </Button>
+    {/if}
   </div>
 
   <div class="flex items-center gap-1">

@@ -9,6 +9,9 @@
   } from '$lib/features/drawables';
   import ChartDrawables from './ChartDrawables.svelte';
   import ChartLegend from './ChartLegend.svelte';
+  import ChartComparisonLegend from './ChartComparisonLegend.svelte';
+  import type { Comparison } from '$lib/features/chart/comparisonController.svelte';
+  import type { ComparisonSeriesType } from '$lib/features/chart/comparisonsApi';
 
   let {
     containerEl = $bindable<HTMLDivElement | null>(null),
@@ -31,6 +34,10 @@
     legendDate = '',
     legendVolume = '',
     legendTextColour = undefined as string | undefined,
+    comparisons = [] as Comparison[],
+    onRemoveComparison,
+    onSetComparisonColor,
+    onSetComparisonSeriesType,
   }: {
     containerEl?: HTMLDivElement | null;
     chartDrawables?: DrawableSurface | undefined;
@@ -52,6 +59,10 @@
     legendDate?: string;
     legendVolume?: string;
     legendTextColour?: string;
+    comparisons?: Comparison[];
+    onRemoveComparison?: (id: string) => void;
+    onSetComparisonColor?: (id: string, color: string) => void;
+    onSetComparisonSeriesType?: (id: string, type: ComparisonSeriesType) => void;
   } = $props();
 </script>
 
@@ -78,6 +89,14 @@
     date={legendDate}
     volume={legendVolume}
     textColour={legendTextColour}
+  />
+
+  <ChartComparisonLegend
+    {comparisons}
+    textColour={legendTextColour}
+    onRemove={id => onRemoveComparison?.(id)}
+    onSetColor={(id, c) => onSetComparisonColor?.(id, c)}
+    onSetSeriesType={(id, t) => onSetComparisonSeriesType?.(id, t)}
   />
 
   <ChartDrawables

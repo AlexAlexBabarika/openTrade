@@ -14,6 +14,8 @@
   import type { IndicatorPoint, BollingerBandsPoint } from '$lib/core/types';
   import { useIndicatorEffect } from '$lib/features/chart/indicatorEffect.svelte';
   import { ChartController } from '$lib/features/chart/chartController.svelte';
+  import { ComparisonController } from '$lib/features/chart/comparisonController.svelte';
+  import SymbolSearchDialog from './components/dialogs/SymbolSearchDialog.svelte';
   import { authState, fetchSession } from '$lib/features/auth/auth';
   import {
     pickProviderForSymbol,
@@ -117,6 +119,20 @@
   const chart = new ChartController({
     onSymbolFetched: (sym, src, count) => maybeMarkYFinance(sym, src, count),
   });
+
+  const comparisonController = new ComparisonController({
+    mainSymbol: () => chart.loadedSymbol,
+    period: () => chart.period,
+    interval: () => chart.interval,
+    mainProvider: () => chart.source,
+    onError: msg => {
+      chart.errorMessage = msg;
+    },
+  });
+  $effect(() => {
+    comparisonController.updateContext(chart.period, chart.interval);
+  });
+  let comparisonDialogOpen = $state(false);
 
   const savedSettings = loadChartSettingsFromStorage();
   let chartType = $state<ChartType>(savedSettings?.chartType ?? 'candlestick');
@@ -702,6 +718,11 @@
         runningScripts={indicators.runningOutputs}
         bind:activeTool
         bind:api={chart.chartApi}
+        comparisons={comparisonController.comparisons}
+        onRemoveComparison={id => void comparisonController.remove(id)}
+        onSetComparisonColor={(id, c) => void comparisonController.setColor(id, c)}
+        onSetComparisonSeriesType={(id, t) =>
+          void comparisonController.setSeriesType(id, t)}
       />
     </div>
     {#if sidebarVisible}
@@ -758,6 +779,8 @@
     onthemechange={setTheme}
     {sidebarVisible}
     ontogglesidebar={() => (sidebarVisible = !sidebarVisible)}
+    comparisonCount={comparisonController.comparisons.length}
+    oncompare={() => (comparisonDialogOpen = true)}
   />
   <ToolboxPanel
     bind:open={toolboxOpen}
@@ -781,5 +804,21 @@
     onNoteSubmit={handleNoteSubmit}
     onResolveFlagConflictKeepExisting={resolveFlagConflictKeepExisting}
     onResolveFlagConflictSwitchGroup={resolveFlagConflictSwitchGroup}
+  />
+  <SymbolSearchDialog
+    mode="comparison"
+    open={comparisonDialogOpen}
+    onopenchange={v => (comparisonDialogOpen = v)}
+    existingSymbols={[
+      chart.loadedSymbol,
+      ...comparisonController.comparisons.map(c => c.symbol),
+    ]}
+    onsubmit={(sym, providers) =>
+      void comparisonController.add(
+        chart.loadedSymbol,
+        sym,
+        providers,
+        chart.source,
+      )}
   />
 </div>

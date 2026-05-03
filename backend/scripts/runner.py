@@ -1,4 +1,5 @@
-"""Subprocess-based runner for user Python scripts.
+"""
+Subprocess-based runner for user Python scripts.
 
 The runner is *not* a strong security boundary on its own. It raises the
 cost of an escape via:
@@ -7,9 +8,6 @@ cost of an escape via:
   - resource limits (memory/CPU) on POSIX,
   - socket monkeypatch to block network egress,
   - wallclock timeout enforced by the parent.
-
-See `todo/indicator-system.md` §Security for the full threat model and the
-hardening that lands in phase 6 (seccomp, unprivileged user, escape fuzz suite).
 """
 
 from __future__ import annotations

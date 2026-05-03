@@ -1,5 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
+  import {
+    PriceScaleMode,
+    LineSeries,
+    CandlestickSeries,
+  } from 'lightweight-charts';
   import type {
     IChartApi,
     ISeriesApi,
@@ -12,6 +17,11 @@
     candleOHLCVtoCandlestickData,
     candleOHLCVtoVolumeData,
   } from '$lib/features/chart/chartAdapters';
+  import { cssColourToHsva, hsvaToHex } from '$lib/features/chart/colourUtils';
+  import type {
+    Comparison,
+  } from '$lib/features/chart/comparisonController.svelte';
+  import type { ComparisonSeriesType } from '$lib/features/chart/comparisonsApi';
   import {
     CHART_TIME_SCALE_RIGHT_OFFSET,
     createChartContainer,
@@ -71,6 +81,10 @@
     runningScripts = [] as RunningScript[],
     activeTool = $bindable<ActiveTool>(CURSOR),
     api = $bindable<ChartApi | null>(null),
+    comparisons = [] as Comparison[],
+    onRemoveComparison,
+    onSetComparisonColor,
+    onSetComparisonSeriesType,
   }: {
     candles: OHLCVCandle[];
     symbol: string;
@@ -90,6 +104,10 @@
     runningScripts?: RunningScript[];
     activeTool: ActiveTool;
     api?: ChartApi | null;
+    comparisons?: Comparison[];
+    onRemoveComparison?: (id: string) => void;
+    onSetComparisonColor?: (id: string, color: string) => void;
+    onSetComparisonSeriesType?: (id: string, type: ComparisonSeriesType) => void;
   } = $props();
 
   let containerEl = $state<HTMLDivElement | null>(null);
@@ -104,6 +122,57 @@
   let bbandsMiddleSeries: ISeriesApi<'Line'> | null = null;
   let bbandsLowerSeries: ISeriesApi<'Line'> | null = null;
   let resizeObserver: ResizeObserver | null = null;
+
+  type ComparisonSeriesEntry = {
+    type: ComparisonSeriesType;
+    color: string;
+    series: ISeriesApi<'Line'> | ISeriesApi<'Candlestick'>;
+  };
+  const comparisonSeriesById = new Map<string, ComparisonSeriesEntry>();
+
+  function darkenHex(hex: string): string {
+    const hsva = cssColourToHsva(hex);
+    return hsvaToHex({ ...hsva, v: Math.max(0, hsva.v * 0.7) });
+  }
+
+  function addComparisonSeries(
+    c: Comparison,
+  ): ComparisonSeriesEntry | null {
+    if (!chart) return null;
+    if (c.seriesType === 'line') {
+      const series = chart.addSeries(LineSeries, {
+        color: c.color,
+        lastValueVisible: true,
+        priceLineVisible: false,
+      });
+      return { type: 'line', color: c.color, series };
+    }
+    const down = darkenHex(c.color);
+    const series = chart.addSeries(CandlestickSeries, {
+      upColor: c.color,
+      downColor: down,
+      borderUpColor: c.color,
+      borderDownColor: down,
+      wickUpColor: c.color,
+      wickDownColor: down,
+    });
+    return { type: 'candlestick', color: c.color, series };
+  }
+
+  function setComparisonSeriesData(
+    entry: ComparisonSeriesEntry,
+    candles: OHLCVCandle[],
+  ): void {
+    if (entry.type === 'line') {
+      (entry.series as ISeriesApi<'Line'>).setData(
+        candles.map(candleOHLCVtoAreaData),
+      );
+    } else {
+      (entry.series as ISeriesApi<'Candlestick'>).setData(
+        candles.map(candleOHLCVtoCandlestickData),
+      );
+    }
+  }
 
   /**
    * Incremented when pan/zoom/resize (or container size) invalidates chart pixel
@@ -413,6 +482,7 @@
       chart.remove();
       chart = null;
     }
+    comparisonSeriesById.clear();
   });
 
   let prevCandles: OHLCVCandle[] | undefined;
@@ -558,6 +628,62 @@
     });
   });
 
+  // Reconcile comparison series + toggle percentage mode on right price scale.
+  $effect(() => {
+    const list = comparisons;
+    if (!chart) return;
+    untrack(() => {
+      if (!chart) return;
+      const seenIds = new Set<string>();
+      for (const c of list) {
+        seenIds.add(c.id);
+        let entry = comparisonSeriesById.get(c.id);
+        // Recreate series when type has changed.
+        if (entry && entry.type !== c.seriesType) {
+          chart.removeSeries(entry.series);
+          comparisonSeriesById.delete(c.id);
+          entry = undefined;
+        }
+        if (!entry) {
+          const created = addComparisonSeries(c);
+          if (!created) continue;
+          comparisonSeriesById.set(c.id, created);
+          entry = created;
+        }
+        if (entry.color !== c.color) {
+          if (entry.type === 'line') {
+            (entry.series as ISeriesApi<'Line'>).applyOptions({
+              color: c.color,
+            });
+          } else {
+            const down = darkenHex(c.color);
+            (entry.series as ISeriesApi<'Candlestick'>).applyOptions({
+              upColor: c.color,
+              downColor: down,
+              borderUpColor: c.color,
+              borderDownColor: down,
+              wickUpColor: c.color,
+              wickDownColor: down,
+            });
+          }
+          entry.color = c.color;
+        }
+        setComparisonSeriesData(entry, c.candles);
+      }
+      // Remove series for comparisons no longer present.
+      for (const [id, entry] of comparisonSeriesById) {
+        if (!seenIds.has(id)) {
+          chart.removeSeries(entry.series);
+          comparisonSeriesById.delete(id);
+        }
+      }
+      const mode = list.length > 0
+        ? PriceScaleMode.Percentage
+        : PriceScaleMode.Normal;
+      chart.priceScale('right').applyOptions({ mode });
+    });
+  });
+
   $effect(() => {
     if (!chart || !colours || !volumeSeries) return;
     colours.volumeUp;
@@ -591,6 +717,10 @@
   {legendDate}
   {legendVolume}
   legendTextColour={colours?.textColour}
+  {comparisons}
+  {onRemoveComparison}
+  {onSetComparisonColor}
+  {onSetComparisonSeriesType}
 />
 
 {#each runningScripts as rs (rs.scriptId)}
