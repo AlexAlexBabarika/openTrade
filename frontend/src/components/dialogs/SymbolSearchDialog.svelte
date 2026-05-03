@@ -13,13 +13,30 @@
     open,
     onopenchange,
     existingSymbols = [],
+    mode = 'group',
     onsubmit,
   }: {
     open: boolean;
     onopenchange: (open: boolean) => void;
     existingSymbols?: string[];
+    mode?: 'group' | 'comparison';
     onsubmit: (symbol: string, providers: SymbolProviders | null) => void;
   } = $props();
+
+  const TITLES = {
+    group: {
+      title: 'Add symbol',
+      description:
+        'Search by ticker or name. Badges show which providers support each symbol.',
+      duplicate: 'This symbol is already in the group.',
+    },
+    comparison: {
+      title: 'Add comparison symbol',
+      description:
+        'Search by ticker or name. The symbol will be overlaid on the main chart.',
+      duplicate: 'This symbol is already on the chart.',
+    },
+  } as const;
 
   const DEBOUNCE_MS = 200;
   const ADD_ANYWAY_VALUE = '__add_anyway__';
@@ -95,10 +112,8 @@
 <Dialog.Root {open} onOpenChange={onopenchange}>
   <Dialog.Content class="sm:max-w-lg">
     <Dialog.Header>
-      <Dialog.Title>Add symbol</Dialog.Title>
-      <Dialog.Description>
-        Search by ticker or name. Badges show which providers support each symbol.
-      </Dialog.Description>
+      <Dialog.Title>{TITLES[mode].title}</Dialog.Title>
+      <Dialog.Description>{TITLES[mode].description}</Dialog.Description>
     </Dialog.Header>
 
     <Command.Root shouldFilter={false} loop class="mt-2 flex flex-col gap-3">
@@ -112,9 +127,7 @@
           class="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] md:text-sm"
         />
         {#if isDuplicate}
-          <p class="mt-2 text-xs text-destructive">
-            This symbol is already in the group.
-          </p>
+          <p class="mt-2 text-xs text-destructive">{TITLES[mode].duplicate}</p>
         {/if}
         {#if errorMsg}
           <p class="mt-2 text-xs text-destructive">{errorMsg}</p>
