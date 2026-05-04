@@ -110,13 +110,13 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={onopenchange}>
-  <Dialog.Content class="sm:max-w-lg">
+  <Dialog.Content class="sm:max-w-lg flex max-h-[85vh] flex-col">
     <Dialog.Header>
       <Dialog.Title>{TITLES[mode].title}</Dialog.Title>
       <Dialog.Description>{TITLES[mode].description}</Dialog.Description>
     </Dialog.Header>
 
-    <Command.Root shouldFilter={false} loop class="mt-2 flex flex-col gap-3">
+    <Command.Root shouldFilter={false} loop class="mt-2 flex min-h-0 flex-1 flex-col gap-3">
       <div>
         <Command.Input
           bind:value={query}
@@ -134,7 +134,7 @@
         {/if}
       </div>
 
-      <Command.List class="max-h-72 overflow-y-auto rounded border border-border">
+      <Command.List class="min-h-0 flex-1 overflow-y-auto rounded border border-border">
         {#if !normalizedQuery}
           <div class="px-3 py-6 text-center text-xs text-muted-foreground">
             Start typing to search the directory.
