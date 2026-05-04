@@ -110,13 +110,19 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={onopenchange}>
-  <Dialog.Content class="sm:max-w-lg">
+  <Dialog.Content
+    class="sm:max-w-lg max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden"
+  >
     <Dialog.Header>
       <Dialog.Title>{TITLES[mode].title}</Dialog.Title>
       <Dialog.Description>{TITLES[mode].description}</Dialog.Description>
     </Dialog.Header>
 
-    <Command.Root shouldFilter={false} loop class="mt-2 flex flex-col gap-3">
+    <Command.Root
+      shouldFilter={false}
+      loop
+      class="mt-2 grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3"
+    >
       <div>
         <Command.Input
           bind:value={query}
@@ -134,7 +140,7 @@
         {/if}
       </div>
 
-      <Command.List class="max-h-72 overflow-y-auto rounded border border-border">
+      <Command.List class="min-h-0 overflow-y-auto rounded border border-border">
         {#if !normalizedQuery}
           <div class="px-3 py-6 text-center text-xs text-muted-foreground">
             Start typing to search the directory.
@@ -151,11 +157,13 @@
                 onSelect={() => submit(r.symbol, r.providers)}
                 class="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left text-sm outline-none data-[selected]:bg-accent data-[selected]:text-accent-foreground"
               >
-                <span class="min-w-0 flex-1">
-                  <span class="font-mono font-semibold">{r.symbol}</span>
-                  <span class="ml-2 truncate text-muted-foreground">{r.name}</span>
+                <span class="flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden">
+                  <span class="shrink-0 font-mono font-semibold">{r.symbol}</span>
+                  <span class="min-w-0 flex-1 truncate text-muted-foreground">
+                    {r.name}
+                  </span>
                   {#if r.exchange}
-                    <span class="ml-2 text-[10px] uppercase text-muted-foreground/70">
+                    <span class="shrink-0 text-[10px] uppercase text-muted-foreground/70">
                       {r.exchange}
                     </span>
                   {/if}
