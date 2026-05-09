@@ -298,11 +298,13 @@
     if (v === lastAutoRunVersion) return;
     if (!chart.loadedSymbol) return;
     lastAutoRunVersion = v;
-    indicators.rerunAll({
-      symbol: chart.loadedSymbol,
-      provider: chart.source,
-      period: chart.period,
-      interval: chart.interval,
+    untrack(() => {
+      indicators.rerunAll({
+        symbol: chart.loadedSymbol,
+        provider: chart.source,
+        period: chart.period,
+        interval: chart.interval,
+      });
     });
   });
 
@@ -310,15 +312,17 @@
     const ts = chart.liveBarCloseTs;
     if (ts === null) return;
     if (!chart.loadedSymbol) return;
-    indicators.tickAll(
-      {
-        symbol: chart.loadedSymbol,
-        provider: chart.source,
-        period: chart.period,
-        interval: chart.interval,
-      },
-      ts,
-    );
+    untrack(() => {
+      indicators.tickAll(
+        {
+          symbol: chart.loadedSymbol,
+          provider: chart.source,
+          period: chart.period,
+          interval: chart.interval,
+        },
+        ts,
+      );
+    });
   });
 
   $effect(() => {

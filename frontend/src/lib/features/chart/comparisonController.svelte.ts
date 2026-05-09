@@ -1,4 +1,4 @@
-import { onDestroy } from 'svelte';
+import { onDestroy, untrack } from 'svelte';
 import type { OHLCVCandle } from '$lib/core/types';
 import { fetchMarketOHLCV } from '$lib/features/market/marketData';
 import {
@@ -110,12 +110,14 @@ export class ComparisonController {
     // Load comparisons whenever the main symbol changes.
     $effect(() => {
       const sym = opts.mainSymbol();
-      if (!sym || !sym.trim()) {
-        this.#clearAll();
-        this.#lastLoadedMain = '';
-        return;
-      }
-      void this.load(sym);
+      untrack(() => {
+        if (!sym || !sym.trim()) {
+          this.#clearAll();
+          this.#lastLoadedMain = '';
+          return;
+        }
+        void this.load(sym);
+      });
     });
 
     // Refetch all comparison candles on period / interval / mainProvider change.
@@ -126,7 +128,9 @@ export class ComparisonController {
       // Skip first run: load() already fetches candles. Track via a flag on
       // this.#lastLoadedMain — empty = no load has happened yet.
       if (this.#lastLoadedMain === null || this.#lastLoadedMain === '') return;
-      void this.#refetchAll();
+      untrack(() => {
+        void this.#refetchAll();
+      });
     });
 
     onDestroy(() => this.#clearAll());
