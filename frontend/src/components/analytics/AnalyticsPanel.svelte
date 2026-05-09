@@ -5,6 +5,10 @@
   import MetricCard from './MetricCard.svelte';
   import ScalarBody from './cards/ScalarBody.svelte';
   import VaRBody from './cards/VaRBody.svelte';
+  import DrawdownCard from './cards/DrawdownCard.svelte';
+  import DistributionCard from './cards/DistributionCard.svelte';
+  import CorrelationCard from './cards/CorrelationCard.svelte';
+  import VolatilityClusteringBody from './cards/VolatilityClusteringBody.svelte';
   import {
     METRICS,
     METRIC_CATEGORIES,
@@ -202,8 +206,14 @@
                     <ScalarBody data={result.data} />
                   {:else if result.kind === 'var'}
                     <VaRBody data={result.data} />
-                  {:else}
-                    <pre class="raw">{JSON.stringify(result.data, null, 2)}</pre>
+                  {:else if result.kind === 'max_drawdown'}
+                    <DrawdownCard data={result.data} />
+                  {:else if result.kind === 'return_distribution'}
+                    <DistributionCard data={result.data} />
+                  {:else if result.kind === 'correlation'}
+                    <CorrelationCard data={result.data} />
+                  {:else if result.kind === 'volatility_clustering'}
+                    <VolatilityClusteringBody data={result.data} />
                   {/if}
                 {/snippet}
               </MetricCard>
@@ -531,14 +541,6 @@
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 12px;
     padding: 16px;
-  }
-  .raw {
-    margin: 0;
-    font-size: 10.5px;
-    line-height: 1.45;
-    color: color-mix(in oklab, oklch(var(--foreground)) 75%, transparent);
-    overflow: auto;
-    max-height: 180px;
   }
 
   @media (max-width: 760px) {
