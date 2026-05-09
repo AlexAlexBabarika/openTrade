@@ -1,4 +1,5 @@
 # Python
+.pytest_cache
 .ruff_cache
 .mypy_cache
 .venv/
@@ -52,6 +53,9 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Playwright
+.playwright-mcp
 
 # Coverage
 coverage/
