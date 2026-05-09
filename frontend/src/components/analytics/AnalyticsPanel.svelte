@@ -3,6 +3,8 @@
   import Search from '@lucide/svelte/icons/search';
   import X from '@lucide/svelte/icons/x';
   import MetricCard from './MetricCard.svelte';
+  import ScalarBody from './cards/ScalarBody.svelte';
+  import VaRBody from './cards/VaRBody.svelte';
   import {
     METRICS,
     METRIC_CATEGORIES,
@@ -194,7 +196,17 @@
                 loading={analytics.loading[m.id]}
                 error={analytics.errors[m.id]}
                 onClose={() => toggle(m.id)}
-              />
+              >
+                {#snippet children(result)}
+                  {#if result.kind === 'scalar'}
+                    <ScalarBody data={result.data} />
+                  {:else if result.kind === 'var'}
+                    <VaRBody data={result.data} />
+                  {:else}
+                    <pre class="raw">{JSON.stringify(result.data, null, 2)}</pre>
+                  {/if}
+                {/snippet}
+              </MetricCard>
             {/each}
           </div>
         {/if}
@@ -519,6 +531,14 @@
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 12px;
     padding: 16px;
+  }
+  .raw {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: color-mix(in oklab, oklch(var(--foreground)) 75%, transparent);
+    overflow: auto;
+    max-height: 180px;
   }
 
   @media (max-width: 760px) {

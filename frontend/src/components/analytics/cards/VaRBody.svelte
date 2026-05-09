@@ -1,0 +1,61 @@
+<script lang="ts">
+  import type { VaRResponse } from '$lib/features/analytics/analyticsApi';
+
+  let { data }: { data: VaRResponse } = $props();
+
+  function pct(v: number): string {
+    if (!Number.isFinite(v)) return '—';
+    return `${(v * 100).toFixed(2)}%`;
+  }
+</script>
+
+<div class="var">
+  <div class="row">
+    <span class="lvl">95%</span>
+    <span class="val" class:neg={data.var_95 < 0}>{pct(data.var_95)}</span>
+  </div>
+  <div class="row">
+    <span class="lvl">99%</span>
+    <span class="val" class:neg={data.var_99 < 0}>{pct(data.var_99)}</span>
+  </div>
+  <span class="n">n = {data.n}</span>
+</div>
+
+<style>
+  .var {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .lvl {
+    width: 36px;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: color-mix(in oklab, oklch(var(--foreground)) 50%, transparent);
+  }
+  .val {
+    font-size: 16px;
+    font-weight: 700;
+    color: oklch(var(--foreground));
+    font-variant-numeric: tabular-nums;
+  }
+  .val.neg {
+    color: #ff9c9c;
+  }
+  .n {
+    margin-top: 4px;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: color-mix(in oklab, oklch(var(--foreground)) 45%, transparent);
+  }
+
+  :global(html:not(.dark)) .val.neg {
+    color: #b00020;
+  }
+</style>
