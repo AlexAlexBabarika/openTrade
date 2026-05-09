@@ -52,6 +52,7 @@ from backend.routes.ticker_workspace_routes import router as ticker_workspace_ro
 from backend.routes.api_key_routes import router as api_key_router
 from backend.routes.market_routes import router as market_router
 from backend.routes.indicator_routes import router as indicator_router
+from backend.routes.analytics_routes import router as analytics_router
 from backend.routes.symbol_routes import router as symbol_router
 from backend.routes.volume_profile_routes import router as volume_profile_router
 from backend.routes.position_metrics_routes import router as position_metrics_router
@@ -114,6 +115,7 @@ app.include_router(ticker_workspace_router)
 app.include_router(api_key_router)
 app.include_router(market_router)
 app.include_router(indicator_router)
+app.include_router(analytics_router)
 app.include_router(symbol_router)
 app.include_router(volume_profile_router)
 app.include_router(position_metrics_router)
