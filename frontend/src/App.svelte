@@ -102,7 +102,9 @@
   } from '$lib/features/notes/notes';
   import ToolboxPanel from './components/toolbar/ToolboxPanel.svelte';
   import IndicatorsPanel from './components/indicators/IndicatorsPanel.svelte';
+  import AnalyticsPanel from './components/analytics/AnalyticsPanel.svelte';
   import { IndicatorState } from '$lib/features/indicators/indicatorState.svelte';
+  import { AnalyticsState } from '$lib/features/analytics/analyticsState.svelte';
   import LeftToolbar from './components/toolbar/LeftToolbar.svelte';
   import ToolSettingsModal from './components/toolbar/ToolSettingsModal.svelte';
   import DrawablesPersistence from '$lib/features/drawables/DrawablesPersistence.svelte';
@@ -278,10 +280,13 @@
   }
   let toolboxOpen = $state(false);
   let indicatorsOpen = $state(false);
+  let analyticsOpen = $state(false);
   const indicators = new IndicatorState();
+  const analytics = new AnalyticsState();
 
   const toolboxTileHandlers: Record<string, () => void> = {
     Indicators: () => (indicatorsOpen = true),
+    Analytics: () => (analyticsOpen = true),
   };
 
   function handleToolboxTile(title: string) {
@@ -306,6 +311,7 @@
         interval: chart.interval,
       });
     });
+    analytics.invalidate();
   });
 
   $effect(() => {
@@ -798,6 +804,11 @@
     period={chart.period}
     interval={chart.interval}
     {indicators}
+  />
+  <AnalyticsPanel
+    bind:open={analyticsOpen}
+    symbol={chart.loadedSymbol || chart.symbol}
+    {analytics}
   />
   <AppDialogs
     {groupDialogInitial}
