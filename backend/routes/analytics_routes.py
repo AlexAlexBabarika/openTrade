@@ -10,8 +10,10 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException, Query, status
+from starlette.concurrency import run_in_threadpool
 
 from backend.market import cache
+from backend.market.data_sources import load_yfinance
 from backend.market.analytics import (
     compute_correlation,
     compute_hurst,
@@ -53,6 +55,19 @@ def _find_candles(symbol: str) -> list:
             if candles:
                 return candles
     return []
+
+
+def _find_meta(symbol: str) -> tuple[str, str | None, str | None] | None:
+    """Return ``(provider, period, interval)`` for the cached entry, if any."""
+    sym = symbol.strip()
+    for key in cache.list_cached_keys():
+        if not key.endswith(f":{sym}"):
+            continue
+        provider = key.split(":", 1)[0]
+        meta = cache.get_cached_meta(provider, sym)
+        if meta is not None:
+            return provider, meta[0], meta[1]
+    return None
 
 
 def _require_candles(symbol: str) -> list:
@@ -201,14 +216,32 @@ async def get_correlation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one benchmark symbol required.",
         )
+    primary_meta = _find_meta(symbol)
+    period = primary_meta[1] if primary_meta else "1mo"
+    interval = primary_meta[2] if primary_meta else "1d"
     bench_map: dict[str, list] = {}
     for name in names:
         bc = _find_candles(name)
         if not bc:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No cached data for benchmark '{name}'. Load market data first.",
-            )
+            try:
+                bc = await run_in_threadpool(
+                    load_yfinance,
+                    symbol=name,
+                    period=period or "1mo",
+                    interval=interval or "1d",
+                )
+            except Exception as e:
+                logger.warning("Benchmark fetch failed for %s: %s", name, e)
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Failed to load benchmark '{name}': {e}",
+                ) from e
+            if not bc:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No data returned for benchmark '{name}'.",
+                )
+            cache.set_cached("yfinance", name, bc, period=period, interval=interval)
         bench_map[name] = bc
     try:
         result = compute_correlation(candles, bench_map)
