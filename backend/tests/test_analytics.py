@@ -16,8 +16,12 @@ from backend.market.analytics import (
     compute_skewness,
     compute_sortino,
     compute_stdev,
+    compute_correlation,
+    compute_hurst,
+    compute_return_distribution,
     compute_var,
     compute_variance,
+    compute_volatility_clustering,
 )
 from backend.market.models import OHLCVCandle
 
@@ -143,6 +147,79 @@ def test_var_historical_at_95_and_99():
     assert result.var_95 == pytest.approx(-9.0)
     assert result.var_99 == pytest.approx(-9.8)
     assert result.n == n
+
+
+def test_correlation_identical_returns_is_one():
+    closes = [1.0, float(np.exp(1.0)), float(np.exp(0.0)), float(np.exp(2.0))]
+    candles = _candles(closes)
+    result = compute_correlation(candles, {"COPY": candles})
+    assert len(result.rows) == 1
+    assert result.rows[0].benchmark == "COPY"
+    assert result.rows[0].value == pytest.approx(1.0)
+
+
+def test_correlation_anti_correlated_is_negative_one():
+    closes_a = [1.0, float(np.exp(1.0)), float(np.exp(-1.0)), float(np.exp(2.0))]
+    # Returns of B = -returns of A
+    closes_b = [1.0, float(np.exp(-1.0)), float(np.exp(1.0)), float(np.exp(-2.0))]
+    result = compute_correlation(_candles(closes_a), {"INV": _candles(closes_b)})
+    assert result.rows[0].value == pytest.approx(-1.0)
+
+
+def test_correlation_aligns_on_min_length():
+    # long returns [1, 2, 3], short returns [2, 3]; aligned tail of both is
+    # [2, 3] which has non-zero variance → ρ = 1.
+    long_closes = [1.0, float(np.exp(1.0)), float(np.exp(3.0)), float(np.exp(6.0))]
+    short_closes = [1.0, float(np.exp(2.0)), float(np.exp(5.0))]
+    result = compute_correlation(
+        _candles(long_closes), {"SHORT": _candles(short_closes)}
+    )
+    assert result.rows[0].value == pytest.approx(1.0)
+
+
+def test_volatility_clustering_lag1_known_q():
+    # returns [1, 2, 1, 2, 1] → r² = [1, 4, 1, 4, 1]
+    # ρ_1 = -0.8, Q = 5*7*0.64/4 = 5.6
+    closes = [
+        1.0,
+        float(np.exp(1.0)),
+        float(np.exp(3.0)),
+        float(np.exp(4.0)),
+        float(np.exp(6.0)),
+        float(np.exp(7.0)),
+    ]
+    result = compute_volatility_clustering(_candles(closes), lag=1)
+    assert result.lag == 1
+    assert result.q == pytest.approx(5.6)
+    assert 0.0 < result.p_value < 1.0
+
+
+def test_hurst_random_walk_near_half():
+    rng = np.random.default_rng(42)
+    n = 500
+    returns = rng.normal(0.0, 0.01, n)
+    closes = [1.0]
+    for r in returns:
+        closes.append(closes[-1] * float(np.exp(r)))
+    h = compute_hurst(_candles(closes))
+    assert 0.4 < h < 0.6
+
+
+def test_hurst_requires_enough_data():
+    with pytest.raises(ValueError, match="100"):
+        compute_hurst(_candles([1.0, 1.1, 1.2]))
+
+
+def test_return_distribution_histogram_counts():
+    # Returns 0..10 (11 points) with 5 bins → counts [2, 2, 2, 2, 3]
+    cum = np.concatenate(([0.0], np.cumsum(np.arange(11, dtype=float))))
+    closes = [float(np.exp(c)) for c in cum]
+    result = compute_return_distribution(_candles(closes), bins=5)
+    counts = [b.count for b in result.bins]
+    assert counts == [2, 2, 2, 2, 3]
+    assert len(result.bins) == 5
+    assert result.bins[0].left == pytest.approx(0.0)
+    assert result.bins[-1].right == pytest.approx(10.0)
 
 
 def test_stat_funcs_raise_on_too_few_returns():
