@@ -19,7 +19,7 @@
     open: boolean;
     onopenchange: (open: boolean) => void;
     existingSymbols?: string[];
-    mode?: 'group' | 'comparison';
+    mode?: 'group' | 'comparison' | 'correlation';
     onsubmit: (symbol: string, providers: SymbolProviders | null) => void;
   } = $props();
 
@@ -35,6 +35,12 @@
       description:
         'Search by ticker or name. The symbol will be overlaid on the main chart.',
       duplicate: 'This symbol is already on the chart.',
+    },
+    correlation: {
+      title: 'Add correlation benchmark',
+      description:
+        'Search by ticker or name. The symbol will be added as a correlation benchmark.',
+      duplicate: 'This symbol is already a benchmark.',
     },
   } as const;
 

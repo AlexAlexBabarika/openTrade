@@ -226,7 +226,11 @@
                   {:else if result.kind === 'return_distribution'}
                     <DistributionCard data={result.data} />
                   {:else if result.kind === 'correlation'}
-                    <CorrelationCard data={result.data} />
+                    <CorrelationCard
+                      data={result.data}
+                      {analytics}
+                      loading={analytics.loading.correlation}
+                    />
                   {:else if result.kind === 'volatility_clustering'}
                     <VolatilityClusteringBody data={result.data} />
                   {/if}

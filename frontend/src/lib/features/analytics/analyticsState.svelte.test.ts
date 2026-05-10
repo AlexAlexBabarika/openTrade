@@ -140,6 +140,133 @@ describe('AnalyticsState', () => {
     expect(state.results.sharpe?.data.symbol).toBe('MSFT');
   });
 
+  it('correlationBenchmarks defaults to SPY,QQQ', () => {
+    const { state } = makeState();
+    expect(state.correlationBenchmarks).toEqual(['SPY', 'QQQ']);
+  });
+
+  it('addBenchmark normalizes case, dedupes, and refetches when enabled', async () => {
+    const { state } = makeState();
+    const calls: string[][] = [];
+    state.fetchers = {
+      ...state.fetchers,
+      correlation: vi.fn(async (s: string): Promise<AnalyticsResult> => {
+        calls.push([...state.correlationBenchmarks]);
+        return {
+          kind: 'correlation',
+          data: { symbol: s, metric: 'correlation', rows: [] },
+        };
+      }),
+    };
+    state.toggle('correlation');
+    await state.refresh('AAPL');
+    state.addBenchmark('msft');
+    await vi.waitFor(() =>
+      expect(calls[calls.length - 1]).toEqual(['SPY', 'QQQ', 'MSFT']),
+    );
+    // duplicate is a no-op
+    const before = calls.length;
+    state.addBenchmark('MSFT');
+    flushSync();
+    expect(calls.length).toBe(before);
+  });
+
+  it('removeBenchmark drops the symbol and refetches', async () => {
+    const { state } = makeState();
+    const calls: string[][] = [];
+    state.fetchers = {
+      ...state.fetchers,
+      correlation: vi.fn(async (s: string): Promise<AnalyticsResult> => {
+        calls.push([...state.correlationBenchmarks]);
+        return {
+          kind: 'correlation',
+          data: { symbol: s, metric: 'correlation', rows: [] },
+        };
+      }),
+    };
+    state.toggle('correlation');
+    await state.refresh('AAPL');
+    state.removeBenchmark('SPY');
+    await vi.waitFor(() => expect(calls[calls.length - 1]).toEqual(['QQQ']));
+  });
+
+  it('empty benchmark list yields synthetic empty rows without fetching', async () => {
+    const { state } = makeState();
+    let fetchCount = 0;
+    state.fetchers = {
+      ...state.fetchers,
+      correlation: vi.fn(async (s: string): Promise<AnalyticsResult> => {
+        fetchCount += 1;
+        return {
+          kind: 'correlation',
+          data: { symbol: s, metric: 'correlation', rows: [] },
+        };
+      }),
+    };
+    state.toggle('correlation');
+    await state.refresh('AAPL');
+    expect(fetchCount).toBe(1);
+    state.setCorrelationBenchmarks([]);
+    flushSync();
+    expect(state.correlationBenchmarks).toEqual([]);
+    expect(fetchCount).toBe(1); // no extra fetch
+    const result = state.results.correlation;
+    expect(result?.kind).toBe('correlation');
+    if (result?.kind === 'correlation') {
+      expect(result.data.rows).toEqual([]);
+    }
+  });
+
+  it('benchmark change preserves the previous result while refetching', async () => {
+    const { state } = makeState();
+    let release!: () => void;
+    state.fetchers = {
+      ...state.fetchers,
+      correlation: vi.fn((s: string) => {
+        return new Promise<AnalyticsResult>(resolve => {
+          release = () =>
+            resolve({
+              kind: 'correlation',
+              data: {
+                symbol: s,
+                metric: 'correlation',
+                rows: [{ benchmark: 'SPY', value: 0.5 }],
+              },
+            });
+        });
+      }),
+    };
+    state.toggle('correlation');
+    const first = state.refresh('AAPL');
+    release();
+    await first;
+    expect(state.results.correlation).not.toBeNull();
+    state.addBenchmark('MSFT');
+    // Still has the prior result while the new fetch is pending.
+    expect(state.results.correlation).not.toBeNull();
+  });
+
+  it('setCorrelationBenchmarks with same list is a no-op', async () => {
+    const { state } = makeState();
+    let fetchCount = 0;
+    state.fetchers = {
+      ...state.fetchers,
+      correlation: vi.fn(async (s: string): Promise<AnalyticsResult> => {
+        fetchCount += 1;
+        return {
+          kind: 'correlation',
+          data: { symbol: s, metric: 'correlation', rows: [] },
+        };
+      }),
+    };
+    state.toggle('correlation');
+    await state.refresh('AAPL');
+    expect(fetchCount).toBe(1);
+    state.setCorrelationBenchmarks(['SPY', 'QQQ']);
+    flushSync();
+    expect(fetchCount).toBe(1);
+  });
+
   it('invalidate clears cache and re-fetches enabled metrics', async () => {
     const { state, calls } = makeState();
     state.toggle('sharpe');
