@@ -24,6 +24,7 @@
   );
 
   function colour(v: number): string {
+    // -1 → red, 0 → muted, +1 → green. Interpolate via alpha on two hues.
     const c = Math.max(-1, Math.min(1, v));
     if (c >= 0) {
       const a = 0.10 + c * 0.70;

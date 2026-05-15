@@ -1,3 +1,4 @@
+import { safeLocalStorageGet, safeLocalStorageSet } from '$lib/core/storage';
 import { METRICS, type MetricId } from './metrics';
 import {
   fetchCorrelation,
@@ -19,6 +20,18 @@ import {
   type VaRResponse,
   type VolatilityClusteringResponse,
 } from './analyticsApi';
+
+const BENCHMARKS_STORAGE_KEY = 'opentrade:analytics:correlationBenchmarks';
+
+export function loadCorrelationBenchmarksFromStorage(): string[] | null {
+  const raw = safeLocalStorageGet<unknown>(BENCHMARKS_STORAGE_KEY);
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((s): s is string => typeof s === 'string');
+}
+
+export function persistCorrelationBenchmarks(list: readonly string[]): void {
+  safeLocalStorageSet(BENCHMARKS_STORAGE_KEY, [...list]);
+}
 
 export type AnalyticsResult =
   | { kind: 'scalar'; data: ScalarMetricResponse }
@@ -68,16 +81,24 @@ export class AnalyticsState {
   loading = $state<Record<MetricId, boolean>>(emptyBoolMap());
   errors = $state<Record<MetricId, string | null>>(emptyErrorMap());
   symbol = $state<string | null>(null);
-  correlationBenchmarks = $state<string[]>([...DEFAULT_BENCHMARKS]);
+  correlationBenchmarks = $state<string[]>(
+    loadCorrelationBenchmarksFromStorage() ?? [...DEFAULT_BENCHMARKS],
+  );
 
   /** Override the per-metric fetchers (used by tests). */
   fetchers: Record<MetricId, Fetcher>;
+
+  // Monotonic per-metric request token. Increments on every #fetchOne call;
+  // out-of-order resolutions are dropped by comparing tokens after await.
+  #reqIds: Record<MetricId, number>;
 
   enabledIds = $derived<MetricId[]>(
     METRICS.map(m => m.id).filter(id => this.enabled[id]),
   );
 
   constructor() {
+    this.#reqIds = {} as Record<MetricId, number>;
+    for (const m of METRICS) this.#reqIds[m.id] = 0;
     this.fetchers = {
       sharpe: async s => ({ kind: 'scalar', data: await fetchSharpe(s) }),
       sortino: async s => ({ kind: 'scalar', data: await fetchSortino(s) }),
@@ -158,20 +179,23 @@ export class AnalyticsState {
       return;
     }
     this.correlationBenchmarks = next;
+    persistCorrelationBenchmarks(next);
     this.errors.correlation = null;
     // Keep the previous result around so the chip editor stays visible while
     // the new fetch is in flight. The card filters rows by the current
     // benchmarks list, so stale entries disappear immediately and new ones
     // render as pending until the response lands.
     if (next.length === 0) {
-      this.results.correlation = {
-        kind: 'correlation',
-        data: {
-          symbol: this.symbol ?? '',
-          metric: 'correlation',
-          rows: [],
-        },
-      };
+      this.results.correlation = this.symbol
+        ? {
+            kind: 'correlation',
+            data: {
+              symbol: this.symbol,
+              metric: 'correlation',
+              rows: [],
+            },
+          }
+        : null;
       return;
     }
     if (this.enabled.correlation && this.symbol) {
@@ -191,17 +215,20 @@ export class AnalyticsState {
   }
 
   async #fetchOne(id: MetricId, symbol: string): Promise<void> {
+    const token = ++this.#reqIds[id];
     this.loading[id] = true;
     this.errors[id] = null;
     try {
       const result = await this.fetchers[id](symbol);
-      if (this.symbol !== symbol) return;
+      if (this.symbol !== symbol || this.#reqIds[id] !== token) return;
       this.results[id] = result;
     } catch (err) {
-      if (this.symbol !== symbol) return;
+      if (this.symbol !== symbol || this.#reqIds[id] !== token) return;
       this.errors[id] = err instanceof Error ? err.message : 'Fetch failed';
     } finally {
-      this.loading[id] = false;
+      if (this.#reqIds[id] === token) {
+        this.loading[id] = false;
+      }
     }
   }
 }
