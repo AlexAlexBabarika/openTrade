@@ -29,6 +29,8 @@
   } = $props();
 
   let query = $state('');
+  let searchInput = $state<HTMLInputElement | null>(null);
+  let prevFocus: HTMLElement | null = null;
 
   const filtered = $derived.by<MetricDef[]>(() => {
     const q = query.trim().toLowerCase();
@@ -69,6 +71,18 @@
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = prev;
+    };
+  });
+
+  // Focus the search input on open; restore focus to the previously-active
+  // element on close.
+  $effect(() => {
+    if (!open) return;
+    prevFocus = document.activeElement as HTMLElement | null;
+    queueMicrotask(() => searchInput?.focus());
+    return () => {
+      prevFocus?.focus?.();
+      prevFocus = null;
     };
   });
 
@@ -141,6 +155,7 @@
             placeholder="search metrics…"
             aria-label="Search metrics"
             bind:value={query}
+            bind:this={searchInput}
           />
         </div>
 

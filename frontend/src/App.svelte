@@ -310,8 +310,8 @@
         period: chart.period,
         interval: chart.interval,
       });
+      analytics.invalidate();
     });
-    analytics.invalidate();
   });
 
   $effect(() => {
