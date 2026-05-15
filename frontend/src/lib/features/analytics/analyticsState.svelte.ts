@@ -1,3 +1,4 @@
+import { safeLocalStorageGet, safeLocalStorageSet } from '$lib/core/storage';
 import { METRICS, type MetricId } from './metrics';
 import {
   fetchCorrelation,
@@ -20,6 +21,18 @@ import {
   type VolatilityClusteringResponse,
 } from './analyticsApi';
 
+const BENCHMARKS_STORAGE_KEY = 'opentrade:analytics:correlationBenchmarks';
+
+export function loadCorrelationBenchmarksFromStorage(): string[] | null {
+  const raw = safeLocalStorageGet<unknown>(BENCHMARKS_STORAGE_KEY);
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((s): s is string => typeof s === 'string');
+}
+
+export function persistCorrelationBenchmarks(list: readonly string[]): void {
+  safeLocalStorageSet(BENCHMARKS_STORAGE_KEY, [...list]);
+}
+
 export type AnalyticsResult =
   | { kind: 'scalar'; data: ScalarMetricResponse }
   | { kind: 'var'; data: VaRResponse }
@@ -30,32 +43,7 @@ export type AnalyticsResult =
 
 type Fetcher = (symbol: string) => Promise<AnalyticsResult>;
 
-const FETCHERS: Record<MetricId, Fetcher> = {
-  sharpe: async s => ({ kind: 'scalar', data: await fetchSharpe(s) }),
-  sortino: async s => ({ kind: 'scalar', data: await fetchSortino(s) }),
-  max_drawdown: async s => ({
-    kind: 'max_drawdown',
-    data: await fetchMaxDrawdown(s),
-  }),
-  var: async s => ({ kind: 'var', data: await fetchVaR(s) }),
-  variance: async s => ({ kind: 'scalar', data: await fetchVariance(s) }),
-  stdev: async s => ({ kind: 'scalar', data: await fetchStdev(s) }),
-  skewness: async s => ({ kind: 'scalar', data: await fetchSkewness(s) }),
-  kurtosis: async s => ({ kind: 'scalar', data: await fetchKurtosis(s) }),
-  correlation: async s => ({
-    kind: 'correlation',
-    data: await fetchCorrelation(s),
-  }),
-  volatility_clustering: async s => ({
-    kind: 'volatility_clustering',
-    data: await fetchVolatilityClustering(s),
-  }),
-  hurst: async s => ({ kind: 'scalar', data: await fetchHurst(s) }),
-  return_distribution: async s => ({
-    kind: 'return_distribution',
-    data: await fetchReturnDistribution(s),
-  }),
-};
+const DEFAULT_BENCHMARKS = ['SPY', 'QQQ'];
 
 function emptyBoolMap(): Record<MetricId, boolean> {
   const out = {} as Record<MetricId, boolean>;
@@ -75,19 +63,78 @@ function emptyErrorMap(): Record<MetricId, string | null> {
   return out;
 }
 
+function normalizeSymbols(list: readonly string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of list) {
+    const sym = raw.trim().toUpperCase();
+    if (!sym || seen.has(sym)) continue;
+    seen.add(sym);
+    out.push(sym);
+  }
+  return out;
+}
+
 export class AnalyticsState {
   enabled = $state<Record<MetricId, boolean>>(emptyBoolMap());
   results = $state<Record<MetricId, AnalyticsResult | null>>(emptyResultMap());
   loading = $state<Record<MetricId, boolean>>(emptyBoolMap());
   errors = $state<Record<MetricId, string | null>>(emptyErrorMap());
   symbol = $state<string | null>(null);
+  correlationBenchmarks = $state<string[]>(
+    loadCorrelationBenchmarksFromStorage() ?? [...DEFAULT_BENCHMARKS],
+  );
 
   /** Override the per-metric fetchers (used by tests). */
-  fetchers: Record<MetricId, Fetcher> = FETCHERS;
+  fetchers: Record<MetricId, Fetcher>;
+
+  // Monotonic per-metric request token. Increments on every #fetchOne call;
+  // out-of-order resolutions are dropped by comparing tokens after await.
+  #reqIds: Record<MetricId, number>;
 
   enabledIds = $derived<MetricId[]>(
     METRICS.map(m => m.id).filter(id => this.enabled[id]),
   );
+
+  constructor() {
+    this.#reqIds = {} as Record<MetricId, number>;
+    for (const m of METRICS) this.#reqIds[m.id] = 0;
+    this.fetchers = {
+      sharpe: async s => ({ kind: 'scalar', data: await fetchSharpe(s) }),
+      sortino: async s => ({ kind: 'scalar', data: await fetchSortino(s) }),
+      max_drawdown: async s => ({
+        kind: 'max_drawdown',
+        data: await fetchMaxDrawdown(s),
+      }),
+      var: async s => ({ kind: 'var', data: await fetchVaR(s) }),
+      variance: async s => ({ kind: 'scalar', data: await fetchVariance(s) }),
+      stdev: async s => ({ kind: 'scalar', data: await fetchStdev(s) }),
+      skewness: async s => ({ kind: 'scalar', data: await fetchSkewness(s) }),
+      kurtosis: async s => ({ kind: 'scalar', data: await fetchKurtosis(s) }),
+      correlation: async s => {
+        const benchmarks = this.correlationBenchmarks;
+        if (benchmarks.length === 0) {
+          return {
+            kind: 'correlation',
+            data: { symbol: s, metric: 'correlation', rows: [] },
+          };
+        }
+        return {
+          kind: 'correlation',
+          data: await fetchCorrelation(s, benchmarks),
+        };
+      },
+      volatility_clustering: async s => ({
+        kind: 'volatility_clustering',
+        data: await fetchVolatilityClustering(s),
+      }),
+      hurst: async s => ({ kind: 'scalar', data: await fetchHurst(s) }),
+      return_distribution: async s => ({
+        kind: 'return_distribution',
+        data: await fetchReturnDistribution(s),
+      }),
+    };
+  }
 
   toggle(id: MetricId): void {
     const next = !this.enabled[id];
@@ -124,18 +171,64 @@ export class AnalyticsState {
     }
   }
 
+  /** Replace the correlation benchmark list. Re-fetch if list changed. */
+  setCorrelationBenchmarks(list: readonly string[]): void {
+    const next = normalizeSymbols(list);
+    const cur = this.correlationBenchmarks;
+    if (next.length === cur.length && next.every((s, i) => s === cur[i])) {
+      return;
+    }
+    this.correlationBenchmarks = next;
+    persistCorrelationBenchmarks(next);
+    this.errors.correlation = null;
+    // Keep the previous result around so the chip editor stays visible while
+    // the new fetch is in flight. The card filters rows by the current
+    // benchmarks list, so stale entries disappear immediately and new ones
+    // render as pending until the response lands.
+    if (next.length === 0) {
+      this.results.correlation = this.symbol
+        ? {
+            kind: 'correlation',
+            data: {
+              symbol: this.symbol,
+              metric: 'correlation',
+              rows: [],
+            },
+          }
+        : null;
+      return;
+    }
+    if (this.enabled.correlation && this.symbol) {
+      void this.#fetchOne('correlation', this.symbol);
+    }
+  }
+
+  addBenchmark(symbol: string): void {
+    this.setCorrelationBenchmarks([...this.correlationBenchmarks, symbol]);
+  }
+
+  removeBenchmark(symbol: string): void {
+    const target = symbol.trim().toUpperCase();
+    this.setCorrelationBenchmarks(
+      this.correlationBenchmarks.filter(s => s !== target),
+    );
+  }
+
   async #fetchOne(id: MetricId, symbol: string): Promise<void> {
+    const token = ++this.#reqIds[id];
     this.loading[id] = true;
     this.errors[id] = null;
     try {
       const result = await this.fetchers[id](symbol);
-      if (this.symbol !== symbol) return;
+      if (this.symbol !== symbol || this.#reqIds[id] !== token) return;
       this.results[id] = result;
     } catch (err) {
-      if (this.symbol !== symbol) return;
+      if (this.symbol !== symbol || this.#reqIds[id] !== token) return;
       this.errors[id] = err instanceof Error ? err.message : 'Fetch failed';
     } finally {
-      this.loading[id] = false;
+      if (this.#reqIds[id] === token) {
+        this.loading[id] = false;
+      }
     }
   }
 }

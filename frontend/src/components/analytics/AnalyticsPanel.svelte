@@ -16,7 +16,10 @@
     type MetricDef,
     type MetricId,
   } from '$lib/features/analytics/metrics';
-  import { AnalyticsState } from '$lib/features/analytics/analyticsState.svelte';
+  import {
+    AnalyticsState,
+    type AnalyticsResult,
+  } from '$lib/features/analytics/analyticsState.svelte';
 
   let {
     open = $bindable(false),
@@ -105,6 +108,22 @@
 
   function toggle(id: MetricId) {
     analytics.toggle(id);
+  }
+
+  // Correlation needs the chip editor reachable even when no result has
+  // landed yet (first fetch failed, or benchmark list emptied with no
+  // symbol). Synthesize an empty result so MetricCard always renders the
+  // body; the real error is surfaced inline via errorMode='inline'.
+  function resultFor(id: MetricId): AnalyticsResult | null {
+    const r = analytics.results[id];
+    if (r) return r;
+    if (id === 'correlation') {
+      return {
+        kind: 'correlation',
+        data: { symbol, metric: 'correlation', rows: [] },
+      };
+    }
+    return null;
   }
 </script>
 
@@ -211,9 +230,10 @@
             {#each enabledMetrics as m (m.id)}
               <MetricCard
                 def={m}
-                result={analytics.results[m.id]}
+                result={resultFor(m.id)}
                 loading={analytics.loading[m.id]}
                 error={analytics.errors[m.id]}
+                errorMode={m.id === 'correlation' ? 'inline' : 'replace'}
                 onClose={() => toggle(m.id)}
               >
                 {#snippet children(result)}
@@ -226,7 +246,11 @@
                   {:else if result.kind === 'return_distribution'}
                     <DistributionCard data={result.data} />
                   {:else if result.kind === 'correlation'}
-                    <CorrelationCard data={result.data} />
+                    <CorrelationCard
+                      data={result.data}
+                      {analytics}
+                      loading={analytics.loading.correlation}
+                    />
                   {:else if result.kind === 'volatility_clustering'}
                     <VolatilityClusteringBody data={result.data} />
                   {/if}

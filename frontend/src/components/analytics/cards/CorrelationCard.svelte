@@ -1,7 +1,27 @@
 <script lang="ts">
+  import Plus from '@lucide/svelte/icons/plus';
+  import X from '@lucide/svelte/icons/x';
   import type { CorrelationResponse } from '$lib/features/analytics/analyticsApi';
+  import type { AnalyticsState } from '$lib/features/analytics/analyticsState.svelte';
+  import SymbolSearchDialog from '../../dialogs/SymbolSearchDialog.svelte';
 
-  let { data }: { data: CorrelationResponse } = $props();
+  let {
+    data,
+    analytics,
+    loading = false,
+  }: {
+    data: CorrelationResponse;
+    analytics: AnalyticsState;
+    loading?: boolean;
+  } = $props();
+
+  let dialogOpen = $state(false);
+
+  const benchmarks = $derived(analytics.correlationBenchmarks);
+  // Map the benchmark → row value, preserving the user-ordered list.
+  const rowsByBenchmark = $derived(
+    new Map(data.rows.map(r => [r.benchmark.toUpperCase(), r.value])),
+  );
 
   function colour(v: number): string {
     // -1 → red, 0 → muted, +1 → green. Interpolate via alpha on two hues.
@@ -13,6 +33,10 @@
     const a = 0.10 + -c * 0.70;
     return `color-mix(in oklab, #ff7373 ${(a * 100).toFixed(0)}%, transparent)`;
   }
+
+  function onAdd(symbol: string) {
+    analytics.addBenchmark(symbol);
+  }
 </script>
 
 <div class="corr">
@@ -20,18 +44,66 @@
     <span class="lbl">vs benchmark</span>
     <span class="self">{data.symbol}</span>
   </div>
-  <div class="grid">
-    {#each data.rows as row (row.benchmark)}
-      <div class="cell" style:background={colour(row.value)}>
-        <span class="bench">{row.benchmark}</span>
-        <span class="val" class:neg={row.value < 0}>{row.value.toFixed(2)}</span>
-      </div>
+
+  <div class="chips" aria-label="Correlation benchmarks">
+    {#each benchmarks as bench (bench)}
+      <span class="chip">
+        <span class="chip-name">{bench}</span>
+        <button
+          type="button"
+          class="chip-x"
+          aria-label="Remove {bench}"
+          title="remove"
+          onclick={() => analytics.removeBenchmark(bench)}
+        >
+          <X class="h-2.5 w-2.5" />
+        </button>
+      </span>
     {/each}
-    {#if data.rows.length === 0}
-      <p class="empty">no benchmarks loaded.</p>
-    {/if}
+    <button
+      type="button"
+      class="chip add"
+      aria-label="Add benchmark"
+      title="add benchmark"
+      onclick={() => (dialogOpen = true)}
+    >
+      <Plus class="h-3 w-3" />
+      <span class="add-lbl">add</span>
+    </button>
   </div>
+
+  {#if benchmarks.length === 0}
+    <p class="empty">add a benchmark to compare.</p>
+  {:else}
+    <div class="grid">
+      {#each benchmarks as bench (bench)}
+        {@const value = rowsByBenchmark.get(bench)}
+        <div
+          class="cell"
+          class:pending={value === undefined}
+          style:background={value !== undefined ? colour(value) : undefined}
+        >
+          <span class="bench">{bench}</span>
+          {#if value !== undefined}
+            <span class="val" class:neg={value < 0}>{value.toFixed(2)}</span>
+          {:else if loading}
+            <span class="val pending-val" aria-hidden="true">…</span>
+          {:else}
+            <span class="val pending-val" aria-hidden="true">—</span>
+          {/if}
+        </div>
+      {/each}
+    </div>
+  {/if}
 </div>
+
+<SymbolSearchDialog
+  open={dialogOpen}
+  onopenchange={(o) => (dialogOpen = o)}
+  mode="correlation"
+  existingSymbols={benchmarks}
+  onsubmit={(sym) => onAdd(sym)}
+/>
 
 <style>
   .corr {
@@ -57,6 +129,71 @@
     letter-spacing: 0.06em;
     color: oklch(var(--foreground));
   }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px 2px 7px;
+    border: 1px solid
+      color-mix(in oklab, oklch(var(--border)) 100%, transparent);
+    border-radius: 999px;
+    font-size: 10.5px;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    color: oklch(var(--foreground));
+    background: color-mix(in oklab, oklch(var(--foreground)) 5%, transparent);
+    font-family: inherit;
+  }
+  .chip-name {
+    font-weight: 700;
+  }
+  .chip-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: color-mix(in oklab, oklch(var(--foreground)) 55%, transparent);
+    cursor: pointer;
+    transition:
+      color 120ms ease,
+      background 120ms ease;
+  }
+  .chip-x:hover {
+    color: #ff9c9c;
+    background: color-mix(in oklab, #ff7373 18%, transparent);
+  }
+  .chip.add {
+    padding: 2px 8px 2px 6px;
+    border-style: dashed;
+    color: color-mix(in oklab, oklch(var(--foreground)) 65%, transparent);
+    background: transparent;
+    cursor: pointer;
+    transition:
+      color 120ms ease,
+      border-color 120ms ease,
+      background 120ms ease;
+  }
+  .chip.add:hover {
+    color: oklch(var(--foreground));
+    border-color: color-mix(in oklab, oklch(var(--primary)) 60%, transparent);
+    background: color-mix(in oklab, oklch(var(--primary)) 10%, transparent);
+  }
+  .add-lbl {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
@@ -74,6 +211,10 @@
     border-radius: 4px;
     font-variant-numeric: tabular-nums;
   }
+  .cell.pending {
+    border-style: dashed;
+    background: color-mix(in oklab, oklch(var(--foreground)) 4%, transparent);
+  }
   .bench {
     font-size: 9.5px;
     letter-spacing: 0.12em;
@@ -88,8 +229,11 @@
   .val.neg {
     color: #ff9c9c;
   }
+  .pending-val {
+    color: color-mix(in oklab, oklch(var(--foreground)) 35%, transparent);
+  }
   .empty {
-    margin: 0;
+    margin: 4px 0 0;
     font-size: 11px;
     color: oklch(var(--muted-foreground));
   }
@@ -99,5 +243,8 @@
   }
   :global(html:not(.dark)) .val.neg {
     color: #b00020;
+  }
+  :global(html:not(.dark)) .chip {
+    border-color: #000;
   }
 </style>

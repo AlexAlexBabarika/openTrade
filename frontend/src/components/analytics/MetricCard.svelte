@@ -11,6 +11,7 @@
     error,
     onClose,
     children,
+    errorMode = 'replace',
   }: {
     def: MetricDef;
     result: AnalyticsResult | null;
@@ -18,6 +19,14 @@
     error: string | null;
     onClose: () => void;
     children?: Snippet<[AnalyticsResult]>;
+    /**
+     * 'replace' (default): error message replaces the body.
+     * 'inline': children stay rendered when a previous result exists,
+     * with the error message appended below. Used for cards whose body
+     * is interactive (e.g., the correlation chip editor) and needs to
+     * stay reachable so the user can recover from a failed fetch.
+     */
+    errorMode?: 'replace' | 'inline';
   } = $props();
 </script>
 
@@ -44,6 +53,11 @@
         <span class="sk-bar"></span>
         <span class="sk-bar narrow"></span>
       </div>
+    {:else if errorMode === 'inline' && result && children}
+      {@render children(result)}
+      {#if error}
+        <p class="err-msg inline">{error}</p>
+      {/if}
     {:else if error}
       <p class="err-msg">{error}</p>
     {:else if result && children}
@@ -138,6 +152,12 @@
     color: #ff9c9c;
     font-size: 11.5px;
     line-height: 1.45;
+  }
+  .err-msg.inline {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed
+      color-mix(in oklab, #ff7373 35%, transparent);
   }
   .placeholder {
     margin: 0;
