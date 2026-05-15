@@ -9,11 +9,8 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
+from backend.market.candle_utils import close_array
 from backend.market.models import OHLCVCandle
-
-
-def _close_array(candles: list[OHLCVCandle]) -> NDArray[np.float64]:
-    return np.array([c.close for c in candles], dtype=np.float64)
 
 
 def _rolling_mean(arr: NDArray[np.float64], period: int) -> NDArray[np.float64]:
@@ -34,7 +31,7 @@ def calculate_sma(candles: list[OHLCVCandle], period: int) -> list[dict]:
     if len(candles) < period:
         return []
 
-    closes = _close_array(candles)
+    closes = close_array(candles)
     sma = _rolling_mean(closes, period)
 
     return [
@@ -58,7 +55,7 @@ def calculate_bollinger_bands(
     if len(candles) < period:
         return []
 
-    closes = _close_array(candles)
+    closes = close_array(candles)
     sma = _rolling_mean(closes, period)
 
     sq_cs = np.cumsum(closes**2)
@@ -92,7 +89,7 @@ def calculate_ema(candles: list[OHLCVCandle], period: int) -> list[dict]:
     if len(candles) < period:
         return []
 
-    closes = _close_array(candles)
+    closes = close_array(candles)
     multiplier = 2.0 / (period + 1)
 
     ema = np.empty(len(closes) - period + 1, dtype=np.float64)

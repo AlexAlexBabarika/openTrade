@@ -15,6 +15,13 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from backend.market.candle_utils import (
+    close_array,
+    high_array,
+    low_array,
+    open_array,
+    volume_array,
+)
 from backend.market.models import OHLCVCandle
 
 
@@ -64,11 +71,11 @@ def bin_from_candle_distribution(
             val=0.0,
         )
 
-    lows = np.array([c.low for c in candles], dtype=np.float64)
-    highs = np.array([c.high for c in candles], dtype=np.float64)
-    opens = np.array([c.open for c in candles], dtype=np.float64)
-    closes = np.array([c.close for c in candles], dtype=np.float64)
-    vols = np.array([c.volume for c in candles], dtype=np.float64)
+    lows = low_array(candles)
+    highs = high_array(candles)
+    opens = open_array(candles)
+    closes = close_array(candles)
+    vols = volume_array(candles)
 
     price_min = float(np.floor(lows.min() / row_size) * row_size)
     price_max = float(np.ceil(highs.max() / row_size) * row_size)
