@@ -10,6 +10,7 @@
   import TrendingUp from '@lucide/svelte/icons/trending-up';
   import Moon from '@lucide/svelte/icons/moon';
   import Sun from '@lucide/svelte/icons/sun';
+  import Settings from '@lucide/svelte/icons/settings';
   import type { Theme } from '$lib/features/theme/theme';
   import ColourSwatch from './ColourSwatch.svelte';
   import type {
@@ -147,13 +148,15 @@
 
 </script>
 
-<Button
-  variant="outline"
-  size="sm"
+<button
+  type="button"
+  class="ot-workbench-ghost"
   onclick={() => (open = true)}
+  title="Chart options"
 >
-  Chart Options
-</Button>
+  <Settings class="h-3 w-3" />
+  <span>opt</span>
+</button>
 
 <Dialog.Root bind:open>
   <Dialog.Content class="sm:max-w-lg">

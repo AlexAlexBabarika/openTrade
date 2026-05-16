@@ -2,7 +2,6 @@
   import AuthDialog from '../dialogs/AuthDialog.svelte';
   import ApiKeysModal from '../dialogs/ApiKeysModal.svelte';
   import type { ConnectionStatus } from '$lib/core/ws';
-  import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
   import { authState, logout } from '$lib/features/auth/auth';
   import {
@@ -16,7 +15,6 @@
   import PeriodPicker from './PeriodPicker.svelte';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import ChartCandlestick from '@lucide/svelte/icons/chart-candlestick';
-
   let {
     symbol = $bindable('AAPL'),
     period = $bindable(DEFAULT_MARKET_PERIOD),
@@ -66,23 +64,42 @@
   }
 
   let streamable = $derived(source === 'csv' || providerSupportsWs(source));
+  let streamActive = $derived(
+    connectionStatus === 'connected' || connectionStatus === 'connecting',
+  );
+  let activeSourceLabel = $derived(
+    MARKET_DATA_PROVIDERS.find(p => p.value === source)?.label ?? source,
+  );
 </script>
 
 <div
-  class="flex items-center gap-4 px-4 py-3 bg-background border-b border-border flex-wrap relative z-40"
+  class="flex items-center gap-3 px-4 py-2.5 bg-background border-b border-border flex-wrap relative z-40"
 >
-  <div class="flex items-center gap-1.5 font-mono text-sm font-semibold tracking-tight select-none">
+  <!-- Brand zone -->
+  <div
+    class="flex items-center gap-1.5 font-mono text-sm font-semibold tracking-tight select-none"
+  >
     <span>openTrade</span>
     <ChartCandlestick class="h-4 w-4 text-primary" />
   </div>
 
-  <PeriodPicker bind:value={period} />
+  <span class="ot-hairline-v"></span>
 
+  <!-- Timeframe zone — period × interval grouped together -->
+  <PeriodPicker bind:value={period} />
+  <span class="ot-hairline-v"></span>
   <IntervalPicker bind:value={interval} />
 
+  <span class="ot-hairline-v"></span>
+
+  <!-- Source zone — ctx pill instead of vanilla select -->
   <Select.Root type="single" bind:value={source}>
-    <Select.Trigger class="w-36">
-      {MARKET_DATA_PROVIDERS.find(p => p.value === source)?.label ?? source}
+    <Select.Trigger
+      class="ot-ctx-pill h-7 px-3 outline-none [&_svg]:opacity-60"
+      aria-label="Market data source"
+    >
+      <span class="ot-ctx-label">SRC</span>
+      <span class="ot-ctx-value">{activeSourceLabel}</span>
     </Select.Trigger>
     <Select.Content>
       {#each MARKET_DATA_PROVIDERS as p (p.value)}
@@ -91,6 +108,7 @@
     </Select.Content>
   </Select.Root>
 
+  <!-- CSV upload action (only when source is CSV — unchanged behaviour) -->
   <input
     type="file"
     accept=".csv,text/csv"
@@ -99,52 +117,61 @@
     onchange={handleFileChange}
   />
   {#if source === 'csv'}
-    <Button onclick={handleLoad} disabled={isLoading}>
+    <button
+      type="button"
+      class="ot-workbench-ghost"
+      onclick={handleLoad}
+      disabled={isLoading}
+    >
       {#if isLoading}
-        <LoaderCircle class="mr-1 h-4 w-4 animate-spin" />
+        <LoaderCircle class="h-3 w-3 animate-spin" />
       {/if}
-      {isLoading ? 'Loading…' : 'Upload CSV'}
-    </Button>
+      <span>{isLoading ? 'loading…' : 'upload csv'}</span>
+    </button>
   {/if}
 
-  <Button
-    variant="secondary"
-    size="sm"
+  <button
+    type="button"
+    class="ot-workbench-primary {streamActive ? 'stop' : ''}"
     onclick={onstream}
     disabled={!streamable || (source !== 'csv' && !symbol.trim())}
     title={!streamable
       ? `Live streaming is not available for ${source}.`
-      : connectionStatus === 'connected' || connectionStatus === 'connecting'
+      : streamActive
         ? 'Stop the live stream'
         : 'Start a live stream (load data first unless using yfinance)'}
   >
-    {connectionStatus === 'connected' || connectionStatus === 'connecting'
-      ? 'Stop'
-      : 'Stream'}
+    <span>{streamActive ? 'STOP' : 'STREAM'}</span>
     {#if connectionStatus === 'connecting'}
-      <span class="ml-1 text-xs text-muted-foreground">…</span>
+      <span class="ot-stream-dot idle"></span>
     {:else if connectionStatus === 'connected'}
-      <span class="ml-1 h-2 w-2 rounded-full bg-green-500 inline-block" title="Connected"></span>
+      <span class="ot-stream-dot" aria-label="Connected"></span>
     {:else if connectionStatus === 'error'}
-      <span class="ml-1 text-xs text-destructive">!</span>
+      <span class="ot-stream-dot error" aria-label="Stream error"></span>
     {/if}
-  </Button>
+  </button>
 
   <div class="ml-auto flex items-center gap-2">
     {#if currentUser}
-      <Button variant="outline" size="sm" onclick={() => (apiKeysModalOpen = true)}>
-        API Keys
-      </Button>
-      <span class="text-sm text-muted-foreground truncate max-w-[160px]">
+      <button
+        type="button"
+        class="ot-workbench-ghost"
+        onclick={() => (apiKeysModalOpen = true)}
+      >api keys</button>
+      <span class="font-mono text-[11px] tracking-[0.04em] text-muted-foreground truncate max-w-[180px]">
         {currentUser.email}
       </span>
-      <Button variant="ghost" size="sm" onclick={handleLogout}>
-        Sign out
-      </Button>
+      <button
+        type="button"
+        class="ot-workbench-ghost"
+        onclick={handleLogout}
+      >sign out</button>
     {:else}
-      <Button variant="outline" size="sm" onclick={() => (authDialogOpen = true)}>
-        Sign in
-      </Button>
+      <button
+        type="button"
+        class="ot-workbench-ghost"
+        onclick={() => (authDialogOpen = true)}
+      >sign in</button>
     {/if}
   </div>
 </div>

@@ -1,13 +1,19 @@
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
   import * as Dialog from '$lib/components/ui/dialog';
+  import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 
   let open = $state(false);
 </script>
 
-<Button variant="outline" size="sm" onclick={() => (open = true)}>
-  Options
-</Button>
+<button
+  type="button"
+  class="ot-workbench-ghost"
+  onclick={() => (open = true)}
+  title="More options"
+>
+  <SlidersHorizontal class="h-3 w-3" />
+  <span>more</span>
+</button>
 
 <Dialog.Root bind:open>
   <Dialog.Content class="sm:max-w-lg">
