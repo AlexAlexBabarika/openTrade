@@ -119,9 +119,9 @@
         {#each groups as group (group.name)}
           <DropdownMenu.Item
             onSelect={() => actions.select(group.name)}
-            class="flex w-full items-center px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none {inGroupMode &&
+            class="ot-keyline-host ot-keyline-flush relative flex w-full items-center px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none {inGroupMode &&
             group.name === selectedName
-              ? 'bg-accent/60 text-accent-foreground'
+              ? 'ot-keyline-active bg-primary/[0.08]'
               : ''}"
           >
             <span class="truncate">{group.name}</span>
@@ -139,9 +139,9 @@
         {@const colour = PRIORITY_COLOURS[p]}
         <DropdownMenu.Item
           onSelect={() => onselectpriority(p)}
-          class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none {selectedPriority ===
+          class="ot-keyline-host ot-keyline-flush relative flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none {selectedPriority ===
           p
-            ? 'bg-accent/60 text-accent-foreground'
+            ? 'ot-keyline-active bg-primary/[0.08]'
             : ''}"
         >
           <Flag
@@ -168,9 +168,9 @@
         {@const colour = STANCE_COLOURS[s]}
         <DropdownMenu.Item
           onSelect={() => onselectstance(s)}
-          class="flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none {selectedStance ===
+          class="ot-keyline-host ot-keyline-flush relative flex w-full items-center gap-2 px-3 py-1.5 text-sm data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground cursor-default outline-none {selectedStance ===
           s
-            ? 'bg-accent/60 text-accent-foreground'
+            ? 'ot-keyline-active bg-primary/[0.08]'
             : ''}"
         >
           <Tag
