@@ -2,7 +2,6 @@
   import PanelRight from '@lucide/svelte/icons/panel-right';
   import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
   import GitCompare from '@lucide/svelte/icons/git-compare';
-  import { Button } from '$lib/components/ui/button';
   import ChartOptionsMenu from '../chart/ChartOptionsMenu.svelte';
   import BottomBarOptionsMenu from './BottomBarOptionsMenu.svelte';
   import type {
@@ -27,6 +26,8 @@
     ontogglesidebar,
     comparisonCount = 0,
     oncompare,
+    onopenindicators,
+    onopenanalytics,
   }: {
     chartType: ChartType;
     showArea: boolean;
@@ -41,6 +42,8 @@
     ontogglesidebar: () => void;
     comparisonCount?: number;
     oncompare?: () => void;
+    onopenindicators?: () => void;
+    onopenanalytics?: () => void;
   } = $props();
 
   const atLimit = $derived(comparisonCount >= MAX_COMPARISONS);
@@ -61,10 +64,11 @@
       {theme}
       {onthemechange}
     />
+
     {#if oncompare}
-      <Button
-        variant="outline"
-        size="sm"
+      <button
+        type="button"
+        class="ot-workbench-ghost"
         disabled={atLimit}
         onclick={oncompare}
         aria-label="Add comparison symbol"
@@ -72,24 +76,54 @@
           ? `Maximum ${MAX_COMPARISONS} comparisons`
           : 'Add comparison symbol'}
       >
-        <GitCompare class="h-4 w-4" />
-      </Button>
+        <GitCompare class="h-3 w-3" />
+        <span>cmp</span>
+      </button>
+    {/if}
+
+    {#if onopenindicators || onopenanalytics}
+      <span class="ot-hairline-v"></span>
+    {/if}
+
+    {#if onopenindicators}
+      <button
+        type="button"
+        class="ot-workbench-ghost"
+        onclick={onopenindicators}
+        title="Open indicators workbench"
+      >
+        <span class="text-primary font-bold leading-none">▣</span>
+        <span>indicators</span>
+      </button>
+    {/if}
+
+    {#if onopenanalytics}
+      <button
+        type="button"
+        class="ot-workbench-ghost"
+        onclick={onopenanalytics}
+        title="Open analytics workbench"
+      >
+        <span class="text-primary font-bold leading-none">∑</span>
+        <span>analytics</span>
+      </button>
     {/if}
   </div>
 
   <div class="flex items-center gap-1">
     <BottomBarOptionsMenu />
-    <Button
-      variant="outline"
-      size="sm"
+    <button
+      type="button"
+      class="ot-workbench-ghost"
       aria-label={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'}
       onclick={ontogglesidebar}
     >
       {#if sidebarVisible}
-        <PanelRightClose class="h-4 w-4" />
+        <PanelRightClose class="h-3 w-3" />
       {:else}
-        <PanelRight class="h-4 w-4" />
+        <PanelRight class="h-3 w-3" />
       {/if}
-    </Button>
+      <span>panel</span>
+    </button>
   </div>
 </div>

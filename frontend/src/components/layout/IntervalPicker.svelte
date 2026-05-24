@@ -45,12 +45,12 @@
   }
 </script>
 
-<div class="flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5">
+<div class="flex items-center gap-0.5">
   {#each sortedFavourites as fav (fav)}
     <button
       type="button"
       title={findLongLabel(fav)}
-      class="px-2 h-7 text-xs font-mono rounded transition-colors {value === fav
+      class="px-2 h-7 rounded-sm font-mono text-[11px] lowercase tracking-[0.04em] transition-colors {value === fav
         ? 'bg-accent text-accent-foreground'
         : 'text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground'}"
       onclick={() => selectValue(fav)}
@@ -61,7 +61,7 @@
 
   <DropdownMenu.Root>
     <DropdownMenu.Trigger
-      class="inline-flex items-center justify-center h-7 w-7 rounded text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground transition-colors outline-none"
+      class="inline-flex items-center justify-center h-7 w-6 rounded-sm text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground transition-colors outline-none"
       aria-label="All intervals"
     >
       <ChevronDown class="h-3.5 w-3.5" />
@@ -77,7 +77,7 @@
             <DropdownMenu.Separator class="my-1 h-px bg-border" />
           {/if}
           <div
-            class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+            class="px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground"
           >
             {group.category}
           </div>
