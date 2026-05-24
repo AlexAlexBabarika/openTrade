@@ -97,10 +97,10 @@
     return formatPrice(q.close);
   }
 
+  const loadedSymbolKey = $derived((symbol ?? '').trim().toUpperCase());
+
   const currentTicker = $derived(
-    tickers.find(
-      t => t.symbol.toUpperCase() === (symbol || '').trim().toUpperCase(),
-    ) ?? null,
+    tickers.find(t => t.symbol.toUpperCase() === loadedSymbolKey) ?? null,
   );
 
   const hasSidebarTags = $derived(
@@ -158,9 +158,14 @@
         {#each tickers as ticker (ticker.symbol)}
           <ContextMenu.Root>
             <ContextMenu.Trigger class="block w-full">
+              {@const isLoaded =
+                ticker.symbol.toUpperCase() === loadedSymbolKey}
               <button
                 type="button"
-                class="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
+                class="ot-keyline-host ot-keyline-flush relative flex w-full items-center justify-between gap-2 px-3 py-1.5 text-sm text-foreground hover:bg-accent hover:text-accent-foreground transition-colors {isLoaded
+                  ? 'ot-keyline-active bg-primary/[0.08]'
+                  : ''}"
+                aria-current={isLoaded ? 'true' : undefined}
                 onclick={() => onselectticker(ticker.symbol)}
               >
                 <span class="flex items-center gap-1.5 min-w-0">

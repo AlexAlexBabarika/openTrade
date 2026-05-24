@@ -329,6 +329,32 @@
       box-shadow: 0 0 0 4px color-mix(in oklab, #22c55e 32%, transparent);
     }
   }
+
+  /* Active-row keyline. A 2px primary-green bar on the left edge of a row,
+     used to mark the "currently active" item in sidebar / panel lists.
+     Pairs with an 8% primary wash on the row background. Gives the eye a
+     fixed anchor that survives hover on neighbouring rows. */
+  .ot-keyline-host {
+    position: relative;
+  }
+  .ot-keyline-active {
+    position: relative;
+  }
+  .ot-keyline-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 60%;
+    background: oklch(var(--primary));
+    border-radius: 0 2px 2px 0;
+    pointer-events: none;
+  }
+  .ot-keyline-active.ot-keyline-flush::before {
+    left: -1px;
+  }
 }
 
 /* ----------------------------------------------------------------

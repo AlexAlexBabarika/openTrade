@@ -656,8 +656,20 @@
     background: color-mix(in oklab, oklch(var(--foreground)) 5%, transparent);
   }
   .rail-item.active {
-    background: color-mix(in oklab, oklch(var(--primary)) 14%, transparent);
-    border-color: color-mix(in oklab, oklch(var(--primary)) 45%, transparent);
+    background: color-mix(in oklab, oklch(var(--primary)) 8%, transparent);
+    border-color: transparent;
+  }
+  .rail-item.active::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 60%;
+    background: oklch(var(--primary));
+    border-radius: 0 2px 2px 0;
+    pointer-events: none;
   }
   .ri-status {
     width: 8px;
