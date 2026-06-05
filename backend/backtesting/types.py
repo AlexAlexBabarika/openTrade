@@ -99,3 +99,12 @@ class EquityPoint:
 
     time: datetime
     equity: float
+
+
+@dataclass(frozen=True, slots=True)
+class BacktestResult:
+    """The complete record produced by a run."""
+
+    orders: list[Order]
+    fills: list[Fill]
+    equity_curve: list[EquityPoint]

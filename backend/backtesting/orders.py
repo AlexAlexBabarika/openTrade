@@ -19,6 +19,7 @@ from backend.backtesting.types import Bar, Fill, Order, OrderType, Side
 class Broker:
     def __init__(self, costs: Costs | None = None) -> None:
         self._resting: list[Order] = []
+        self.orders: list[Order] = []
         self.fills: list[Fill] = []
         self._next_id = 0
         self._costs = costs if costs is not None else Costs.frictionless()
@@ -29,6 +30,7 @@ class Broker:
         self._next_id += 1
         order.submitted_index = bar_index
         self._resting.append(order)
+        self.orders.append(order)
         return order
 
     def submit_order(

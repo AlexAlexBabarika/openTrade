@@ -9,6 +9,7 @@ raises ``LookAheadError`` — there is no path to a silent future read.
 
 from __future__ import annotations
 
+import random
 from datetime import datetime
 from typing import TYPE_CHECKING, Iterator
 
@@ -73,10 +74,20 @@ class Context:
         bars: BarSeries,
         broker: "Broker | None" = None,
         portfolio: "Portfolio | None" = None,
+        rng: random.Random | None = None,
     ) -> None:
         self._bars = bars
         self._broker = broker
         self._portfolio = portfolio
+        self._rng = rng
+
+    @property
+    def random(self) -> random.Random:
+        """The run's seeded RNG. Strategy code must use this, never the global
+        ``random`` module, so runs stay deterministic."""
+        if self._rng is None:
+            raise EngineError("no rng bound to this context")
+        return self._rng
 
     @property
     def bars(self) -> BarSeries:
