@@ -92,6 +92,17 @@ def test_selling_more_than_long_flips_to_short() -> None:
     assert p.realized_pnl == 100.0  # closed 10 long at +10 each
 
 
+def test_fractional_shares_net_to_exactly_flat() -> None:
+    p = Portfolio(starting_cash=10_000.0)
+    p.apply_fill(_fill(Side.BUY, 0.1, 100.0))
+    p.apply_fill(_fill(Side.BUY, 0.1, 100.0))
+    p.apply_fill(_fill(Side.BUY, 0.1, 100.0))  # 0.30000000000000004 from float add
+    p.apply_fill(_fill(Side.SELL, 0.3, 110.0))
+    assert p.position.quantity == 0.0  # snapped flat, not a 1e-17 dust position
+    assert p.position.avg_price == 0.0
+    assert p.realized_pnl == pytest.approx(3.0)  # (110 - 100) * 0.3
+
+
 def test_short_then_cover_below_entry_realizes_profit() -> None:
     p = Portfolio(starting_cash=10_000.0)
     p.apply_fill(_fill(Side.SELL, 10.0, 100.0))

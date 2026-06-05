@@ -14,8 +14,17 @@ from datetime import datetime
 from backend.backtesting.types import EquityPoint, Fill, Position, Side
 
 
+# Quantities below this are treated as flat, so float dust from fractional-share
+# arithmetic (e.g. 0.1 + 0.1 + 0.1 - 0.3) doesn't leave a phantom position.
+_QTY_EPS = 1e-9
+
+
 def _sign(x: float) -> float:
-    return (x > 0) - (x < 0)
+    if x > _QTY_EPS:
+        return 1.0
+    if x < -_QTY_EPS:
+        return -1.0
+    return 0.0
 
 
 class Portfolio:
@@ -47,8 +56,10 @@ class Portfolio:
         old_qty = self._position.quantity
         old_avg = self._position.avg_price
         new_qty = old_qty + delta
+        if abs(new_qty) < _QTY_EPS:
+            new_qty = 0.0  # snap float dust to exactly flat
 
-        if old_qty == 0.0 or _sign(old_qty) == _sign(delta):
+        if _sign(old_qty) == 0.0 or _sign(old_qty) == _sign(delta):
             # Opening or increasing in the same direction: weighted average.
             new_avg = (old_qty * old_avg + delta * price) / new_qty
             self._position = Position(quantity=new_qty, avg_price=new_avg)

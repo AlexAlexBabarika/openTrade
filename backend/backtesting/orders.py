@@ -115,11 +115,14 @@ def _fill_price(order: Order, bar: Bar) -> float | None:
         return None
     if t == OrderType.STOP_LIMIT:
         assert order.stop is not None and order.limit is not None
-        triggered = (side == Side.BUY and o >= order.stop) or (
-            side == Side.SELL and o <= order.stop
-        )
-        if not triggered:
-            return None
+        if not order.triggered:
+            stop_hit = (side == Side.BUY and o >= order.stop) or (
+                side == Side.SELL and o <= order.stop
+            )
+            if not stop_hit:
+                return None
+            # The stop is consumed; the order is now a plain resting limit.
+            order.triggered = True
         if side == Side.BUY and o <= order.limit:
             return o
         if side == Side.SELL and o >= order.limit:

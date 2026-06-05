@@ -80,8 +80,12 @@ class _Validator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
-        if node.attr.startswith("__") and node.attr.endswith("__"):
-            self._err(node, f"attribute '{node.attr}' is not allowed")
+        # Reject any "private" attribute access. Beyond the classic dunder
+        # escapes (``__class__``…), this also blocks single-underscore
+        # internals such as a bar view's ``_series``, which would otherwise
+        # leak future bars past the look-ahead guard.
+        if node.attr.startswith("_"):
+            self._err(node, f"access to attribute '{node.attr}' is not allowed")
         self.generic_visit(node)
 
 

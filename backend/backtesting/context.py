@@ -66,6 +66,32 @@ class BarSeries:
         return iter(self._bars[: self._cursor + 1])
 
 
+class BarsView:
+    """Read-only, look-ahead-guarded view of revealed bars given to strategies.
+
+    Delegates reads to the engine's ``BarSeries`` (so the forward-read guard
+    still applies) but exposes no cursor control: there is no ``advance`` here,
+    and the underscore-named ``_series`` reference is unreachable from strategy
+    code because the AST guard rejects underscore attribute access.
+    """
+
+    def __init__(self, series: BarSeries) -> None:
+        self._series = series
+
+    def __getitem__(self, key: int) -> Bar:
+        return self._series[key]
+
+    def __len__(self) -> int:
+        return len(self._series)
+
+    def __iter__(self) -> Iterator[Bar]:
+        return iter(self._series)
+
+    @property
+    def index(self) -> int:
+        return self._series.index
+
+
 class Context:
     """What user strategy code receives each bar as ``ctx``."""
 
@@ -80,6 +106,7 @@ class Context:
         self._broker = broker
         self._portfolio = portfolio
         self._rng = rng
+        self._bars_view = BarsView(bars)
         self.state: dict = {}
         """Free-form per-run scratch space for strategy state across bars."""
 
@@ -92,8 +119,8 @@ class Context:
         return self._rng
 
     @property
-    def bars(self) -> BarSeries:
-        return self._bars
+    def bars(self) -> BarsView:
+        return self._bars_view
 
     @property
     def time(self) -> datetime:

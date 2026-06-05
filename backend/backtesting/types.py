@@ -60,6 +60,7 @@ class Order:
     stop: float | None = None
     id: int | None = None
     submitted_index: int | None = None
+    triggered: bool = False  # set once a stop/stop-limit's stop has been hit
 
 
 @dataclass(frozen=True, slots=True)

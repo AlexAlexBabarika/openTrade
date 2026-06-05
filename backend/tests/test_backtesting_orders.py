@@ -104,6 +104,23 @@ def test_stop_sell_fills_when_open_at_or_below_stop() -> None:
 # --- stop-limit / moc / moo ------------------------------------------------
 
 
+def test_stop_limit_stays_triggered_after_the_stop_is_hit() -> None:
+    broker = Broker()
+    broker.submit_order(
+        side=Side.BUY,
+        quantity=1.0,
+        type=OrderType.STOP_LIMIT,
+        stop=25.0,
+        limit=26.0,
+        bar_index=0,
+    )
+    # bar1: stop hit (27 >= 25) but above the limit -> no fill, now triggered.
+    assert broker.process_bar(_bar(o=27.0, c=27.0, i=1), bar_index=1) == []
+    # bar2: 24 is below the stop, but the order already triggered and 24 <= limit
+    # -> it is now a resting limit and fills at 24 (it must not re-arm the stop).
+    assert broker.process_bar(_bar(o=24.0, c=24.0, i=2), bar_index=2)[0].price == 24.0
+
+
 def test_stop_limit_buy_fills_only_when_triggered_and_within_limit() -> None:
     broker = Broker()
     broker.submit_order(

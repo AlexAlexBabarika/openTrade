@@ -85,3 +85,27 @@ def test_infinite_loop_times_out(df: pl.DataFrame) -> None:
     code = "def on_bar(ctx):\n    while True:\n        pass\n"
     res = run_strategy(code, df, timeout_s=1.0)
     assert res.status == "timeout"
+
+
+def test_strategy_cannot_advance_the_bar_cursor(df: pl.DataFrame) -> None:
+    # The cursor is the engine's; a strategy must not be able to reveal the
+    # next bar early. The read-only view has no advance().
+    code = "def on_bar(ctx):\n    ctx.bars.advance()\n"
+    res = run_strategy(code, df, timeout_s=10.0)
+    assert res.status == "error"
+
+
+def test_strategy_cannot_reach_the_underlying_bar_list(df: pl.DataFrame) -> None:
+    # Underscore attribute access (which would expose future bars) is rejected
+    # by the AST guard before the code runs.
+    code = "def on_bar(ctx):\n    everything = ctx.bars._series\n"
+    res = run_strategy(code, df, timeout_s=10.0)
+    assert res.status == "error"
+    assert "not allowed" in res.stderr
+
+
+def test_strategy_namespace_excludes_numpy(df: pl.DataFrame) -> None:
+    # np exposes file I/O (np.load/fromfile); strategies reach data via ctx only.
+    code = "def on_bar(ctx):\n    np.array([1, 2, 3])\n"
+    res = run_strategy(code, df, timeout_s=10.0)
+    assert res.status == "error"

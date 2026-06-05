@@ -16,7 +16,6 @@ from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field
 from typing import Any
 
-import numpy as np
 import polars as pl
 
 from backend.backtesting.engine import run_backtest
@@ -57,9 +56,13 @@ class _FunctionStrategy(Strategy):
 
 
 def _strategy_globals() -> dict[str, Any]:
-    """Namespace for executing a strategy script: safe builtins + pl/np, but no
-    whole-series data — the strategy only sees data through ``ctx``."""
-    return {"__builtins__": _SAFE_BUILTINS, "pl": pl, "np": np}
+    """Namespace for executing a strategy script: safe builtins only.
+
+    No whole-series data (the strategy sees data only through ``ctx``) and no
+    ``np``/``pl`` — numpy in particular exposes file I/O (np.load/fromfile).
+    Strategies needing maths can import the AST-allowed stdlib (math/statistics).
+    """
+    return {"__builtins__": _SAFE_BUILTINS}
 
 
 def _serialize_fill(f: Fill) -> dict:
