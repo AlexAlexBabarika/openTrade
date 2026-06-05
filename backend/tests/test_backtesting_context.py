@@ -88,3 +88,10 @@ def test_time_before_first_bar_raises_engine_error() -> None:
     ctx = Context(BarSeries(_bars(3)))
     with pytest.raises(EngineError):
         _ = ctx.time
+
+
+def test_ctx_state_is_a_persistent_dict() -> None:
+    ctx = Context(BarSeries(_bars(3)))
+    assert ctx.state == {}
+    ctx.state["seen"] = 1
+    assert ctx.state["seen"] == 1  # same dict persists across bars within a run

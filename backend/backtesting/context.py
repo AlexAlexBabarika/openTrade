@@ -80,6 +80,8 @@ class Context:
         self._broker = broker
         self._portfolio = portfolio
         self._rng = rng
+        self.state: dict = {}
+        """Free-form per-run scratch space for strategy state across bars."""
 
     @property
     def random(self) -> random.Random:

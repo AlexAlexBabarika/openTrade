@@ -130,31 +130,19 @@ def _child_main(
         conn.close()
 
 
-def run_script(
-    code: str,
-    df: pl.DataFrame,
-    *,
-    timeout_s: float = DEFAULT_TIMEOUT_S,
-    memory_mb: int = DEFAULT_MEMORY_MB,
-) -> RunResult:
-    """Run user `code` against `df`. Returns a fully populated `RunResult`."""
-    started = time.monotonic()
-    try:
-        validate(code)
-    except ScriptValidationError as e:
-        return RunResult(
-            status="error",
-            stderr=f"script rejected: {e}\n",
-            elapsed_ms=int((time.monotonic() - started) * 1000),
-        )
+def spawn_and_collect(
+    child_main,  # picklable top-level callable: (conn, *args) -> None
+    args: tuple,
+    timeout_s: float,
+) -> tuple[dict | None, bool, int | None]:
+    """Spawn `child_main(conn, *args)`, collect its payload, enforce `timeout_s`.
 
+    Returns `(payload, timed_out, exitcode)`. `payload` is None if the child
+    timed out or died without sending. The child is always terminated/joined.
+    """
     ctx = mp.get_context("spawn")
     parent_conn, child_conn = ctx.Pipe(duplex=False)
-    proc = ctx.Process(
-        target=_child_main,
-        args=(child_conn, code, df, memory_mb),
-        daemon=True,
-    )
+    proc = ctx.Process(target=child_main, args=(child_conn, *args), daemon=True)
     proc.start()
     # Close the child's end in the parent so we get EOF if the child exits.
     child_conn.close()
@@ -180,6 +168,31 @@ def run_script(
         else:
             proc.join(timeout=1.0)
 
+    return payload, timed_out, proc.exitcode
+
+
+def run_script(
+    code: str,
+    df: pl.DataFrame,
+    *,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+    memory_mb: int = DEFAULT_MEMORY_MB,
+) -> RunResult:
+    """Run user `code` against `df`. Returns a fully populated `RunResult`."""
+    started = time.monotonic()
+    try:
+        validate(code)
+    except ScriptValidationError as e:
+        return RunResult(
+            status="error",
+            stderr=f"script rejected: {e}\n",
+            elapsed_ms=int((time.monotonic() - started) * 1000),
+        )
+
+    payload, timed_out, exitcode = spawn_and_collect(
+        _child_main, (code, df, memory_mb), timeout_s
+    )
+
     elapsed_ms = int((time.monotonic() - started) * 1000)
 
     if timed_out:
@@ -193,8 +206,7 @@ def run_script(
         return RunResult(
             status="killed",
             stderr=(
-                f"script exited without returning a result "
-                f"(exitcode={proc.exitcode})\n"
+                f"script exited without returning a result " f"(exitcode={exitcode})\n"
             ),
             elapsed_ms=elapsed_ms,
         )
