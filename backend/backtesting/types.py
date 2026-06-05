@@ -82,3 +82,20 @@ class Fill:
     submitted_index: int
     fill_index: int
     reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class Position:
+    """A signed position: positive is long, negative short. ``avg_price`` is the
+    average entry price of the currently open quantity (0 when flat)."""
+
+    quantity: float = 0.0
+    avg_price: float = 0.0
+
+
+@dataclass(frozen=True, slots=True)
+class EquityPoint:
+    """One sample of the equity curve, marked to a bar's close."""
+
+    time: datetime
+    equity: float

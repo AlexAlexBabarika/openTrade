@@ -13,10 +13,11 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Iterator
 
 from backend.backtesting.errors import EngineError, LookAheadError
-from backend.backtesting.types import Bar, Order, OrderType, Side
+from backend.backtesting.types import Bar, Order, OrderType, Position, Side
 
 if TYPE_CHECKING:
     from backend.backtesting.orders import Broker
+    from backend.backtesting.portfolio import Portfolio
 
 
 class BarSeries:
@@ -67,9 +68,15 @@ class BarSeries:
 class Context:
     """What user strategy code receives each bar as ``ctx``."""
 
-    def __init__(self, bars: BarSeries, broker: "Broker | None" = None) -> None:
+    def __init__(
+        self,
+        bars: BarSeries,
+        broker: "Broker | None" = None,
+        portfolio: "Portfolio | None" = None,
+    ) -> None:
         self._bars = bars
         self._broker = broker
+        self._portfolio = portfolio
 
     @property
     def bars(self) -> BarSeries:
@@ -78,6 +85,23 @@ class Context:
     @property
     def time(self) -> datetime:
         return self._bars.current.time
+
+    @property
+    def position(self) -> Position:
+        return self._require_portfolio().position
+
+    @property
+    def cash(self) -> float:
+        return self._require_portfolio().cash
+
+    @property
+    def equity(self) -> float:
+        return self._require_portfolio().equity(self._bars.current.close)
+
+    def _require_portfolio(self) -> "Portfolio":
+        if self._portfolio is None:
+            raise EngineError("no portfolio bound to this context")
+        return self._portfolio
 
     def buy(
         self,
