@@ -64,12 +64,21 @@ class Order:
 
 @dataclass(frozen=True, slots=True)
 class Fill:
-    """A completed fill. Cost adjustments (slippage/commission/spread) are layered on later."""
+    """A completed fill.
+
+    ``price`` is the effective fill price (it already includes slippage and
+    half-spread); ``reference_price`` is the pre-cost close-to-close price. The
+    cost fields are currency totals for reporting and cash accounting.
+    """
 
     order_id: int
     side: Side
     quantity: float
     price: float
+    reference_price: float
+    slippage: float
+    spread_cost: float
+    commission: float
     submitted_index: int
     fill_index: int
     reason: str

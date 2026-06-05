@@ -12,14 +12,16 @@ itself satisfies it.
 
 from __future__ import annotations
 
+from backend.backtesting.costs import Costs
 from backend.backtesting.types import Bar, Fill, Order, OrderType, Side
 
 
 class Broker:
-    def __init__(self) -> None:
+    def __init__(self, costs: Costs | None = None) -> None:
         self._resting: list[Order] = []
         self.fills: list[Fill] = []
         self._next_id = 0
+        self._costs = costs if costs is not None else Costs.frictionless()
 
     def submit(self, order: Order, *, bar_index: int) -> Order:
         """Register an order, stamping it with an id and its submission bar."""
@@ -56,16 +58,26 @@ class Broker:
             if order.submitted_index >= bar_index:
                 still_resting.append(order)  # not eligible until the next bar
                 continue
-            price = _fill_price(order, bar)
-            if price is None:
+            reference_price = _fill_price(order, bar)
+            if reference_price is None:
                 still_resting.append(order)  # condition not met; keep resting
                 continue
+            price, slippage, spread_cost, commission = self._costs.apply(
+                reference_price=reference_price,
+                side=order.side,
+                quantity=order.quantity,
+                bar=bar,
+            )
             fills.append(
                 Fill(
                     order_id=order.id,
                     side=order.side,
                     quantity=order.quantity,
                     price=price,
+                    reference_price=reference_price,
+                    slippage=slippage,
+                    spread_cost=spread_cost,
+                    commission=commission,
                     submitted_index=order.submitted_index,
                     fill_index=bar_index,
                     reason=order.type.value,
