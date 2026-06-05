@@ -95,17 +95,123 @@ class Position:
 
 
 @dataclass(frozen=True, slots=True)
+class Trade:
+    """A matched round trip: position leaves flat, then returns to flat.
+
+    ``direction`` is the entry side (``BUY`` = long, ``SELL`` = short).
+    ``quantity`` is the total quantity entered. ``entry_price``/``exit_price`` are
+    quantity-weighted. ``pnl`` is realized currency P&L net of commissions, and
+    reconciles with the portfolio's realized P&L. ``pnl_pct`` is ``pnl`` over the
+    entry notional. ``bars_held`` is ``exit_index - entry_index`` in bars.
+    """
+
+    direction: Side
+    quantity: float
+    entry_time: datetime
+    exit_time: datetime
+    entry_index: int
+    exit_index: int
+    entry_price: float
+    exit_price: float
+    pnl: float
+    pnl_pct: float
+    bars_held: int
+
+
+@dataclass(frozen=True, slots=True)
 class EquityPoint:
-    """One sample of the equity curve, marked to a bar's close."""
+    """One sample of the equity curve, marked to a bar's close.
+
+    ``equity == cash + holdings``. ``holdings`` is the signed marked value of the
+    open position (negative when short)."""
 
     time: datetime
     equity: float
+    cash: float
+    holdings: float
+
+
+@dataclass(frozen=True, slots=True)
+class Drawdown:
+    """A peak-to-recovery drawdown episode. ``depth`` is a negative fraction;
+    ``length`` is in bars from the prior peak to recovery (or to the end if the
+    episode never recovered, in which case ``recovery`` is ``None``)."""
+
+    start: datetime
+    trough: datetime
+    recovery: datetime | None
+    depth: float
+    length: int
+
+
+@dataclass(frozen=True, slots=True)
+class RunMeta:
+    """Identity and provenance of a single run. ``run_id`` is a fresh UUID hex.
+    ``started_at``/``finished_at`` are wall-clock and do not affect determinism."""
+
+    run_id: str
+    seed: int
+    starting_cash: float
+    started_at: datetime
+    finished_at: datetime
+    strategy_id: str | None = None
+    params: dict | None = None
+    data_version: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class BacktestResult:
-    """The complete record produced by a run."""
+    """The complete canonical record produced by a run."""
 
+    meta: RunMeta
+    bars: list[Bar]
     orders: list[Order]
     fills: list[Fill]
     equity_curve: list[EquityPoint]
+    trades: list[Trade]
+    metrics: Metrics
+
+
+@dataclass(frozen=True, slots=True)
+class Metrics:
+    """The full metrics taxonomy, pre-computed for the dashboard.
+
+    Fields that are undefined for a run (e.g. trade stats when there are no
+    trades) are ``None``."""
+
+    # Return
+    total_return: float
+    cagr: float
+    avg_annual_return: float
+    best_month: float | None
+    worst_month: float | None
+    best_year: float | None
+    worst_year: float | None
+    pct_positive_months: float | None
+    pct_positive_years: float | None
+    # Risk-adjusted
+    sharpe: float
+    sortino: float
+    calmar: float
+    information_ratio: float
+    # Drawdown
+    max_drawdown: float
+    max_drawdown_length: int
+    avg_drawdown: float
+    time_underwater: float
+    recovery_factor: float
+    # Trade quality
+    win_rate: float | None
+    avg_win: float | None
+    avg_loss: float | None
+    win_loss_ratio: float | None
+    profit_factor: float | None
+    expectancy: float | None
+    max_consecutive_wins: int
+    max_consecutive_losses: int
+    avg_bars_held_winners: float | None
+    avg_bars_held_losers: float | None
+    # Exposure
+    pct_time_in_market: float
+    avg_position_pct: float
+    max_leverage: float

@@ -81,6 +81,12 @@ class Portfolio:
         return self._cash + self._position.quantity * mark_price
 
     def mark_to_market(self, time: datetime, mark_price: float) -> EquityPoint:
-        point = EquityPoint(time=time, equity=self.equity(mark_price))
+        holdings = self._position.quantity * mark_price
+        point = EquityPoint(
+            time=time,
+            equity=self._cash + holdings,
+            cash=self._cash,
+            holdings=holdings,
+        )
         self.equity_curve.append(point)
         return point

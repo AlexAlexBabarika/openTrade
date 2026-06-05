@@ -3,8 +3,9 @@
 The engine sits underneath the existing script runner: this module reuses the
 runner's spawn-isolation, resource limits, and network block, but instead of
 the whole-series display globals it executes the strategy's ``on_bar(ctx)``
-function and drives ``run_backtest`` in the child. The result is a serializable
-equity curve plus fills, or a clear error/timeout.
+function and drives ``run_backtest`` in the child. The result is the full
+canonical blob (meta, bars, orders, fills, equity, trades, metrics) as
+serializable dicts, or a clear error/timeout.
 """
 
 from __future__ import annotations
@@ -20,8 +21,8 @@ import polars as pl
 
 from backend.backtesting.engine import run_backtest
 from backend.backtesting.errors import EngineError
+from backend.backtesting.serialize import result_to_dict
 from backend.backtesting.strategy import Strategy
-from backend.backtesting.types import Fill
 from backend.scripts.ast_guard import ScriptValidationError, validate
 from backend.scripts.runner import (
     _apply_resource_limits,
@@ -38,8 +39,13 @@ DEFAULT_STARTING_CASH = 100_000.0
 @dataclass
 class StrategyRunResult:
     status: str  # "ok" | "error" | "timeout" | "killed"
-    equity_curve: list[dict] = field(default_factory=list)
+    meta: dict = field(default_factory=dict)
+    bars: list[dict] = field(default_factory=list)
+    orders: list[dict] = field(default_factory=list)
     fills: list[dict] = field(default_factory=list)
+    equity: list[dict] = field(default_factory=list)
+    trades: list[dict] = field(default_factory=list)
+    metrics: dict = field(default_factory=dict)
     stdout: str = ""
     stderr: str = ""
     elapsed_ms: int = 0
@@ -65,21 +71,6 @@ def _strategy_globals() -> dict[str, Any]:
     return {"__builtins__": _SAFE_BUILTINS}
 
 
-def _serialize_fill(f: Fill) -> dict:
-    return {
-        "submitted_index": f.submitted_index,
-        "fill_index": f.fill_index,
-        "side": f.side.value,
-        "quantity": f.quantity,
-        "price": f.price,
-        "reference_price": f.reference_price,
-        "slippage": f.slippage,
-        "spread_cost": f.spread_cost,
-        "commission": f.commission,
-        "reason": f.reason,
-    }
-
-
 def _child_main(
     conn, code: str, df: pl.DataFrame, starting_cash: float, seed: int
 ) -> None:
@@ -89,13 +80,7 @@ def _child_main(
 
     stdout_buf = io.StringIO()
     stderr_buf = io.StringIO()
-    payload: dict = {
-        "status": "ok",
-        "equity_curve": [],
-        "fills": [],
-        "stdout": "",
-        "stderr": "",
-    }
+    payload: dict = {"status": "ok", "stdout": "", "stderr": ""}
     try:
         compiled = compile(code, "<strategy>", "exec")
         with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
@@ -110,11 +95,7 @@ def _child_main(
                 starting_cash=starting_cash,
                 seed=seed,
             )
-        payload["equity_curve"] = [
-            {"time": int(p.time.timestamp()), "equity": p.equity}
-            for p in result.equity_curve
-        ]
-        payload["fills"] = [_serialize_fill(f) for f in result.fills]
+        payload.update(result_to_dict(result))
     except SystemExit:
         payload["status"] = "killed"
         stderr_buf.write("strategy called sys.exit / exit()\n")
@@ -171,8 +152,13 @@ def run_strategy(
 
     return StrategyRunResult(
         status=payload.get("status", "ok"),
-        equity_curve=payload.get("equity_curve", []),
+        meta=payload.get("meta", {}),
+        bars=payload.get("bars", []),
+        orders=payload.get("orders", []),
         fills=payload.get("fills", []),
+        equity=payload.get("equity", []),
+        trades=payload.get("trades", []),
+        metrics=payload.get("metrics", {}),
         stdout=payload.get("stdout", ""),
         stderr=payload.get("stderr", ""),
         elapsed_ms=elapsed_ms,

@@ -130,3 +130,29 @@ def test_equity_curve_hash_is_independent_of_pythonhashseed() -> None:
         return out.stdout.strip()
 
     assert _hash_with("0") == _hash_with("1")
+
+
+def test_run_backtest_produces_full_result():
+    from backend.backtesting.engine import run_backtest
+    from backend.backtesting.types import Metrics
+    from backend.tests._backtesting_fixtures import BuyAndHold, canonical_frame
+
+    result = run_backtest(
+        frame=canonical_frame(),
+        strategy=BuyAndHold(),
+        starting_cash=10_000.0,
+        seed=7,
+        strategy_id="buy_and_hold",
+        params={"qty": 10},
+    )
+
+    assert result.meta.seed == 7
+    assert result.meta.strategy_id == "buy_and_hold"
+    assert result.meta.params == {"qty": 10}
+    assert result.meta.run_id  # non-empty
+    assert result.meta.finished_at >= result.meta.started_at
+    assert len(result.bars) == len(result.equity_curve)
+    assert isinstance(result.metrics, Metrics)
+    # BuyAndHold opens but never closes -> no completed round trips.
+    assert result.trades == []
+    assert len(result.fills) == 1
