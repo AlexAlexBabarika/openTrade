@@ -10,10 +10,13 @@ raises ``LookAheadError`` — there is no path to a silent future read.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Iterator
+from typing import TYPE_CHECKING, Iterator
 
 from backend.backtesting.errors import EngineError, LookAheadError
-from backend.backtesting.types import Bar
+from backend.backtesting.types import Bar, Order, OrderType, Side
+
+if TYPE_CHECKING:
+    from backend.backtesting.orders import Broker
 
 
 class BarSeries:
@@ -37,6 +40,11 @@ class BarSeries:
             raise EngineError("no bar has been consumed yet")
         return self._bars[self._cursor]
 
+    @property
+    def index(self) -> int:
+        """Index of the current (most recently revealed) bar."""
+        return self._cursor
+
     def __len__(self) -> int:
         return self._cursor + 1
 
@@ -59,8 +67,9 @@ class BarSeries:
 class Context:
     """What user strategy code receives each bar as ``ctx``."""
 
-    def __init__(self, bars: BarSeries) -> None:
+    def __init__(self, bars: BarSeries, broker: "Broker | None" = None) -> None:
         self._bars = bars
+        self._broker = broker
 
     @property
     def bars(self) -> BarSeries:
@@ -69,3 +78,36 @@ class Context:
     @property
     def time(self) -> datetime:
         return self._bars.current.time
+
+    def buy(
+        self,
+        quantity: float,
+        *,
+        type: OrderType = OrderType.MARKET,
+        limit: float | None = None,
+        stop: float | None = None,
+    ) -> Order:
+        return self._submit(Side.BUY, quantity, type, limit, stop)
+
+    def sell(
+        self,
+        quantity: float,
+        *,
+        type: OrderType = OrderType.MARKET,
+        limit: float | None = None,
+        stop: float | None = None,
+    ) -> Order:
+        return self._submit(Side.SELL, quantity, type, limit, stop)
+
+    def _submit(
+        self,
+        side: Side,
+        quantity: float,
+        type: OrderType,
+        limit: float | None,
+        stop: float | None,
+    ) -> Order:
+        if self._broker is None:
+            raise EngineError("no broker bound to this context")
+        order = Order(side=side, quantity=quantity, type=type, limit=limit, stop=stop)
+        return self._broker.submit(order, bar_index=self._bars.index)
