@@ -64,3 +64,6 @@ coverage/
 .claude
 .cursor
 todo/
+
+# Backtest Fixtures
+frontend/src/lib/features/backtest/fixtures
