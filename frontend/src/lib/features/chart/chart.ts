@@ -206,6 +206,27 @@ export function addVolumeSeries(chart: IChartApi): ISeriesApi<'Histogram'> {
   return series;
 }
 
+/**
+ * A translucent histogram pinned to the bottom of the chart, used by the
+ * backtest dashboard to shade the bars where the strategy held a position.
+ * Lives on its own price scale so it never affects price autoscaling.
+ */
+export function addInMarketSeries(
+  chart: IChartApi,
+  color: string,
+): ISeriesApi<'Histogram'> {
+  const series = chart.addSeries(HistogramSeries, {
+    priceScaleId: 'in-market',
+    priceLineVisible: false,
+    lastValueVisible: false,
+    color,
+  });
+  series.priceScale().applyOptions({
+    scaleMargins: { top: 0.88, bottom: 0 },
+  });
+  return series;
+}
+
 export function addCandlestickSeries(
   chart: IChartApi,
   colours?: ChartColours,
