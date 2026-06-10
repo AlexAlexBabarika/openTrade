@@ -163,3 +163,18 @@ def test_parse_strategy_schema_normalizes_bad_params_to_validation_error() -> No
 
     with pytest.raises(ScriptValidationError):
         parse_strategy_schema("params = 42\ndef on_bar(ctx):\n    pass\n")
+
+
+def test_run_strategy_passes_params_to_ctx(df: pl.DataFrame) -> None:
+    code = (
+        "params = {'qty': Int(1, 4, step=1)}\n"
+        "def on_bar(ctx):\n"
+        "    if ctx.position.quantity == 0:\n"
+        "        ctx.buy(ctx.params['qty'])\n"
+    )
+    res = run_strategy(
+        code, df, starting_cash=100_000.0, timeout_s=10.0, params={"qty": 3}
+    )
+    assert res.status == "ok", res.stderr
+    assert res.fills[0]["quantity"] == 3
+    assert res.meta["params"] == {"qty": 3}
