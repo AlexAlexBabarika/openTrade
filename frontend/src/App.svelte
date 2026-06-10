@@ -104,9 +104,11 @@
   import IndicatorsPanel from './components/indicators/IndicatorsPanel.svelte';
   import AnalyticsPanel from './components/analytics/AnalyticsPanel.svelte';
   import BacktestPanel from './components/backtest/BacktestPanel.svelte';
+  import StrategyPanel from './components/strategy/StrategyPanel.svelte';
   import { IndicatorState } from '$lib/features/indicators/indicatorState.svelte';
   import { AnalyticsState } from '$lib/features/analytics/analyticsState.svelte';
   import { BacktestState } from '$lib/features/backtest/backtestState.svelte';
+  import { StrategyState } from '$lib/features/strategy/strategyState.svelte';
   import LeftToolbar from './components/toolbar/LeftToolbar.svelte';
   import ToolSettingsModal from './components/toolbar/ToolSettingsModal.svelte';
   import DrawablesPersistence from '$lib/features/drawables/DrawablesPersistence.svelte';
@@ -284,14 +286,17 @@
   let indicatorsOpen = $state(false);
   let analyticsOpen = $state(false);
   let backtestOpen = $state(false);
+  let strategyOpen = $state(false);
   const indicators = new IndicatorState();
   const analytics = new AnalyticsState();
   const backtest = new BacktestState();
+  const strategy = new StrategyState();
 
   const toolboxTileHandlers: Record<string, () => void> = {
     Indicators: () => (indicatorsOpen = true),
     Analytics: () => (analyticsOpen = true),
     Backtesting: () => (backtestOpen = true),
+    Strategy: () => (strategyOpen = true),
   };
 
   function handleToolboxTile(title: string) {
@@ -816,6 +821,14 @@
     {analytics}
   />
   <BacktestPanel bind:open={backtestOpen} {backtest} />
+  <StrategyPanel
+    bind:open={strategyOpen}
+    symbol={chart.loadedSymbol || chart.symbol}
+    provider={chart.source}
+    period={chart.period}
+    interval={chart.interval}
+    {strategy}
+  />
   <AppDialogs
     {groupDialogInitial}
     {groupDialogExistingNames}
