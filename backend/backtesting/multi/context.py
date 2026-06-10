@@ -1,0 +1,179 @@
+"""The portfolio strategy context (``ctx``) with universe-gated visibility.
+
+Mirrors the single-symbol ``Context`` API but every data read and order is
+keyed by symbol, and both are gated on current universe membership: a symbol
+outside its membership window at the current bar cannot be read or traded
+(``UniverseError``), which is what keeps join/leave honest. Per-symbol bar
+reads go through the same look-ahead-guarded views as single-symbol runs.
+
+The engine advances the context each event via the underscore ``_set_event``
+method; strategy code cannot reach it (the AST guard rejects underscore
+attribute access).
+"""
+
+from __future__ import annotations
+
+import random
+from datetime import datetime
+from typing import TYPE_CHECKING, Iterator
+
+from backend.backtesting.context import BarsView
+from backend.backtesting.errors import EngineError, UniverseError
+from backend.backtesting.types import Order, OrderType, Position, Side
+
+if TYPE_CHECKING:
+    from backend.backtesting.multi.book import PortfolioBook
+    from backend.backtesting.multi.broker import MultiBroker
+    from backend.backtesting.multi.timeline import MultiBarEvent, MultiBarSeries
+
+
+class UniverseBarsView:
+    """``ctx.bars``: per-symbol bar history, readable only while the symbol is
+    in the universe. Iteration yields the currently active symbols."""
+
+    def __init__(self, series: "MultiBarSeries") -> None:
+        self._series = series
+        self._active: tuple[str, ...] = ()
+
+    def _set_active(self, active: tuple[str, ...]) -> None:
+        self._active = active
+
+    def __getitem__(self, symbol: str) -> BarsView:
+        if symbol not in self._active:
+            raise UniverseError(f"{symbol!r} is not in the universe at the current bar")
+        return self._series[symbol]
+
+    def __contains__(self, symbol: str) -> bool:
+        return symbol in self._active
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._active)
+
+    def __len__(self) -> int:
+        return len(self._active)
+
+
+class PortfolioContext:
+    """What portfolio strategy code receives each bar as ``ctx``."""
+
+    def __init__(
+        self,
+        series: "MultiBarSeries",
+        *,
+        broker: "MultiBroker",
+        book: "PortfolioBook",
+        marks: dict[str, float],
+        rng: random.Random | None = None,
+        params: dict | None = None,
+    ) -> None:
+        self._broker = broker
+        self._book = book
+        self._marks = marks
+        self._rng = rng
+        self._params = dict(params) if params else {}
+        self._bars_view = UniverseBarsView(series)
+        self._event: "MultiBarEvent | None" = None
+        self._index = -1
+        self._active: tuple[str, ...] = ()
+        self.state: dict = {}
+        """Free-form per-run scratch space for strategy state across bars."""
+
+    def _set_event(
+        self, event: "MultiBarEvent", index: int, active: tuple[str, ...]
+    ) -> None:
+        self._event = event
+        self._index = index
+        self._active = active
+        self._bars_view._set_active(active)
+
+    def _require_event(self) -> "MultiBarEvent":
+        if self._event is None:
+            raise EngineError("no bar has been consumed yet")
+        return self._event
+
+    @property
+    def params(self) -> dict:
+        """The concrete parameter values for this run (empty if unparameterized)."""
+        return self._params
+
+    @property
+    def random(self) -> random.Random:
+        """The run's seeded RNG. Strategy code must use this, never the global
+        ``random`` module, so runs stay deterministic."""
+        if self._rng is None:
+            raise EngineError("no rng bound to this context")
+        return self._rng
+
+    @property
+    def time(self) -> datetime:
+        return self._require_event().time
+
+    @property
+    def universe(self) -> tuple[str, ...]:
+        """Symbols that are members of the universe at the current bar, sorted."""
+        return self._active
+
+    @property
+    def bars(self) -> UniverseBarsView:
+        return self._bars_view
+
+    @property
+    def cash(self) -> float:
+        return self._book.cash
+
+    @property
+    def equity(self) -> float:
+        return self._book.equity(self._marks)
+
+    @property
+    def positions(self) -> dict[str, Position]:
+        """Non-flat positions keyed by symbol, in sorted symbol order."""
+        return self._book.open_positions
+
+    def position(self, symbol: str) -> Position:
+        return self._book.position(symbol)
+
+    def buy(
+        self,
+        symbol: str,
+        quantity: float,
+        *,
+        type: OrderType = OrderType.MARKET,
+        limit: float | None = None,
+        stop: float | None = None,
+    ) -> Order:
+        return self._submit(symbol, Side.BUY, quantity, type, limit, stop)
+
+    def sell(
+        self,
+        symbol: str,
+        quantity: float,
+        *,
+        type: OrderType = OrderType.MARKET,
+        limit: float | None = None,
+        stop: float | None = None,
+    ) -> Order:
+        return self._submit(symbol, Side.SELL, quantity, type, limit, stop)
+
+    def _submit(
+        self,
+        symbol: str,
+        side: Side,
+        quantity: float,
+        type: OrderType,
+        limit: float | None,
+        stop: float | None,
+    ) -> Order:
+        if symbol not in self._active:
+            raise UniverseError(
+                f"cannot trade {symbol!r}: not in the universe at the current bar"
+            )
+        order = Order(
+            side=side,
+            quantity=quantity,
+            type=type,
+            limit=limit,
+            stop=stop,
+            symbol=symbol,
+        )
+        return self._broker.submit(order, event_index=self._index)

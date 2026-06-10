@@ -37,6 +37,13 @@ class MultiBroker:
         self.orders.append(order)
         return order
 
+    def cancel_resting(self, symbol: str) -> int:
+        """Cancel all resting orders for ``symbol``; return how many."""
+        kept = [o for o in self._resting if o.symbol != symbol]
+        cancelled = len(self._resting) - len(kept)
+        self._resting = kept
+        return cancelled
+
     def process_event(self, event: MultiBarEvent, event_index: int) -> list[Fill]:
         """Fill every eligible resting order against its symbol's bar in
         ``event``; return the new fills in submission order."""

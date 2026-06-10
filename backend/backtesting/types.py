@@ -121,6 +121,7 @@ class Trade:
     pnl: float
     pnl_pct: float
     bars_held: int
+    symbol: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
