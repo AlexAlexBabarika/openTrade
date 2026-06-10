@@ -37,7 +37,7 @@
 </script>
 
 <div class="wrap">
-  <div class="grid" style={`grid-template-columns: 28px repeat(${m.xValues.length}, 1fr);`}>
+  <div class="grid" style={`grid-template-columns: 28px repeat(${m.xValues.length}, minmax(14px, 32px));`}>
     <div></div>
     {#each m.xValues as xv (xv)}<div class="axis x">{xv}</div>{/each}
     {#each m.yValues as yv, yi (yv)}
@@ -66,7 +66,8 @@
 </div>
 
 <style>
-  .wrap { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+  /* width: fit-content keeps the legend ramp aligned to the grid, not the panel. */
+  .wrap { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; width: fit-content; max-width: 100%; overflow-x: auto; }
   .grid { display: grid; gap: 2px; }
   .axis { font-size: 10px; color: oklch(var(--muted-foreground)); display: flex; align-items: center; justify-content: center; }
   .cell { aspect-ratio: 1; border: 0; border-radius: 2px; cursor: pointer; }

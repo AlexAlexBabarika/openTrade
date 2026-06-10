@@ -69,39 +69,57 @@
     {/each}
   </fieldset>
 
-  <div class="row">
-    <label>Search
-      <select bind:value={search}>
-        <option value="grid">Grid</option>
-        <option value="random">Random</option>
-      </select>
-    </label>
-    <label>Metric
-      <select bind:value={metric}>
-        <option value="sharpe">Sharpe</option>
-        <option value="calmar">Calmar</option>
-        <option value="sortino">Sortino</option>
-        <option value="total_return">Total return</option>
-      </select>
-    </label>
-    {#if search === 'random'}
-      <label>Trials <input type="number" min="1" bind:value={nRandom} /></label>
-    {/if}
-    <label>Seed <input type="number" bind:value={seed} /></label>
-  </div>
-
-  <button type="submit" class="run" disabled={vary.length === 0}>Run sweep</button>
+  <fieldset class="search">
+    <legend>Search</legend>
+    <div class="row">
+      <label>Search
+        <select bind:value={search}>
+          <option value="grid">Grid</option>
+          <option value="random">Random</option>
+        </select>
+      </label>
+      <label>Metric
+        <select bind:value={metric}>
+          <option value="sharpe">Sharpe</option>
+          <option value="calmar">Calmar</option>
+          <option value="sortino">Sortino</option>
+          <option value="total_return">Total return</option>
+        </select>
+      </label>
+      {#if search === 'random'}
+        <label>Trials <input type="number" min="1" bind:value={nRandom} /></label>
+      {/if}
+      <label>Seed <input type="number" bind:value={seed} /></label>
+      <button type="submit" class="run" disabled={vary.length === 0}>Run sweep</button>
+    </div>
+  </fieldset>
 </form>
 
 <style>
   .form { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; }
-  .params { display: flex; flex-direction: column; gap: 6px; border: 1px dashed oklch(var(--border)); border-radius: 8px; padding: 10px; }
+  fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    min-width: 0;
+    border: 1px dashed oklch(var(--border));
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  legend {
+    padding: 0 6px;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: oklch(var(--muted-foreground));
+  }
   .param { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 12px; }
   .pname { font-weight: 600; }
   .prange { color: oklch(var(--muted-foreground)); }
   .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
   .row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: oklch(var(--muted-foreground)); }
-  .run { align-self: start; padding: 8px 16px; border-radius: 6px; border: 1px solid oklch(var(--primary)); background: oklch(var(--primary) / 0.15); color: oklch(var(--foreground)); cursor: pointer; }
+  .run { margin-left: auto; padding: 8px 16px; border-radius: 6px; border: 1px solid oklch(var(--primary)); background: oklch(var(--primary) / 0.15); color: oklch(var(--foreground)); cursor: pointer; }
   .run:disabled { opacity: 0.5; cursor: not-allowed; }
   .hint { font-size: 12px; color: oklch(var(--muted-foreground)); }
 </style>
