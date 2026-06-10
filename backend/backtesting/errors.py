@@ -13,3 +13,8 @@ class EngineError(Exception):
 
 class LookAheadError(EngineError):
     """Raised when strategy code tries to read a bar in the future."""
+
+
+class UniverseError(EngineError):
+    """Raised when a universe definition is invalid or a symbol is read
+    outside its membership window."""
