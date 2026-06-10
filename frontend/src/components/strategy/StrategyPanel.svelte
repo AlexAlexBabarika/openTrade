@@ -6,6 +6,7 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
   import ScriptEditor from '../indicators/ScriptEditor.svelte';
+  import StrategyDocs from './StrategyDocs.svelte';
   import SweepPanel from '../sweep/SweepPanel.svelte';
   import BacktestPanel from '../backtest/BacktestPanel.svelte';
   import { StrategyState } from '$lib/features/strategy/strategyState.svelte';
@@ -30,7 +31,7 @@
 
   const strat = $derived(strategy);
 
-  let tab = $state<'editor' | 'sweep'>('editor');
+  let tab = $state<'editor' | 'sweep' | 'docs'>('editor');
   // One SweepState for the panel's lifetime so a running sweep survives
   // toggling between the editor and sweep views.
   const sweep = new SweepState();
@@ -134,6 +135,12 @@
           class:active={tab === 'sweep'}
           onclick={() => (tab = 'sweep')}
         >sweep</button>
+        <button
+          type="button"
+          class="tab"
+          class:active={tab === 'docs'}
+          onclick={() => (tab = 'docs')}
+        >docs</button>
       </nav>
 
       <div class="ctx" aria-label="Active market context">
@@ -154,8 +161,10 @@
       </button>
     </header>
 
-    <div class="body" class:sweep-mode={tab === 'sweep'}>
-      {#if tab === 'sweep'}
+    <div class="body" class:sweep-mode={tab === 'sweep'} class:docs-mode={tab === 'docs'}>
+      {#if tab === 'docs'}
+        <StrategyDocs />
+      {:else if tab === 'sweep'}
         <SweepPanel code={strat.draftCode} {sweep} />
       {:else}
         <aside class="rail" aria-label="Saved strategies">
@@ -474,6 +483,9 @@
     grid-template-columns: 1fr;
     padding: 14px 18px;
     overflow: hidden;
+  }
+  .body.docs-mode {
+    grid-template-columns: 1fr;
   }
 
   .rail {
