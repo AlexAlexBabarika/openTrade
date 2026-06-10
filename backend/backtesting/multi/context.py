@@ -27,6 +27,10 @@ if TYPE_CHECKING:
     from backend.backtesting.multi.timeline import MultiBarEvent, MultiBarSeries
 
 
+# Value drifts below this (in currency) are float dust, never worth an order.
+_VALUE_EPS = 1e-9
+
+
 class UniverseBarsView:
     """``ctx.bars``: per-symbol bar history, readable only while the symbol is
     in the universe. Iteration yields the currently active symbols."""
@@ -75,6 +79,7 @@ class PortfolioContext:
         self._event: "MultiBarEvent | None" = None
         self._index = -1
         self._active: tuple[str, ...] = ()
+        self._targets: dict[str, float] = {}
         self.state: dict = {}
         """Free-form per-run scratch space for strategy state across bars."""
 
@@ -90,6 +95,10 @@ class PortfolioContext:
         if self._event is None:
             raise EngineError("no bar has been consumed yet")
         return self._event
+
+    def _drop_target(self, symbol: str) -> None:
+        """Engine hook: a symbol leaving the universe clears its target."""
+        self._targets.pop(symbol, None)
 
     @property
     def params(self) -> dict:
@@ -132,6 +141,57 @@ class PortfolioContext:
 
     def position(self, symbol: str) -> Position:
         return self._book.position(symbol)
+
+    @property
+    def weights(self) -> dict[str, float]:
+        """Current signed weight of each open position as a fraction of equity."""
+        return self._book.weights(self._marks)
+
+    @property
+    def targets(self) -> dict[str, float]:
+        """The declared target weights (a copy; set via ``target_weight``)."""
+        return dict(self._targets)
+
+    def target_weight(self, symbol: str, weight: float) -> None:
+        """Declare the intended signed weight of ``symbol`` as a fraction of
+        equity. Takes effect when ``rebalance()`` is called; persists across
+        bars until overwritten or the symbol leaves the universe."""
+        if symbol not in self._active:
+            raise UniverseError(
+                f"cannot target {symbol!r}: not in the universe at the current bar"
+            )
+        self._targets[symbol] = float(weight)
+
+    def rebalance(self, *, min_trade_value: float = 0.0) -> list[Order]:
+        """Submit market orders moving the book toward the declared targets.
+
+        Each targeted symbol's drift (target value minus current marked value)
+        becomes one market order, sized at the symbol's last known close and
+        filled next bar through the normal cost-paying path. Drifts smaller
+        than ``min_trade_value`` (in currency) are skipped to avoid fee bleed,
+        and a targeted symbol with no revealed bar yet is deferred — it is
+        sized on a later rebalance once a mark exists. Returns the submitted
+        orders."""
+        equity = self._book.equity(self._marks)
+        orders: list[Order] = []
+        for symbol in sorted(self._targets):
+            if symbol not in self._active:
+                continue
+            mark = self._marks.get(symbol)
+            if mark is None or mark <= 0.0:
+                continue  # no revealed bar to size against yet
+            target_value = self._targets[symbol] * equity
+            current_value = self._book.position(symbol).quantity * mark
+            delta = target_value - current_value
+            if abs(delta) < max(min_trade_value, _VALUE_EPS):
+                continue
+            side = Side.BUY if delta > 0 else Side.SELL
+            orders.append(
+                self._submit(
+                    symbol, side, abs(delta) / mark, OrderType.MARKET, None, None
+                )
+            )
+        return orders
 
     def buy(
         self,

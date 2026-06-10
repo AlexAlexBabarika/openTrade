@@ -110,6 +110,7 @@ def run_portfolio_backtest(
         ctx._set_event(event, index, active)
         for symbol in sorted(prev_active.difference(active)):
             broker.cancel_resting(symbol)
+            ctx._drop_target(symbol)
             quantity = book.position(symbol).quantity
             if quantity != 0.0:
                 side = Side.SELL if quantity > 0 else Side.BUY
