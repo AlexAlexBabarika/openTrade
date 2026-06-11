@@ -49,6 +49,7 @@ def _order_dict(o: Order) -> dict:
         "stop": o.stop,
         "submitted_index": o.submitted_index,
         "triggered": o.triggered,
+        "symbol": o.symbol,
     }
 
 
@@ -65,6 +66,7 @@ def _fill_dict(f: Fill) -> dict:
         "submitted_index": f.submitted_index,
         "fill_index": f.fill_index,
         "reason": f.reason,
+        "symbol": f.symbol,
     }
 
 
@@ -90,6 +92,7 @@ def _trade_dict(t: Trade) -> dict:
         "pnl": t.pnl,
         "pnl_pct": t.pnl_pct,
         "bars_held": t.bars_held,
+        "symbol": t.symbol,
     }
 
 
