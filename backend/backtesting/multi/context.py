@@ -18,7 +18,12 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Iterator
 
 from backend.backtesting.context import BarsView
-from backend.backtesting.errors import EngineError, UniverseError
+from backend.backtesting.errors import ConstraintError, EngineError, UniverseError
+from backend.backtesting.multi.constraints import (
+    ConstraintEvent,
+    Constraints,
+    apply_constraints,
+)
 from backend.backtesting.types import Order, OrderType, Position, Side
 
 if TYPE_CHECKING:
@@ -69,10 +74,13 @@ class PortfolioContext:
         marks: dict[str, float],
         rng: random.Random | None = None,
         params: dict | None = None,
+        constraints: Constraints | None = None,
     ) -> None:
         self._broker = broker
         self._book = book
         self._marks = marks
+        self._constraints = constraints
+        self._constraint_log: list[ConstraintEvent] = []
         self._rng = rng
         self._params = dict(params) if params else {}
         self._bars_view = UniverseBarsView(series)
@@ -152,6 +160,16 @@ class PortfolioContext:
         """The declared target weights (a copy; set via ``target_weight``)."""
         return dict(self._targets)
 
+    @property
+    def constraints(self) -> Constraints | None:
+        """The run's hard constraints, if any (declared at backtest config)."""
+        return self._constraints
+
+    @property
+    def constraint_log(self) -> list[ConstraintEvent]:
+        """Every constraint binding so far, in occurrence order (a copy)."""
+        return list(self._constraint_log)
+
     def target_weight(self, symbol: str, weight: float) -> None:
         """Declare the intended signed weight of ``symbol`` as a fraction of
         equity. Takes effect when ``rebalance()`` is called; persists across
@@ -171,19 +189,52 @@ class PortfolioContext:
         than ``min_trade_value`` (in currency) are skipped to avoid fee bleed,
         and a targeted symbol with no revealed bar yet is deferred — it is
         sized on a later rebalance once a mark exists. Returns the submitted
-        orders."""
+        orders.
+
+        When the run declares hard constraints, the effective targets are
+        clamped through them first (the declared targets are never rewritten)
+        and every binding — including min-trade-size skips — is recorded in
+        ``constraint_log``."""
         equity = self._book.equity(self._marks)
+        effective = {
+            symbol: weight
+            for symbol, weight in sorted(self._targets.items())
+            if symbol in self._active
+        }
+        if self._constraints is not None:
+            effective, events = apply_constraints(
+                effective,
+                constraints=self._constraints,
+                equity=equity,
+                time=self.time,
+            )
+            self._constraint_log.extend(events)
+            min_trade_value = max(min_trade_value, self._constraints.min_trade_value)
+
         orders: list[Order] = []
-        for symbol in sorted(self._targets):
-            if symbol not in self._active:
-                continue
+        for symbol in sorted(effective):
             mark = self._marks.get(symbol)
             if mark is None or mark <= 0.0:
                 continue  # no revealed bar to size against yet
-            target_value = self._targets[symbol] * equity
+            target_value = effective[symbol] * equity
             current_value = self._book.position(symbol).quantity * mark
             delta = target_value - current_value
-            if abs(delta) < max(min_trade_value, _VALUE_EPS):
+            if abs(delta) < _VALUE_EPS:
+                continue
+            if abs(delta) < min_trade_value:
+                self._constraint_log.append(
+                    ConstraintEvent(
+                        time=self.time,
+                        constraint="min_trade_value",
+                        symbol=symbol,
+                        requested=delta,
+                        applied=None,
+                        detail=(
+                            f"{symbol} drift of {delta:+.2f} below the "
+                            f"{min_trade_value:.2f} minimum trade size; skipped"
+                        ),
+                    )
+                )
                 continue
             side = Side.BUY if delta > 0 else Side.SELL
             orders.append(
@@ -228,6 +279,8 @@ class PortfolioContext:
             raise UniverseError(
                 f"cannot trade {symbol!r}: not in the universe at the current bar"
             )
+        if self._constraints is not None and symbol in self._constraints.no_trade:
+            raise ConstraintError(f"{symbol!r} is on the no-trade list")
         order = Order(
             side=side,
             quantity=quantity,

@@ -32,6 +32,7 @@ from backend.backtesting.costs import Costs
 from backend.backtesting.errors import UniverseError
 from backend.backtesting.multi.book import PortfolioBook, PortfolioEquityPoint
 from backend.backtesting.multi.broker import MultiBroker
+from backend.backtesting.multi.constraints import ConstraintEvent, Constraints
 from backend.backtesting.multi.context import PortfolioContext
 from backend.backtesting.multi.timeline import (
     MultiBarEvent,
@@ -54,6 +55,7 @@ class PortfolioBacktestResult:
     fills: list[Fill]
     equity_curve: list[PortfolioEquityPoint]
     trades: list[Trade]
+    constraint_events: list[ConstraintEvent]
 
 
 def run_portfolio_backtest(
@@ -63,6 +65,7 @@ def run_portfolio_backtest(
     starting_cash: float,
     universe: Universe | None = None,
     costs: Costs | None = None,
+    constraints: Constraints | None = None,
     seed: int = 0,
     strategy_id: str | None = None,
     params: dict | None = None,
@@ -96,6 +99,7 @@ def run_portfolio_backtest(
         marks=marks,
         rng=random.Random(seed),
         params=params,
+        constraints=constraints,
     )
 
     prev_active: set[str] = set()
@@ -149,4 +153,5 @@ def run_portfolio_backtest(
         fills=broker.fills,
         equity_curve=book.equity_curve,
         trades=trades,
+        constraint_events=ctx.constraint_log,
     )
