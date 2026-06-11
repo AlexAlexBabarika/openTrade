@@ -34,6 +34,10 @@ from backend.backtesting.multi.book import PortfolioBook, PortfolioEquityPoint
 from backend.backtesting.multi.broker import MultiBroker
 from backend.backtesting.multi.constraints import ConstraintEvent, Constraints
 from backend.backtesting.multi.context import PortfolioContext
+from backend.backtesting.multi.metrics import (
+    PortfolioMetrics,
+    compute_portfolio_metrics,
+)
 from backend.backtesting.multi.timeline import (
     MultiBarEvent,
     MultiBarSeries,
@@ -47,7 +51,7 @@ from backend.backtesting.types import Fill, Order, RunMeta, Side, Trade
 
 @dataclass(frozen=True, slots=True)
 class PortfolioBacktestResult:
-    """The canonical record of a portfolio run (metrics arrive in a later task)."""
+    """The complete canonical record produced by a portfolio run."""
 
     meta: RunMeta
     events: list[MultiBarEvent]
@@ -56,6 +60,7 @@ class PortfolioBacktestResult:
     equity_curve: list[PortfolioEquityPoint]
     trades: list[Trade]
     constraint_events: list[ConstraintEvent]
+    metrics: PortfolioMetrics
 
 
 def run_portfolio_backtest(
@@ -154,4 +159,11 @@ def run_portfolio_backtest(
         equity_curve=book.equity_curve,
         trades=trades,
         constraint_events=ctx.constraint_log,
+        metrics=compute_portfolio_metrics(
+            events=events,
+            fills=broker.fills,
+            equity_curve=book.equity_curve,
+            trades=trades,
+            sectors=constraints.sectors if constraints is not None else None,
+        ),
     )
