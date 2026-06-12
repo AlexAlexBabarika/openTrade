@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import random
 from datetime import datetime
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING, Iterator, NoReturn
 
 from backend.backtesting.context import BarsView
 from backend.backtesting.errors import ConstraintError, EngineError, UniverseError
@@ -62,6 +62,30 @@ class UniverseBarsView:
         return len(self._active)
 
 
+class PositionLookup:
+    """``ctx.position``: callable per-symbol position accessor.
+
+    Misuse guard: single-symbol strategies read ``ctx.position.quantity``.
+    A portfolio holds one position per symbol, so attribute access here
+    raises a guided ``EngineError`` instead of the opaque AttributeError
+    Python would otherwise produce (method attribute lookup falls through to
+    the underlying function, yielding "'function' object has no attribute").
+    """
+
+    def __init__(self, book: "PortfolioBook") -> None:
+        self._book = book
+
+    def __call__(self, symbol: str) -> Position:
+        return self._book.position(symbol)
+
+    def __getattr__(self, name: str) -> "NoReturn":
+        raise EngineError(
+            f"ctx.position has no attribute {name!r}: portfolio strategies "
+            "hold one position per symbol — use ctx.position(symbol)."
+            f"{name}, e.g. ctx.position('AAPL').quantity"
+        )
+
+
 class PortfolioContext:
     """What portfolio strategy code receives each bar as ``ctx``."""
 
@@ -84,6 +108,7 @@ class PortfolioContext:
         self._rng = rng
         self._params = dict(params) if params else {}
         self._bars_view = UniverseBarsView(series)
+        self._position_lookup = PositionLookup(book)
         self._event: "MultiBarEvent | None" = None
         self._index = -1
         self._active: tuple[str, ...] = ()
@@ -147,8 +172,10 @@ class PortfolioContext:
         """Non-flat positions keyed by symbol, in sorted symbol order."""
         return self._book.open_positions
 
-    def position(self, symbol: str) -> Position:
-        return self._book.position(symbol)
+    @property
+    def position(self) -> PositionLookup:
+        """Per-symbol position accessor: ``ctx.position('AAPL').quantity``."""
+        return self._position_lookup
 
     @property
     def weights(self) -> dict[str, float]:
@@ -247,23 +274,33 @@ class PortfolioContext:
     def buy(
         self,
         symbol: str,
-        quantity: float,
+        quantity: float | None = None,
         *,
         type: OrderType = OrderType.MARKET,
         limit: float | None = None,
         stop: float | None = None,
     ) -> Order:
+        if quantity is None:
+            raise EngineError(
+                "portfolio orders are per-symbol: ctx.buy('AAPL', quantity) "
+                f"— got ctx.buy({symbol!r})"
+            )
         return self._submit(symbol, Side.BUY, quantity, type, limit, stop)
 
     def sell(
         self,
         symbol: str,
-        quantity: float,
+        quantity: float | None = None,
         *,
         type: OrderType = OrderType.MARKET,
         limit: float | None = None,
         stop: float | None = None,
     ) -> Order:
+        if quantity is None:
+            raise EngineError(
+                "portfolio orders are per-symbol: ctx.sell('AAPL', quantity) "
+                f"— got ctx.sell({symbol!r})"
+            )
         return self._submit(symbol, Side.SELL, quantity, type, limit, stop)
 
     def _submit(
@@ -275,6 +312,11 @@ class PortfolioContext:
         limit: float | None,
         stop: float | None,
     ) -> Order:
+        if not isinstance(symbol, str):
+            raise EngineError(
+                "portfolio orders are per-symbol: the first argument must be "
+                f"a symbol string, e.g. ctx.buy('AAPL', quantity) — got {symbol!r}"
+            )
         if symbol not in self._active:
             raise UniverseError(
                 f"cannot trade {symbol!r}: not in the universe at the current bar"

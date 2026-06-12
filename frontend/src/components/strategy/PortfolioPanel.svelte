@@ -84,6 +84,15 @@
         will contain exactly these symbols.
       </p>
     {:else}
+      <p class="hint">
+        portfolio strategies are per-symbol:
+        <code>ctx.position(symbol)</code>, <code>ctx.buy(symbol, qty)</code>,
+        <code>ctx.target_weight(symbol, w)</code> + <code>ctx.rebalance()</code>
+        — single-symbol code like <code>ctx.position.quantity</code> won't run
+        here.
+      </p>
+    {/if}
+    {#if portfolio.symbols.length > 0}
       <div class="chips" role="list" aria-label="Universe symbols">
         {#each portfolio.symbols as symbol (symbol)}
           <span class="chip" role="listitem">

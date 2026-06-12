@@ -20,7 +20,7 @@ from backend.backtesting.costs import (
     FixedBpsSlippage,
     PerShareCommission,
 )
-from backend.backtesting.errors import UniverseError
+from backend.backtesting.errors import EngineError, UniverseError
 from backend.backtesting.multi.engine import run_portfolio_backtest
 from backend.backtesting.multi.universe import Membership, Universe
 from backend.backtesting.strategy import Strategy
@@ -248,6 +248,30 @@ def test_trades_are_symbol_stamped_and_chronological() -> None:
         ("MSFT", 2),
         ("AAPL", 4),
     ]
+
+
+def test_single_symbol_style_code_gets_guided_errors() -> None:
+    """A strategy written for the single-symbol ctx (the seed code) must fail
+    with a guided EngineError, not an opaque AttributeError/TypeError."""
+    frames = {"AAPL": _frame([10.0] * 2)}
+
+    class OldStyle(Strategy):
+        def on_bar(self, ctx) -> None:
+            with pytest.raises(EngineError, match=r"ctx\.position\(symbol\)"):
+                _ = ctx.position.quantity
+            with pytest.raises(EngineError, match="per-symbol"):
+                ctx.buy(1)  # single-symbol style: quantity as the only arg
+            with pytest.raises(EngineError, match="symbol string"):
+                ctx.sell(1.0, 1.0)  # number where the symbol belongs
+            # The per-symbol form still works.
+            assert ctx.position("AAPL").quantity == 0.0
+
+    run_portfolio_backtest(
+        frames=frames,
+        strategy=OldStyle(),
+        starting_cash=1_000.0,
+        costs=Costs.frictionless(),
+    )
 
 
 def test_context_exposes_portfolio_state() -> None:
