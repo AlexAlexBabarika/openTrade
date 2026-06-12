@@ -93,6 +93,25 @@ def test_run_enforces_request_constraints() -> None:
     )
 
 
+def test_module_level_policies_and_params_pass_schema_parsing() -> None:
+    # Regression: schema parsing must evaluate the module body in the
+    # portfolio namespace, or `policy = PeriodicRebalance(...)` at module
+    # level is rejected with a NameError before the run ever starts.
+    code = (
+        "params = {'lookback': Int(5, 20, step=5)}\n"
+        "policy = PeriodicRebalance('monthly')\n"
+        "def on_bar(ctx):\n"
+        "    for symbol, weight in equal_weight(ctx.universe).items():\n"
+        "        ctx.target_weight(symbol, weight)\n"
+        "    if policy.should_rebalance(ctx):\n"
+        "        ctx.rebalance()\n"
+    )
+    body = _run({"code": code})
+    assert body["status"] == "ok", body["stderr"]
+    assert body["meta"]["params"] == {"lookback": 5}
+    assert len(body["fills"]) >= 2
+
+
 def test_invalid_code_is_a_400() -> None:
     r = client.post(
         "/portfolio-backtests/run",

@@ -20,8 +20,10 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from backend.backtesting.multi.constraints import Constraints
-from backend.backtesting.multi.sandbox import run_portfolio_strategy
-from backend.backtesting.sandbox import parse_strategy_schema
+from backend.backtesting.multi.sandbox import (
+    parse_portfolio_strategy_schema,
+    run_portfolio_strategy,
+)
 from backend.models.market_data_models import MarketDataProviderEnum
 from backend.routes.sweep_routes import _load_frame
 from backend.scripts.ast_guard import ScriptValidationError
@@ -85,7 +87,7 @@ class _SymbolDataRequest:
 @router.post("/run")
 async def run(body: PortfolioRunRequest) -> dict:
     try:
-        schema = parse_strategy_schema(body.code)
+        schema = parse_portfolio_strategy_schema(body.code)
     except ScriptValidationError as e:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, f"strategy rejected: {e}"

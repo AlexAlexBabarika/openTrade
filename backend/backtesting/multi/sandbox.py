@@ -35,7 +35,7 @@ from backend.backtesting.multi.sizers import (
     kelly_weights,
     trailing_volatility,
 )
-from backend.backtesting.optimize.space import Choice, Float, Int
+from backend.backtesting.optimize.space import Choice, Float, Int, parse_schema
 from backend.backtesting.strategy import Strategy
 from backend.scripts.ast_guard import ScriptValidationError, validate
 from backend.scripts.runner import (
@@ -96,6 +96,27 @@ def _portfolio_globals() -> dict[str, Any]:
         "ThresholdRebalance": ThresholdRebalance,
         "SignalRebalance": SignalRebalance,
     }
+
+
+def parse_portfolio_strategy_schema(code: str) -> dict:
+    """Validate ``code`` and return its declared parameter schema (may be empty).
+
+    The portfolio counterpart of ``backtesting.sandbox.parse_strategy_schema``:
+    the module body is evaluated in the *portfolio* namespace, so module-level
+    use of the injected sizers/policies (``policy = PeriodicRebalance(...)``)
+    parses instead of failing with a NameError. Same caveat as the single-
+    symbol version: this exec runs in-process without resource limits, so
+    callers must gate request size/rate.
+    """
+    validate(code)
+    g = _portfolio_globals()
+    try:
+        exec(compile(code, "<strategy>", "exec"), g)
+        return parse_schema(g)
+    except ScriptValidationError:
+        raise
+    except Exception as e:  # normalize bad-params / module-body errors
+        raise ScriptValidationError(f"could not evaluate strategy schema: {e}") from e
 
 
 def _child_main(
