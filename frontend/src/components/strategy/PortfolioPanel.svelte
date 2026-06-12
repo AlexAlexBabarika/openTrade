@@ -1,6 +1,8 @@
 <script lang="ts">
   import Play from '@lucide/svelte/icons/play';
   import X from '@lucide/svelte/icons/x';
+  import PortfolioHoldings from './PortfolioHoldings.svelte';
+  import WeightsHeatmap from './WeightsHeatmap.svelte';
   import { PortfolioState } from '$lib/features/portfolio/portfolioState.svelte';
   import { MAX_UNIVERSE_SYMBOLS } from '$lib/features/portfolio/universe';
   import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
@@ -149,16 +151,14 @@
         </div>
       </div>
 
-      <div class="sharpes" aria-label="Per-symbol Sharpe ratios">
-        <span class="sharpes-title">per-symbol sharpe</span>
-        <div class="sharpes-list">
-          {#each Object.entries(metrics.symbol_sharpes) as [symbol, value] (symbol)}
-            <span class="sharpe-item">
-              <span class="sharpe-sym">{symbol}</span>
-              <span class="sharpe-val">{num(value)}</span>
-            </span>
-          {/each}
-        </div>
+      <div class="section" aria-label="Holdings and attribution">
+        <span class="sharpes-title">holdings &amp; attribution</span>
+        <PortfolioHoldings {result} />
+      </div>
+
+      <div class="section" aria-label="Weights over time">
+        <span class="sharpes-title">weights over time</span>
+        <WeightsHeatmap equity={result.equity} />
       </div>
 
       {#if result.constraint_events.length > 0}
@@ -378,7 +378,7 @@
     color: oklch(var(--foreground));
   }
 
-  .sharpes {
+  .section {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -389,22 +389,6 @@
     text-transform: uppercase;
     color: oklch(var(--muted-foreground));
   }
-  .sharpes-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .sharpe-item {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 6px;
-    padding: 3px 9px;
-    border: 1px solid color-mix(in oklab, oklch(var(--border)) 100%, transparent);
-    border-radius: 4px;
-    font-size: 11px;
-  }
-  .sharpe-sym { font-weight: 700; letter-spacing: 0.06em; }
-  .sharpe-val { color: oklch(var(--muted-foreground)); }
 
   .bindings {
     display: flex;
