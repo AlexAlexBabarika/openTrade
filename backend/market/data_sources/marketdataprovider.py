@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import AsyncIterator, TYPE_CHECKING
 
-from backend.market.models import OHLCVCandle
+from backend.market.models import CorporateAction, OHLCVCandle
 from backend.models.market_data_models import SymbolRecord
 
 if TYPE_CHECKING:
@@ -27,6 +27,10 @@ class MarketDataProvider(ABC):
     ) -> list[OHLCVCandle]:
         """Get OHLCV candles for a given symbol and period."""
         ...
+
+    def get_corporate_actions(self, symbol: str) -> list["CorporateAction"]:
+        """Splits and dividends for a symbol. Optional; override to support."""
+        raise NotImplementedError
 
     def list_symbols(self) -> list[SymbolRecord]:
         """Enumerate all symbols this provider supports. Optional."""

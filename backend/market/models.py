@@ -41,3 +41,16 @@ class CSVUploadResponse(BaseModel):
 
 
 SourceType = Literal["yfinance", "csv"]
+
+
+class CorporateAction(BaseModel):
+    """One corporate action for a symbol.
+
+    ``kind`` is ``"split"`` or ``"dividend"``. ``value`` is the split ratio
+    (4.0 == 4-for-1) for splits, or the cash dividend per share for dividends.
+    """
+
+    symbol: str
+    ex_date: datetime
+    kind: str
+    value: float
