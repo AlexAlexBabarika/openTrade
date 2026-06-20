@@ -1,20 +1,24 @@
 # backend/tests/test_portfolio_routes.py
-"""The /portfolio-backtests API: a sandboxed multi-asset run of strategy code.
+"""The /portfolio-backtests API: a store-backed multi-asset run of strategy code.
 
-Market data is stubbed per symbol so the test is hermetic (no provider calls).
+The route reads from the on-disk datastore (integration boundary B3). Each test
+seeds a tmp store via the ingest pipeline with a deterministic fake provider
+(no network), then points the route's module-level store handles at it.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-import numpy as np
-import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 
 import backend.routes.portfolio_routes as portfolio_routes
 from backend.app import app
+from backend.datastore.ingest import ingest_symbols
+from backend.datastore.layout import StoreLayout
+from backend.market.models import CorporateAction, OHLCVCandle
 
 CODE = (
     "def on_bar(ctx):\n"
@@ -24,47 +28,75 @@ CODE = (
     "        ctx.rebalance()\n"
 )
 
+_START = datetime(2020, 8, 15, tzinfo=timezone.utc)
+_DAYS = [_START + timedelta(days=i) for i in range(31)]  # 2020-08-15 .. 2020-09-14
+_SPLIT_DAY = datetime(2020, 8, 31, tzinfo=timezone.utc)
+
+
+def _candle(t, c, symbol):
+    return OHLCVCandle(
+        symbol=symbol,
+        timestamp=t,
+        open=c,
+        high=c + 0.5,
+        low=c - 0.5,
+        close=c,
+        volume=1e6,
+    )
+
+
+class _FakeProvider:
+    name = "fake"
+
+    def __init__(self, bars, actions):
+        self._bars, self._actions = bars, actions
+
+    def get_raw_ohlcv(self, symbol, period="max", interval="1d"):
+        return self._bars[symbol]
+
+    def get_corporate_actions(self, symbol):
+        return self._actions.get(symbol, [])
+
+
+def _aapl_bars():
+    # 500 before the 4-for-1 split, 125 after — raw, unadjusted.
+    return [_candle(t, 500.0 if t < _SPLIT_DAY else 125.0, "AAPL") for t in _DAYS]
+
 
 @pytest.fixture(autouse=True)
-def _stub_frames(monkeypatch) -> None:
-    start = datetime(2024, 1, 1, tzinfo=timezone.utc)
-
-    async def _fake_load_frame(body):
-        n = 30
-        ts = [start + timedelta(days=i) for i in range(n)]
-        seed = sum(ord(c) for c in body.symbol)
-        close = 100 + np.cumsum(np.random.default_rng(seed).standard_normal(n) * 0.5)
-        frame = pl.DataFrame(
-            {
-                "timestamp": ts,
-                "open": close,
-                "high": close + 0.5,
-                "low": close - 0.5,
-                "close": close,
-                "volume": np.full(n, 1e6),
-            }
-        ).with_columns(pl.col("timestamp").dt.replace_time_zone("UTC"))
-        return frame, f"stub:{body.symbol}"
-
-    monkeypatch.setattr(portfolio_routes, "_load_frame", _fake_load_frame)
+def _seed_store(tmp_path: Path, monkeypatch):
+    layout = StoreLayout(root=tmp_path)
+    provider = _FakeProvider(
+        bars={
+            "AAPL": _aapl_bars(),
+            "MSFT": [_candle(t, 200.0, "MSFT") for t in _DAYS],
+            "META": [_candle(t, 300.0, "META") for t in _DAYS],
+        },
+        actions={
+            "AAPL": [
+                CorporateAction(
+                    symbol="AAPL", ex_date=_SPLIT_DAY, kind="split", value=4.0
+                )
+            ],
+        },
+    )
+    ingest_symbols(layout, provider, ["AAPL", "MSFT", "META"], indices=["SP500"])
+    monkeypatch.setattr(portfolio_routes, "_STORE_LAYOUT", layout)
+    monkeypatch.setattr(portfolio_routes, "_STORE_PROVIDER", "fake")
 
 
 client = TestClient(app)
 
 
 def _run(payload_overrides: dict | None = None) -> dict:
-    payload = {
-        "code": CODE,
-        "symbols": ["MSFT", "AAPL"],
-        "provider": "yfinance",
-    }
+    payload = {"code": CODE, "symbols": ["MSFT", "AAPL"], "provider": "yfinance"}
     payload.update(payload_overrides or {})
     r = client.post("/portfolio-backtests/run", json=payload)
     assert r.status_code == 200, r.text
     return r.json()
 
 
-def test_run_returns_the_full_portfolio_blob() -> None:
+def test_run_returns_the_full_portfolio_blob():
     body = _run()
     assert body["status"] == "ok", body["stderr"]
     for key in (
@@ -80,12 +112,51 @@ def test_run_returns_the_full_portfolio_blob() -> None:
     ):
         assert key in body
     assert body["symbols"] == ["AAPL", "MSFT"]  # deduped + sorted
-    assert len(body["equity"]) == 30
+    assert len(body["equity"]) == 31
     assert {f["symbol"] for f in body["fills"]} == {"AAPL", "MSFT"}
     assert "sharpe" in body["metrics"]["portfolio"]
 
 
-def test_run_enforces_request_constraints() -> None:
+def test_run_records_data_version():
+    body = _run()
+    assert body["meta"].get("data_version")
+
+
+def test_index_universe_run():
+    body = _run(
+        {"symbols": None, "index": "SP500", "start": "2020-08-15", "end": "2020-09-15"}
+    )
+    assert body["status"] == "ok", body["stderr"]
+    # SP500 active in Aug-Sep 2020 = AAPL, MSFT, META.
+    assert set(body["symbols"]) == {"AAPL", "MSFT", "META"}
+    assert body["meta"].get("data_version")
+
+
+def test_single_symbol_aapl_split_is_continuous():
+    body = _run({"symbols": ["AAPL"], "start": "2020-08-15", "end": "2020-09-15"})
+    assert body["status"] == "ok", body["stderr"]
+    closes = [b["close"] for b in body["bars"]["AAPL"]]
+    assert len(closes) >= 2
+    for a, b in zip(closes, closes[1:]):
+        assert abs(b / a - 1.0) < 0.5  # AC#2: no phantom ~75% drop
+
+
+def test_missing_data_returns_400():
+    r = client.post(
+        "/portfolio-backtests/run",
+        json={
+            "code": CODE,
+            "symbols": ["NOPE"],
+            "start": "2020-08-15",
+            "end": "2020-09-15",
+            "provider": "yfinance",
+        },
+    )
+    assert r.status_code == 400
+    assert "ingest" in r.text.lower()
+
+
+def test_run_enforces_request_constraints():
     body = _run({"constraints": {"max_position_weight": 0.1}})
     assert body["status"] == "ok", body["stderr"]
     assert any(
@@ -93,10 +164,7 @@ def test_run_enforces_request_constraints() -> None:
     )
 
 
-def test_module_level_policies_and_params_pass_schema_parsing() -> None:
-    # Regression: schema parsing must evaluate the module body in the
-    # portfolio namespace, or `policy = PeriodicRebalance(...)` at module
-    # level is rejected with a NameError before the run ever starts.
+def test_module_level_policies_and_params_pass_schema_parsing():
     code = (
         "params = {'lookback': Int(5, 20, step=5)}\n"
         "policy = PeriodicRebalance('monthly')\n"
@@ -112,15 +180,30 @@ def test_module_level_policies_and_params_pass_schema_parsing() -> None:
     assert len(body["fills"]) >= 2
 
 
-def test_invalid_code_is_a_400() -> None:
+def test_invalid_code_is_a_400():
     r = client.post(
         "/portfolio-backtests/run",
-        json={"code": "import os", "symbols": ["AAPL"], "provider": "yfinance"},
+        json={
+            "code": "import os",
+            "symbols": ["AAPL"],
+            "provider": "yfinance",
+        },
     )
     assert r.status_code == 400
 
 
-def test_too_many_symbols_is_a_422() -> None:
+def test_neither_index_nor_symbols_is_a_400():
+    r = client.post(
+        "/portfolio-backtests/run",
+        json={
+            "code": CODE,
+            "provider": "yfinance",
+        },
+    )
+    assert r.status_code == 400
+
+
+def test_too_many_symbols_is_a_422():
     r = client.post(
         "/portfolio-backtests/run",
         json={
