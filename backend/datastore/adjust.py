@@ -39,7 +39,7 @@ def back_adjust(bars: pl.DataFrame, actions: pl.DataFrame) -> pl.DataFrame:
         elif row["kind"] == "dividend":
             d = float(row["value"])
             prev_close = _last_close_before(times, closes, ex)
-            f = 1.0 if prev_close in (None, 0.0) else (prev_close - d) / prev_close
+            f = 1.0 if not prev_close else (prev_close - d) / prev_close
             steps.append((ex, f, 1.0))
 
     price_factor: list[float] = []
