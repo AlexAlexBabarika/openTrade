@@ -47,6 +47,7 @@ from backend.backtesting.multi.universe import Universe
 from backend.backtesting.strategy import Strategy
 from backend.backtesting.trades import match_trades
 from backend.backtesting.types import Fill, Order, RunMeta, Side, Trade
+from backend.backtesting.version import ENGINE_VERSION
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,6 +153,7 @@ def run_portfolio_backtest(
             strategy_id=strategy_id,
             params=params,
             data_version=data_version,
+            engine_version=ENGINE_VERSION,
         ),
         events=events,
         orders=broker.orders,
