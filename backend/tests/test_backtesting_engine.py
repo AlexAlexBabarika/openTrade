@@ -26,7 +26,7 @@ from backend.tests._backtesting_fixtures import (
 )
 
 # Captured once from a real run; regenerate intentionally if the engine changes.
-GOLDEN_EQUITY_HASH = "a0ce1c75b3b9808684fe780231cb4d45f111eb15ecfc0bb205024bedecf7c8ac"
+GOLDEN_EQUITY_HASH = "7a1f7865e6824aaf8235e43980d5fe88a29d40250cbf468ff5899b6b33b2e1ad"
 
 
 class _BuyOnceTen(Strategy):
