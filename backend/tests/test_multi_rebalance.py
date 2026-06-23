@@ -9,6 +9,7 @@ target. min_trade_value skips dust trades to avoid fee bleed.
 
 from __future__ import annotations
 
+import math
 from datetime import datetime, timedelta, timezone
 
 import polars as pl
@@ -196,6 +197,47 @@ def test_short_target_weight_sells_short() -> None:
         costs=Costs.frictionless(),
     )
     assert result.equity_curve[-1].weights == {"AAPL": -0.3}
+
+
+def test_rebalance_does_not_runaway_when_costs_exhaust_equity() -> None:
+    # A sub-half-cent name with per-share commission: a weight-1.0 target buys a
+    # huge share count whose commission ($0.005/share) exceeds the position
+    # value, driving equity negative on the first fill. rebalance() must then
+    # stop trading the insolvent book — sizing target_value = weight * (negative
+    # equity) would flip to an ever-larger short, compounding ~10x/bar to
+    # non-finite equity and crashing metrics with an opaque pstdev error.
+    start = _t(1)
+    n = 8
+    price = 0.001
+    frame = pl.DataFrame(
+        {
+            "timestamp": [start + timedelta(days=i) for i in range(n)],
+            "open": [price] * n,
+            "high": [price * 1.01] * n,
+            "low": [price * 0.99] * n,
+            "close": [price] * n,
+            "volume": [1e9] * n,
+        }
+    ).with_columns(pl.col("timestamp").dt.replace_time_zone("UTC"))
+
+    class FullyInvested(Strategy):
+        def __init__(self) -> None:
+            self.late_orders = []
+
+        def on_bar(self, ctx) -> None:
+            ctx.target_weight("PENNY", 1.0)
+            orders = ctx.rebalance()
+            if ctx.equity <= 0.0:  # once insolvent, must place no further orders
+                self.late_orders.extend(orders)
+
+    strategy = FullyInvested()
+    result = run_portfolio_backtest(  # default (per-share) costs
+        frames={"PENNY": frame},
+        strategy=strategy,
+        starting_cash=100.0,
+    )
+    assert all(math.isfinite(p.equity) for p in result.equity_curve)
+    assert strategy.late_orders == []
 
 
 def test_target_weight_on_inactive_symbol_raises() -> None:
