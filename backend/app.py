@@ -61,6 +61,7 @@ from backend.routes.comparison_routes import router as comparison_router
 from backend.routes.sweep_routes import router as sweep_router
 from backend.routes.backtest_routes import router as backtest_router
 from backend.routes.portfolio_routes import router as portfolio_router
+from backend.routes.datastore_routes import router as datastore_router
 from backend.routes.strategy_routes import router as strategy_router
 from backend.core.rate_limit import allow, client_key, retry_after_seconds
 
@@ -128,6 +129,7 @@ app.include_router(comparison_router)
 app.include_router(sweep_router)
 app.include_router(backtest_router)
 app.include_router(portfolio_router)
+app.include_router(datastore_router)
 app.include_router(strategy_router)
 
 

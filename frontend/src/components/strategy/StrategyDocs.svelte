@@ -204,18 +204,13 @@
 
   const examples: { title: string; code: string }[] = [
     {
-      title: 'Parameterized buy & hold (the seed strategy)',
-      code: `params = {
-    "fast": Int(5, 50, step=5),
-    "slow": Int(20, 200, step=10),
-}
-
-def on_bar(ctx):
+      title: 'Buy & hold (the simplest strategy)',
+      code: `def on_bar(ctx):
     if ctx.position.quantity == 0:
         ctx.buy(1)`,
     },
     {
-      title: 'SMA crossover',
+      title: 'SMA crossover (the seed strategy)',
       code: `params = {
     "fast": Int(5, 50, step=5),
     "slow": Int(20, 200, step=10),

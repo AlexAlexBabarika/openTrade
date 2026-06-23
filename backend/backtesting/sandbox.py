@@ -77,6 +77,24 @@ def _strategy_globals() -> dict[str, Any]:
     }
 
 
+# Sizers/policies injected only by the portfolio sandbox. Referencing one from a
+# single-symbol strategy is the most common confusing NameError, so we translate
+# it into "use the Portfolio tab". Source of truth: multi.sandbox
+# ._portfolio_globals (kept in sync by test_backtesting_sandbox).
+_PORTFOLIO_ONLY_NAMES = frozenset(
+    {
+        "equal_weight",
+        "inverse_volatility",
+        "kelly_weight",
+        "kelly_weights",
+        "trailing_volatility",
+        "PeriodicRebalance",
+        "ThresholdRebalance",
+        "SignalRebalance",
+    }
+)
+
+
 def _child_main(
     conn,
     code: str,
@@ -200,5 +218,12 @@ def parse_strategy_schema(code: str) -> dict:
         return parse_schema(g)
     except ScriptValidationError:
         raise
+    except NameError as e:
+        if e.name in _PORTFOLIO_ONLY_NAMES:
+            raise ScriptValidationError(
+                f"{e.name!r} is a portfolio-only feature — run multi-asset "
+                f"strategies from the Portfolio tab."
+            ) from e
+        raise ScriptValidationError(f"could not evaluate strategy schema: {e}") from e
     except Exception as e:  # normalize bad-params / module-body errors
         raise ScriptValidationError(f"could not evaluate strategy schema: {e}") from e

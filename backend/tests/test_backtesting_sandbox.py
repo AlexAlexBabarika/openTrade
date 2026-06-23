@@ -165,6 +165,42 @@ def test_parse_strategy_schema_normalizes_bad_params_to_validation_error() -> No
         parse_strategy_schema("params = 42\ndef on_bar(ctx):\n    pass\n")
 
 
+@pytest.mark.parametrize("name", ["PeriodicRebalance", "ThresholdRebalance"])
+def test_portfolio_only_name_points_to_portfolio_tab(name: str) -> None:
+    # Rebalance policies / sizers only exist in the multi-asset sandbox; using
+    # one in a single-symbol strategy gets actionable guidance, not a raw
+    # NameError.
+    from backend.backtesting.sandbox import parse_strategy_schema
+    from backend.scripts.ast_guard import ScriptValidationError
+
+    code = f"policy = {name}('monthly')\ndef on_bar(ctx):\n    pass\n"
+    with pytest.raises(ScriptValidationError) as exc:
+        parse_strategy_schema(code)
+    msg = str(exc.value)
+    assert name in msg
+    assert "Portfolio tab" in msg
+
+
+def test_unknown_name_keeps_generic_schema_error() -> None:
+    # A genuinely undefined name is still reported the old way.
+    from backend.backtesting.sandbox import parse_strategy_schema
+    from backend.scripts.ast_guard import ScriptValidationError
+
+    with pytest.raises(ScriptValidationError) as exc:
+        parse_strategy_schema("x = totally_undefined\ndef on_bar(ctx):\n    pass\n")
+    assert "could not evaluate strategy schema" in str(exc.value)
+
+
+def test_portfolio_only_names_stay_in_sync_with_portfolio_globals() -> None:
+    # Drift guard: the hardcoded set must match what the portfolio sandbox
+    # actually injects beyond the single-asset namespace.
+    from backend.backtesting.sandbox import _PORTFOLIO_ONLY_NAMES, _strategy_globals
+    from backend.backtesting.multi.sandbox import _portfolio_globals
+
+    extra = set(_portfolio_globals()) - set(_strategy_globals())
+    assert _PORTFOLIO_ONLY_NAMES == frozenset(extra)
+
+
 def test_run_strategy_passes_params_to_ctx(df: pl.DataFrame) -> None:
     code = (
         "params = {'qty': Int(1, 4, step=1)}\n"
