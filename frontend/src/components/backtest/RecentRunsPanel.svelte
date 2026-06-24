@@ -24,7 +24,7 @@
 </script>
 
 {#if open}
-  <aside class="fixed inset-y-0 right-0 z-30 flex w-80 max-w-full flex-col gap-2 border-l border-border bg-background p-4" aria-label="Recent runs">
+  <aside class="fixed right-0 top-14 bottom-0 z-50 flex w-80 max-w-full flex-col gap-2 overflow-y-auto border-l border-border bg-background p-4" aria-label="Recent runs">
     <header class="flex items-center justify-between">
       <h2 class="text-sm font-semibold">Recent runs</h2>
       <button type="button" class="text-muted-foreground hover:text-foreground" onclick={() => (open = false)}>✕</button>
