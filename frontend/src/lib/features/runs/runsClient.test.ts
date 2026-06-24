@@ -50,8 +50,8 @@ describe('runsClient', () => {
         .fn()
         .mockResolvedValue(res(422, { detail: 'rerun failed (error): boom' })),
     );
-    await expect(c.rerunRun('x')).rejects.toMatchObject({
-      message: 'rerun failed (error): boom',
-    });
+    const err = await c.rerunRun('x').catch(e => e);
+    expect(err).toBeInstanceOf(RerunFailedError);
+    expect((err as Error).message).toBe('rerun failed (error): boom');
   });
 });
