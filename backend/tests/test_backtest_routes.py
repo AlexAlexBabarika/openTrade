@@ -97,3 +97,27 @@ def test_runtime_error_surfaces_in_result_status() -> None:
     body = _run({"code": "def on_bar(ctx):\n    raise ValueError('boom')\n"})
     assert body["status"] == "error"
     assert "boom" in body["stderr"]
+
+
+def test_run_persists_snapshot_and_returns_run_id(tmp_path, monkeypatch):
+    from backend.backtesting.run_store import RunStore
+
+    store = RunStore(tmp_path)
+    monkeypatch.setattr(backtest_routes, "_RUN_STORE", store, raising=False)
+
+    body = _run()
+    assert body["status"] == "ok", body.get("stderr")
+    rid = body["run_id"]
+    assert store.exists(rid)
+
+
+def test_run_error_does_not_persist_or_return_run_id(tmp_path, monkeypatch):
+    from backend.backtesting.run_store import RunStore
+
+    store = RunStore(tmp_path)
+    monkeypatch.setattr(backtest_routes, "_RUN_STORE", store, raising=False)
+
+    body = _run({"code": "def on_bar(ctx):\n    raise ValueError('boom')\n"})
+    assert body["status"] == "error"
+    assert "run_id" not in body
+    assert store.list_ids() == []
