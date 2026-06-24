@@ -109,7 +109,7 @@
     { title: 'Backtesting', colors: ['#5c2a4a', '#2a3d5c', '#3a1f3d', '#0f1a26'] },
     { title: 'Indicators', colors: ['#2a5c4a', '#1f3d4a', '#14302e', '#0a1a1c'] },
     { title: 'Strategy', colors: ['#6e4a2a', '#5c3a2a', '#3d2614', '#1a0f0a'] },
-    { title: 'Card 5', colors: ['#4a2a6e', '#2a1f5c', '#1a143d', '#0a0a1f'] },
+    { title: 'Runs', colors: ['#4a2a6e', '#2a1f5c', '#1a143d', '#0a0a1f'] },
   ];
 
   let backdropOpacity = $derived(clamp(progress, 0, 1));
