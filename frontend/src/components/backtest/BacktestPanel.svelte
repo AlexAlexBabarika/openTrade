@@ -5,14 +5,45 @@
   import MetricsStrip from './MetricsStrip.svelte';
   import BacktestChart from './BacktestChart.svelte';
   import ResultTabs from './ResultTabs.svelte';
+  import RunIdChip from './RunIdChip.svelte';
+  import StaleBanner from './StaleBanner.svelte';
+  import { runsHistory } from '$lib/features/runs/runsHistory.svelte';
+  import { runsClient, RerunFailedError } from '$lib/features/runs/runsClient';
+  import type { RunDiff } from '$lib/features/runs/runTypes';
 
   let {
     open = $bindable(false),
     backtest = new BacktestState(),
+    onCompareAfterRerun,
   }: {
     open?: boolean;
     backtest?: BacktestState;
+    onCompareAfterRerun?: (a: string, b: string, diff: RunDiff) => void;
   } = $props();
+
+  let rerunning = $state(false);
+  let rerunError = $state<string | null>(null);
+
+  async function rerun(): Promise<void> {
+    const id = backtest.result?.meta.run_id;
+    if (!id) return;
+    rerunning = true;
+    rerunError = null;
+    try {
+      const resp = await runsClient.rerunRun(id);
+      runsHistory.record({
+        run_id: resp.run_id,
+        kind: 'single',
+        label: backtest.result?.meta.strategy_id ?? 'run',
+        created_at: new Date().toISOString(),
+      });
+      onCompareAfterRerun?.(id, resp.run_id, resp.diff);
+    } catch (e) {
+      rerunError = e instanceof RerunFailedError ? e.message : 'rerun failed';
+    } finally {
+      rerunning = false;
+    }
+  }
 
   // Load the result the first time the panel opens.
   $effect(() => {
@@ -72,12 +103,17 @@
       <div class="ctx" aria-label="Strategy">
         <span class="ctx-label">STRAT</span>
         <span class="ctx-sym">{meta?.strategy_id ?? '—'}</span>
+        {#if meta?.run_id}
+          <RunIdChip runId={meta.run_id} />
+        {/if}
       </div>
 
       <button type="button" class="iconbtn close" onclick={close} aria-label="Close">
         <X class="h-3.5 w-3.5" />
       </button>
     </header>
+
+    <StaleBanner status={backtest.status} reranning={rerunning} error={rerunError} onRerun={rerun} />
 
     <div class="body">
       {#if backtest.loading && !backtest.result}

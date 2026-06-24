@@ -4,7 +4,9 @@
   import X from '@lucide/svelte/icons/x';
   import PortfolioHoldings from './PortfolioHoldings.svelte';
   import WeightsHeatmap from './WeightsHeatmap.svelte';
+  import RunIdChip from '../backtest/RunIdChip.svelte';
   import { PortfolioState } from '$lib/features/portfolio/portfolioState.svelte';
+  import { runsHistory } from '$lib/features/runs/runsHistory.svelte';
   import { MAX_UNIVERSE_SYMBOLS } from '$lib/features/portfolio/universe';
   import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
 
@@ -43,6 +45,19 @@
   async function runNow() {
     if (portfolio.isRunning) return;
     await portfolio.run(code, { provider, period, interval });
+    const runId = portfolio.response?.meta?.run_id;
+    if (runId) {
+      const label =
+        portfolio.symbols.length <= 3
+          ? portfolio.symbols.join(', ')
+          : `${portfolio.symbols.slice(0, 3).join(', ')}... (${portfolio.symbols.length})`;
+      runsHistory.record({
+        run_id: runId,
+        kind: 'portfolio',
+        label,
+        created_at: new Date().toISOString(),
+      });
+    }
   }
 
   async function ingestNow() {
@@ -172,6 +187,9 @@
       <header class="card-head">
         <span class="card-title">last run</span>
         <span class="count">{result.symbols.length} symbols</span>
+        {#if result.meta?.run_id}
+          <RunIdChip runId={result.meta.run_id} />
+        {/if}
       </header>
 
       <div class="stats">

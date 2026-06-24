@@ -104,11 +104,16 @@
   import IndicatorsPanel from './components/indicators/IndicatorsPanel.svelte';
   import AnalyticsPanel from './components/analytics/AnalyticsPanel.svelte';
   import BacktestPanel from './components/backtest/BacktestPanel.svelte';
+  import RecentRunsPanel from './components/backtest/RecentRunsPanel.svelte';
+  import CompareView from './components/backtest/compare/CompareView.svelte';
   import StrategyPanel from './components/strategy/StrategyPanel.svelte';
   import { IndicatorState } from '$lib/features/indicators/indicatorState.svelte';
   import { AnalyticsState } from '$lib/features/analytics/analyticsState.svelte';
   import { BacktestState } from '$lib/features/backtest/backtestState.svelte';
   import { StrategyState } from '$lib/features/strategy/strategyState.svelte';
+  import { compareState } from '$lib/features/runs/compareState.svelte';
+  import { storedRunLoader } from '$lib/features/runs/storedRunLoader';
+  import type { RunDiff } from '$lib/features/runs/runTypes';
   import LeftToolbar from './components/toolbar/LeftToolbar.svelte';
   import ToolSettingsModal from './components/toolbar/ToolSettingsModal.svelte';
   import DrawablesPersistence from '$lib/features/drawables/DrawablesPersistence.svelte';
@@ -289,14 +294,36 @@
   let strategyOpen = $state(false);
   const indicators = new IndicatorState();
   const analytics = new AnalyticsState();
-  const backtest = new BacktestState();
+  let backtest = $state(new BacktestState());
   const strategy = new StrategyState();
+
+  let runsOpen = $state(false);
+  let compareOpen = $state(false);
+
+  function openStoredRun(id: string): void {
+    backtest = new BacktestState(storedRunLoader(id));
+    void backtest.load();
+    backtestOpen = true;
+    runsOpen = false;
+  }
+
+  function openCompare(a: string, b: string): void {
+    void compareState.load(a, b);
+    compareOpen = true;
+    runsOpen = false;
+  }
+
+  function compareAfterRerun(a: string, b: string, diff: RunDiff): void {
+    compareState.setDiff(a, b, diff);
+    compareOpen = true;
+  }
 
   const toolboxTileHandlers: Record<string, () => void> = {
     Indicators: () => (indicatorsOpen = true),
     Analytics: () => (analyticsOpen = true),
     Backtesting: () => (backtestOpen = true),
     Strategy: () => (strategyOpen = true),
+    Runs: () => (runsOpen = true),
   };
 
   function handleToolboxTile(title: string) {
@@ -820,7 +847,9 @@
     symbol={chart.loadedSymbol || chart.symbol}
     {analytics}
   />
-  <BacktestPanel bind:open={backtestOpen} {backtest} />
+  <BacktestPanel bind:open={backtestOpen} {backtest} onCompareAfterRerun={compareAfterRerun} />
+  <RecentRunsPanel bind:open={runsOpen} onOpenRun={openStoredRun} onCompare={openCompare} />
+  <CompareView bind:open={compareOpen} compare={compareState} />
   <StrategyPanel
     bind:open={strategyOpen}
     symbol={chart.loadedSymbol || chart.symbol}
