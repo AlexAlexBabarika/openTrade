@@ -57,6 +57,8 @@ def assemble_snapshot(blob: dict, inputs: RunInputs) -> AssembledSnapshot:
         "run_id": run_id,
         "ast_hash": code_h,
         "starting_cash": inputs.starting_cash,
+        "data_version": inputs.data_version,
+        "seed": inputs.seed,
     }
 
     result_body = {

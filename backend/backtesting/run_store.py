@@ -12,12 +12,15 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import tarfile
 import tempfile
 from pathlib import Path
 
 import polars as pl
 
+from backend.backtesting.run_id import run_key
 from backend.backtesting.run_snapshot import AssembledSnapshot
+from backend.scripts.ast_guard import ast_hash
 
 _DEFAULT_DATA_ROOT = Path(__file__).resolve().parents[1] / "datastore" / "_data"
 
@@ -123,3 +126,57 @@ class RunStore:
             "log": log,
             **result_body,
         }
+
+
+class RunIntegrityError(ValueError):
+    """A tarball's contents do not match its content-addressed run_id."""
+
+
+def export_run(store: RunStore, run_id: str, dest_dir: Path) -> Path:
+    src = store.path(run_id)
+    if not (src / "meta.json").exists():
+        raise FileNotFoundError(f"run {run_id} not found")
+    dest_dir = Path(dest_dir)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    out = dest_dir / f"{run_id}.tar.gz"
+    with tarfile.open(out, "w:gz") as tar:
+        tar.add(src, arcname=run_id)
+    return out
+
+
+def _verify_integrity(run_id: str, files: Path) -> None:
+    meta = json.loads((files / "meta.json").read_text())
+    params = json.loads((files / "params.json").read_text())
+    config = json.loads((files / "config.json").read_text())
+    code = (files / "strategy.py").read_text()
+
+    if ast_hash(code) != meta.get("ast_hash"):
+        raise RunIntegrityError(
+            f"strategy source does not match recorded ast_hash for {run_id}"
+        )
+    recomputed = run_key(
+        engine_version=meta["engine_version"],
+        ast_hash=meta["ast_hash"],
+        params=params,
+        data_version=meta.get("data_version"),
+        seed=meta["seed"],
+        config=config,
+    )
+    if recomputed != run_id or meta.get("run_id") != run_id:
+        raise RunIntegrityError(f"contents do not match run_id {run_id}")
+
+
+def import_run(store: RunStore, tar_path: Path) -> str:
+    with tempfile.TemporaryDirectory() as tmp:
+        with tarfile.open(tar_path, "r:gz") as tar:
+            tar.extractall(tmp, filter="data")
+        entries = [p for p in Path(tmp).iterdir() if (p / "meta.json").exists()]
+        if len(entries) != 1:
+            raise RunIntegrityError("tarball must contain exactly one run directory")
+        files = entries[0]
+        run_id = files.name
+        _verify_integrity(run_id, files)
+        if not store.exists(run_id):
+            store.root.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(files, store.path(run_id))
+    return run_id
