@@ -187,7 +187,7 @@ async def run(body: PortfolioRunRequest) -> dict:
     )
     blob = dataclasses.asdict(result)
     if result.status == "ok":
-        blob["run_id"] = _persist_portfolio(
+        run_id = _persist_portfolio(
             blob,
             code=body.code,
             params=params,
@@ -197,4 +197,9 @@ async def run(body: PortfolioRunRequest) -> dict:
             universe=universe,
             constraints=body.constraints.to_constraints() if body.constraints else None,
         )
+        blob["run_id"] = run_id
+        # Expose the content-addressed id as meta.run_id too, so it matches the
+        # stored snapshot (and what GET /backtests/runs/{id} returns) rather than
+        # the engine's throwaway uuid.
+        blob["meta"]["run_id"] = run_id
     return blob

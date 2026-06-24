@@ -74,5 +74,10 @@ async def run(body: BacktestRunRequest) -> dict:
             seed=body.seed,
             starting_cash=body.starting_cash,
         )
-        blob["run_id"] = _RUN_STORE.write(assemble_snapshot(blob, inputs))
+        run_id = _RUN_STORE.write(assemble_snapshot(blob, inputs))
+        blob["run_id"] = run_id
+        # Expose the content-addressed id as meta.run_id too, so it matches the
+        # stored snapshot (and what GET /backtests/runs/{id} returns) rather than
+        # the engine's throwaway uuid.
+        blob["meta"]["run_id"] = run_id
     return blob

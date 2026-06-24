@@ -109,6 +109,9 @@ def test_run_persists_snapshot_and_returns_run_id(tmp_path, monkeypatch):
     assert body["status"] == "ok", body.get("stderr")
     rid = body["run_id"]
     assert store.exists(rid)
+    # meta.run_id must be the content-addressed id (not the engine uuid), so the
+    # frontend — which reads meta.run_id — loads the run that was actually stored.
+    assert body["meta"]["run_id"] == rid
 
 
 def test_run_error_does_not_persist_or_return_run_id(tmp_path, monkeypatch):
