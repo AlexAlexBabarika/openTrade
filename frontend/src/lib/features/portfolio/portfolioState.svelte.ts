@@ -3,6 +3,7 @@
  * latest run of `POST /portfolio-backtests/run`. Runes-based, mirroring
  * `StrategyState`; the HTTP client is injectable so tests stub the network.
  */
+import { runsClient, type RunsClient } from '$lib/features/runs/runsClient';
 import {
   httpPortfolioClient,
   type IngestReport,
@@ -11,12 +12,57 @@ import {
   type PortfolioRunParams,
   type PortfolioRunResponse,
 } from './portfolioClient';
+import type { PortfolioResult } from './types';
 import { mergeSymbols } from './universe';
 
 export type PortfolioRunContext = Omit<
   PortfolioRunParams,
   'code' | 'symbols' | 'constraints'
 >;
+
+/**
+ * Map a stored run blob (as returned by `GET /backtests/runs/{id}` →
+ * `RunStore.read`) into the `PortfolioRunResponse` the portfolio dashboard
+ * reads. The stored shape carries the same fields as a live portfolio run, with
+ * the constraint log under `log`; there is no sandbox envelope, so status is
+ * "ok" and the stdout/stderr/timing fields are empty.
+ */
+export function toPortfolioRunResponse(blob: unknown): PortfolioRunResponse {
+  if (typeof blob !== 'object' || blob === null) {
+    throw new Error('stored run is not an object');
+  }
+  const b = blob as Record<string, unknown>;
+  for (const key of [
+    'meta',
+    'bars',
+    'orders',
+    'fills',
+    'equity',
+    'trades',
+    'metrics',
+  ] as const) {
+    if (!(key in b)) throw new Error(`stored portfolio run missing "${key}"`);
+  }
+  if (!(b.bars && typeof b.bars === 'object' && !Array.isArray(b.bars))) {
+    throw new Error('not a portfolio run (bars is not per-symbol)');
+  }
+  return {
+    status: 'ok',
+    meta: b.meta as PortfolioResult['meta'],
+    symbols: (b.symbols as string[] | undefined) ?? [],
+    bars: b.bars as PortfolioResult['bars'],
+    orders: b.orders as PortfolioResult['orders'],
+    fills: b.fills as PortfolioResult['fills'],
+    equity: b.equity as PortfolioResult['equity'],
+    trades: b.trades as PortfolioResult['trades'],
+    constraint_events:
+      (b.log as PortfolioResult['constraint_events'] | undefined) ?? [],
+    metrics: b.metrics as PortfolioResult['metrics'],
+    stdout: '',
+    stderr: '',
+    elapsed_ms: 0,
+  };
+}
 
 export class PortfolioState {
   /** The universe, in insertion order (uppercase, unique, capped). */
@@ -36,9 +82,30 @@ export class PortfolioState {
   ingestReport = $state<IngestReport | null>(null);
 
   #client: PortfolioClient;
+  #runs: RunsClient;
 
-  constructor(client: PortfolioClient = httpPortfolioClient) {
+  constructor(
+    client: PortfolioClient = httpPortfolioClient,
+    runs: RunsClient = runsClient,
+  ) {
     this.#client = client;
+    this.#runs = runs;
+  }
+
+  /**
+   * Load a stored portfolio run by id into `response` so its dashboard renders,
+   * without re-running. Reuses `isRunning`/`runError` for UI feedback.
+   */
+  async loadStored(id: string): Promise<void> {
+    this.isRunning = true;
+    this.runError = null;
+    try {
+      this.response = toPortfolioRunResponse(await this.#runs.getRun(id));
+    } catch (err) {
+      this.runError = err instanceof Error ? err.message : 'Failed to load run';
+    } finally {
+      this.isRunning = false;
+    }
   }
 
   /** Merge free-form pasted/typed ticker text into the universe. */

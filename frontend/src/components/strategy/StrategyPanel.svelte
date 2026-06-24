@@ -23,6 +23,7 @@
     interval,
     strategy,
     onOpenRuns,
+    portfolioRunId = null,
   }: {
     open?: boolean;
     symbol: string;
@@ -31,6 +32,8 @@
     interval: string;
     strategy: StrategyState;
     onOpenRuns?: () => void;
+    /** When set to a new id, load that stored portfolio run and show it. */
+    portfolioRunId?: string | null;
   } = $props();
 
   const strat = $derived(strategy);
@@ -48,6 +51,18 @@
     if (portfolio.symbols.length === 0 && symbol) portfolio.add(symbol);
     tab = 'portfolio';
   }
+
+  // Load a stored portfolio run when the parent hands us a new id, and surface
+  // it on the portfolio tab. Tracked so the same id doesn't reload on re-render.
+  let loadedPortfolioRun: string | null = null;
+  $effect(() => {
+    const id = portfolioRunId;
+    if (id && id !== loadedPortfolioRun) {
+      loadedPortfolioRun = id;
+      tab = 'portfolio';
+      void portfolio.loadStored(id);
+    }
+  });
 
   $effect(() => {
     if (open) void strat.load();

@@ -113,6 +113,7 @@
   import { StrategyState } from '$lib/features/strategy/strategyState.svelte';
   import { compareState } from '$lib/features/runs/compareState.svelte';
   import { storedRunLoader } from '$lib/features/runs/storedRunLoader';
+  import { runsHistory } from '$lib/features/runs/runsHistory.svelte';
   import type { RunDiff } from '$lib/features/runs/runTypes';
   import LeftToolbar from './components/toolbar/LeftToolbar.svelte';
   import ToolSettingsModal from './components/toolbar/ToolSettingsModal.svelte';
@@ -299,12 +300,22 @@
 
   let runsOpen = $state(false);
   let compareOpen = $state(false);
+  let portfolioRunId = $state<string | null>(null);
 
   function openStoredRun(id: string): void {
+    runsOpen = false;
+    const entry = runsHistory.entries.find(e => e.run_id === id);
+    if (entry?.kind === 'portfolio') {
+      // Portfolio runs render in the Strategy panel's portfolio view. Reset
+      // first so re-opening the same run re-triggers the load effect.
+      portfolioRunId = null;
+      portfolioRunId = id;
+      strategyOpen = true;
+      return;
+    }
     backtest = new BacktestState(storedRunLoader(id));
     void backtest.load();
     backtestOpen = true;
-    runsOpen = false;
   }
 
   function openCompare(a: string, b: string): void {
@@ -858,6 +869,7 @@
     interval={chart.interval}
     {strategy}
     onOpenRuns={() => (runsOpen = true)}
+    {portfolioRunId}
   />
   <AppDialogs
     {groupDialogInitial}
