@@ -70,3 +70,14 @@ def test_compare_shows_single_param_diff(tmp_path, monkeypatch):
     monkeypatch.setattr(rr, "_RUN_STORE", store)
     diff = TestClient(app).get(f"/backtests/runs/{rid_a}/compare/{rid_b}").json()
     assert [r["path"] for r in diff["inputs_diff"]] == ["params.n"]
+
+
+def test_rerun_failing_strategy_returns_422(tmp_path, monkeypatch):
+    store, rid = _seed_store(tmp_path, 10)
+    # Overwrite strategy.py with code that raises at runtime
+    (store.path(rid) / "strategy.py").write_text(
+        "def on_bar(ctx):\n    raise ValueError('boom')\n"
+    )
+    monkeypatch.setattr(rr, "_RUN_STORE", store)
+    resp = TestClient(app).post(f"/backtests/runs/{rid}/rerun")
+    assert resp.status_code == 422

@@ -99,6 +99,8 @@ def rerun(store: RunStore, run_id: str) -> str:
             universe=universe,
             data_version=data_version,
         )
+        if p_res.status != "ok":
+            raise ValueError(f"rerun failed ({p_res.status}): {p_res.stderr.strip()}")
         new_blob = {
             "meta": p_res.meta,
             "symbols": p_res.symbols,
@@ -124,6 +126,8 @@ def rerun(store: RunStore, run_id: str) -> str:
         s_res = run_strategy(
             code, frame, starting_cash=starting_cash, seed=seed, params=params
         )
+        if s_res.status != "ok":
+            raise ValueError(f"rerun failed ({s_res.status}): {s_res.stderr.strip()}")
         new_blob = {
             "meta": s_res.meta,
             "bars": s_res.bars,

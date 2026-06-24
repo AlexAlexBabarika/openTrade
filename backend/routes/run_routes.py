@@ -8,11 +8,13 @@ Runs are global and content-addressed; there is no per-user scoping here.
 from __future__ import annotations
 
 import logging
+import shutil
 import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
 
 from backend.backtesting.run_diff import diff_runs
@@ -71,7 +73,12 @@ def export(run_id: str) -> FileResponse:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"run {run_id} not found")
     dest = Path(tempfile.mkdtemp())
     tar = export_run(_RUN_STORE, run_id, dest)
-    return FileResponse(tar, media_type="application/gzip", filename=tar.name)
+    return FileResponse(
+        tar,
+        media_type="application/gzip",
+        filename=tar.name,
+        background=BackgroundTask(shutil.rmtree, dest, ignore_errors=True),
+    )
 
 
 @router.post("/import")

@@ -1,4 +1,6 @@
 # backend/tests/test_run_rerun.py
+import pytest
+
 from backend.backtesting.engine import run_backtest
 from backend.backtesting.run_config import RunInputs
 from backend.backtesting.run_rerun import frame_from_bars, rerun
@@ -59,3 +61,16 @@ def test_rerun_reproduces_metrics_and_id(tmp_path):
     new_rid = rerun(store, rid)
     assert new_rid == rid  # same engine version + same inputs -> same content id
     assert store.read(new_rid)["metrics"] == store.read(rid)["metrics"]
+
+
+_RAISING_CODE = "def on_bar(ctx):\n    raise ValueError('boom')\n"
+
+
+def test_rerun_raises_when_strategy_fails(tmp_path):
+    """Rerun raises ValueError when the replayed strategy errors at runtime."""
+    # First, store a valid snapshot (needs real meta with engine_version etc.)
+    store, rid = _store_initial_run(tmp_path)
+    # Now overwrite strategy.py on disk with code that raises
+    (store.path(rid) / "strategy.py").write_text(_RAISING_CODE)
+    with pytest.raises(ValueError, match="rerun failed"):
+        rerun(store, rid)
