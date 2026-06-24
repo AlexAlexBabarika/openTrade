@@ -6,7 +6,7 @@ export function truncateRunId(id: string, n = 8): string {
 
 export function formatDelta(delta: number | null): string {
   if (delta === null || Number.isNaN(delta)) return '—';
-  const s = Number.isInteger(delta) ? String(delta) : String(delta);
+  const s = String(delta);
   return delta >= 0 ? `+${s}` : s;
 }
 

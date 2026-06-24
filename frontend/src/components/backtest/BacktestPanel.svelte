@@ -15,10 +15,12 @@
     open = $bindable(false),
     backtest = new BacktestState(),
     onCompareAfterRerun,
+    onOpenRuns,
   }: {
     open?: boolean;
     backtest?: BacktestState;
     onCompareAfterRerun?: (a: string, b: string, diff: RunDiff) => void;
+    onOpenRuns?: () => void;
   } = $props();
 
   let rerunning = $state(false);
@@ -104,7 +106,7 @@
         <span class="ctx-label">STRAT</span>
         <span class="ctx-sym">{meta?.strategy_id ?? '—'}</span>
         {#if meta?.run_id}
-          <RunIdChip runId={meta.run_id} />
+          <RunIdChip runId={meta.run_id} onCompare={onOpenRuns} />
         {/if}
       </div>
 
@@ -113,7 +115,7 @@
       </button>
     </header>
 
-    <StaleBanner status={backtest.status} reranning={rerunning} error={rerunError} onRerun={rerun} />
+    <StaleBanner status={backtest.status} rerunning={rerunning} error={rerunError} onRerun={rerun} />
 
     <div class="body">
       {#if backtest.loading && !backtest.result}

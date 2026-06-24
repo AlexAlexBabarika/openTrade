@@ -16,12 +16,14 @@
     period,
     interval,
     portfolio,
+    onOpenRuns,
   }: {
     code: string;
     provider: MarketDataProviderValue;
     period: string;
     interval: string;
     portfolio: PortfolioState;
+    onOpenRuns?: () => void;
   } = $props();
 
   let tickerInput = $state('');
@@ -188,7 +190,7 @@
         <span class="card-title">last run</span>
         <span class="count">{result.symbols.length} symbols</span>
         {#if result.meta?.run_id}
-          <RunIdChip runId={result.meta.run_id} />
+          <RunIdChip runId={result.meta.run_id} onCompare={onOpenRuns} />
         {/if}
       </header>
 

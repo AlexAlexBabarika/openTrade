@@ -847,7 +847,7 @@
     symbol={chart.loadedSymbol || chart.symbol}
     {analytics}
   />
-  <BacktestPanel bind:open={backtestOpen} {backtest} onCompareAfterRerun={compareAfterRerun} />
+  <BacktestPanel bind:open={backtestOpen} {backtest} onCompareAfterRerun={compareAfterRerun} onOpenRuns={() => (runsOpen = true)} />
   <RecentRunsPanel bind:open={runsOpen} onOpenRun={openStoredRun} onCompare={openCompare} />
   <CompareView bind:open={compareOpen} compare={compareState} />
   <StrategyPanel
@@ -857,6 +857,7 @@
     period={chart.period}
     interval={chart.interval}
     {strategy}
+    onOpenRuns={() => (runsOpen = true)}
   />
   <AppDialogs
     {groupDialogInitial}

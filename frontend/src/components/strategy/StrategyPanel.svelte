@@ -22,6 +22,7 @@
     period,
     interval,
     strategy,
+    onOpenRuns,
   }: {
     open?: boolean;
     symbol: string;
@@ -29,6 +30,7 @@
     period: string;
     interval: string;
     strategy: StrategyState;
+    onOpenRuns?: () => void;
   } = $props();
 
   const strat = $derived(strategy);
@@ -191,6 +193,7 @@
           {period}
           {interval}
           {portfolio}
+          {onOpenRuns}
         />
       {:else if tab === 'sweep'}
         <SweepPanel code={strat.draftCode} {sweep} />
