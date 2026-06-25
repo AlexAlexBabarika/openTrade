@@ -157,6 +157,11 @@
       color-mix(in oklab, oklch(var(--primary)) 60%, transparent);
     transform: translateY(-1px);
   }
+  :global(html:not(.dark)) .btn {
+    background: #ffffff;
+    border-color: #000;
+    color: #000;
+  }
   :global(html:not(.dark)) .btn.primary {
     background: oklch(var(--primary));
     color: oklch(var(--primary-foreground));
