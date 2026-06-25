@@ -78,7 +78,12 @@ def _strategy_globals() -> dict[str, Any]:
 
 
 def _child_main(
-    conn, code: str, df: pl.DataFrame, starting_cash: float, seed: int
+    conn,
+    code: str,
+    df: pl.DataFrame,
+    starting_cash: float,
+    seed: int,
+    params: dict | None,
 ) -> None:
     """Picklable child entrypoint: build the strategy and run the backtest."""
     _apply_resource_limits(DEFAULT_MEMORY_MB)
@@ -100,6 +105,7 @@ def _child_main(
                 strategy=_FunctionStrategy(on_bar),
                 starting_cash=starting_cash,
                 seed=seed,
+                params=params,
             )
         payload.update(result_to_dict(result))
     except SystemExit:
@@ -126,6 +132,7 @@ def run_strategy(
     starting_cash: float = DEFAULT_STARTING_CASH,
     timeout_s: float = DEFAULT_TIMEOUT_S,
     seed: int = 0,
+    params: dict | None = None,
 ) -> StrategyRunResult:
     """Validate and run a strategy script against `df`, returning its result."""
     started = time.monotonic()
@@ -139,7 +146,7 @@ def run_strategy(
         )
 
     payload, timed_out, exitcode = spawn_and_collect(
-        _child_main, (code, df, starting_cash, seed), timeout_s
+        _child_main, (code, df, starting_cash, seed, params), timeout_s
     )
     elapsed_ms = int((time.monotonic() - started) * 1000)
 

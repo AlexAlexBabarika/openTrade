@@ -25,22 +25,22 @@
   });
 </script>
 
-<div class="controls">
-  <label>Min {metric}
-    <input
-      type="number"
-      step="0.1"
-      placeholder="—"
-      onchange={e => (threshold = (e.target as HTMLInputElement).value === '' ? null : Number((e.target as HTMLInputElement).value))}
-    />
-  </label>
-  <button type="button" onclick={() => (dir = dir === 'desc' ? 'asc' : 'desc')}>
-    Sort {metric} {dir === 'desc' ? '↓' : '↑'}
-  </button>
-  <span class="count">{rows.length} / {trials.length} trials</span>
-</div>
+<div class="table-section">
+  <div class="controls">
+    <label>Min {metric}
+      <input
+        type="number"
+        step="0.1"
+        placeholder="—"
+        onchange={e => (threshold = (e.target as HTMLInputElement).value === '' ? null : Number((e.target as HTMLInputElement).value))}
+      />
+    </label>
+    <button type="button" onclick={() => (dir = dir === 'desc' ? 'asc' : 'desc')}>
+      Sort {metric} {dir === 'desc' ? '↓' : '↑'}
+    </button>
+    <span class="count">{rows.length} / {trials.length} trials</span>
+  </div>
 
-<div class="scroll">
   <table>
     <thead>
       <tr>
@@ -64,13 +64,34 @@
 </div>
 
 <style>
-  .controls { display: flex; gap: 12px; align-items: end; padding: 8px 12px; font-size: 11px; color: oklch(var(--muted-foreground)); }
+  /* Single root so the parent flex gap can't split the controls from the
+     table; no inner scroll container so the header sticks to the panel's
+     scroller while scrolling a long trial list. */
+  .table-section { display: flex; flex-direction: column; }
+  .controls { display: flex; gap: 12px; align-items: end; padding: 2px 0 6px; font-size: 11px; color: oklch(var(--muted-foreground)); }
   .controls label { display: flex; flex-direction: column; gap: 4px; }
+  .controls input {
+    width: 72px;
+    padding: 2px 6px;
+    font: inherit;
+    color: oklch(var(--foreground));
+    background: transparent;
+    border: 1px solid oklch(var(--border));
+    border-radius: 4px;
+  }
+  .controls button {
+    padding: 2px 8px;
+    font: inherit;
+    color: oklch(var(--foreground));
+    background: transparent;
+    border: 1px solid oklch(var(--border));
+    border-radius: 4px;
+    cursor: pointer;
+  }
   .count { margin-left: auto; }
-  .scroll { overflow: auto; max-height: 100%; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
   th, td { text-align: right; padding: 4px 10px; border-bottom: 1px solid oklch(var(--border) / 0.4); }
-  th { position: sticky; top: 0; background: oklch(var(--popover)); }
+  th { position: sticky; top: 0; z-index: 1; background: oklch(var(--popover)); }
   tr.best { background: oklch(var(--primary) / 0.12); }
   .open { font-size: 11px; padding: 2px 8px; border: 1px solid oklch(var(--border)); border-radius: 4px; background: transparent; color: oklch(var(--foreground)); cursor: pointer; }
 </style>

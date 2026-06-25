@@ -41,26 +41,35 @@
   <ParamForm schema={sweep.schema} {code} onsubmit={start} />
 
   {#if sweep.status !== 'idle'}
-    <div class="status">
-      <span class="badge {sweep.status}">{sweep.status}</span>
-      <progress max={sweep.total || 1} value={sweep.done}></progress>
-      <span>{sweep.done}/{sweep.total}</span>
-      {#if sweep.status === 'running'}
-        <button type="button" onclick={() => sweep.cancel()}>cancel</button>
-      {/if}
-      {#if sweep.error}<span class="err">{sweep.error}</span>{/if}
-    </div>
+    <fieldset class="card">
+      <legend>Progress</legend>
+      <div class="status">
+        <span class="badge {sweep.status}">{sweep.status}</span>
+        <progress max={sweep.total || 1} value={sweep.done}></progress>
+        <span>{sweep.done}/{sweep.total}</span>
+        {#if sweep.status === 'running'}
+          <button type="button" onclick={() => sweep.cancel()}>cancel</button>
+        {/if}
+        {#if sweep.error}<span class="err">{sweep.error}</span>{/if}
+      </div>
+    </fieldset>
   {/if}
 
   {#if sweep.trials.length > 0}
-    <div class="viz">
-      {#if varied.length === 2}
-        <Heatmap trials={sweep.trials} xParam={varied[0]} yParam={varied[1]} {metric} ontrial={openTrial} />
-      {:else if varied.length > 2}
-        <ParallelCoords trials={sweep.trials} {varied} {metric} ontrial={openTrial} />
-      {/if}
-    </div>
-    <TrialsTable trials={sweep.trials} {metric} {varied} bestTrialId={sweep.bestTrialId} onopen={openTrial} />
+    {#if varied.length >= 2}
+      <fieldset class="card">
+        <legend>{varied.length === 2 ? 'Heatmap' : 'Parallel coordinates'}</legend>
+        {#if varied.length === 2}
+          <Heatmap trials={sweep.trials} xParam={varied[0]} yParam={varied[1]} {metric} ontrial={openTrial} />
+        {:else}
+          <ParallelCoords trials={sweep.trials} {varied} {metric} ontrial={openTrial} />
+        {/if}
+      </fieldset>
+    {/if}
+    <fieldset class="card">
+      <legend>Trials</legend>
+      <TrialsTable trials={sweep.trials} {metric} {varied} bestTrialId={sweep.bestTrialId} onopen={openTrial} />
+    </fieldset>
   {/if}
 </div>
 
@@ -69,12 +78,35 @@
 {/if}
 
 <style>
-  .sweep { display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: auto; }
-  .status { display: flex; align-items: center; gap: 12px; padding: 0 16px; font-size: 12px; }
+  .sweep { display: flex; flex-direction: column; gap: 12px; height: 100%; overflow: auto; padding-bottom: 16px; }
+  /* Children keep their natural height and the panel scrolls; without this,
+     flex shrinks each section's box and tall content (the heatmap) paints
+     over the sections below it. */
+  .sweep > :global(*) { flex-shrink: 0; }
+  /* Same labeled-card treatment as ParamForm's fieldsets; margin matches the
+     form's 16px horizontal padding so all cards align. */
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0 16px;
+    min-width: 0;
+    border: 1px dashed oklch(var(--border));
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  legend {
+    padding: 0 6px;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: oklch(var(--muted-foreground));
+  }
+  .status { display: flex; align-items: center; gap: 12px; font-size: 12px; }
   .status progress { flex: 0 0 200px; }
+  .status button { padding: 2px 10px; font: inherit; font-size: 11px; color: oklch(var(--foreground)); background: transparent; border: 1px solid oklch(var(--border)); border-radius: 4px; cursor: pointer; }
   .badge { padding: 2px 8px; border-radius: 999px; font-size: 10px; text-transform: uppercase; border: 1px solid oklch(var(--border)); }
   .badge.done { color: oklch(var(--primary)); }
   .badge.error { color: #ff9c9c; }
   .err { color: #ff9c9c; }
-  .viz { min-height: 220px; }
 </style>
