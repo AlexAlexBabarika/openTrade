@@ -160,3 +160,14 @@ def test_ctx_position_without_portfolio_raises() -> None:
     ctx = Context(BarSeries([_bar(100.0)]))
     with pytest.raises(EngineError):
         _ = ctx.position
+
+
+def test_mark_to_market_records_cash_and_holdings() -> None:
+    pf = Portfolio(starting_cash=1_000.0)
+    pf.apply_fill(_fill(Side.BUY, 10.0, 100.0))  # cash 0, position 10
+    t = datetime(2024, 1, 2, tzinfo=timezone.utc)
+    point = pf.mark_to_market(t, mark_price=110.0)
+
+    assert point.cash == 0.0
+    assert point.holdings == 1_100.0  # 10 * 110
+    assert point.equity == 1_100.0  # cash + holdings

@@ -1,0 +1,269 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import X from '@lucide/svelte/icons/x';
+  import { BacktestState } from '$lib/features/backtest/backtestState.svelte';
+  import MetricsStrip from './MetricsStrip.svelte';
+  import BacktestChart from './BacktestChart.svelte';
+  import ResultTabs from './ResultTabs.svelte';
+
+  let {
+    open = $bindable(false),
+    backtest = new BacktestState(),
+  }: {
+    open?: boolean;
+    backtest?: BacktestState;
+  } = $props();
+
+  // Load the result the first time the panel opens.
+  $effect(() => {
+    if (open) void backtest.load();
+  });
+
+  // Lock body scroll while open.
+  $effect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  });
+
+  function close() {
+    open = false;
+  }
+
+  function onKey(e: KeyboardEvent) {
+    if (open && e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    }
+  }
+
+  onMount(() => {
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  const meta = $derived(backtest.result?.meta ?? null);
+</script>
+
+{#if open}
+  <button
+    type="button"
+    class="backdrop"
+    aria-label="Close backtest dashboard"
+    onclick={close}
+  ></button>
+
+  <div
+    class="panel"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Backtest results"
+  >
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">≈</span>
+        <span class="brand-title">backtest</span>
+        <span class="brand-sub">/ results</span>
+      </div>
+
+      <div class="ctx" aria-label="Strategy">
+        <span class="ctx-label">STRAT</span>
+        <span class="ctx-sym">{meta?.strategy_id ?? '—'}</span>
+      </div>
+
+      <button type="button" class="iconbtn close" onclick={close} aria-label="Close">
+        <X class="h-3.5 w-3.5" />
+      </button>
+    </header>
+
+    <div class="body">
+      {#if backtest.loading && !backtest.result}
+        <p class="status">running…</p>
+      {:else if backtest.error}
+        <p class="status err">{backtest.error}</p>
+      {:else if backtest.result}
+        <MetricsStrip metrics={backtest.result.metrics} />
+        <div class="chart-pane">
+          <BacktestChart {backtest} />
+        </div>
+        <div class="tabs-pane">
+          <ResultTabs {backtest} />
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<style>
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: oklch(var(--background) / 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    animation: fadeIn 180ms ease;
+  }
+  .panel {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 92vh;
+    z-index: 61;
+    display: flex;
+    flex-direction: column;
+    color: oklch(var(--foreground));
+    background:
+      radial-gradient(
+        1200px 600px at 20% -200px,
+        color-mix(in oklab, oklch(var(--primary)) 18%, transparent),
+        transparent 60%
+      ),
+      color-mix(in oklab, oklch(var(--popover)) 96%, black 4%);
+    border-top: 1px solid
+      color-mix(in oklab, oklch(var(--border)) 100%, transparent);
+    box-shadow: 0 -30px 60px -20px rgba(0, 0, 0, 0.5);
+    border-radius: 16px 16px 0 0;
+    font-family: 'Space Mono', ui-monospace, SFMono-Regular, monospace;
+    overflow: hidden;
+    animation: slideUp 280ms cubic-bezier(0.18, 0.9, 0.24, 1);
+  }
+  @keyframes slideUp {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .topbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 22px;
+    border-bottom: 1px dashed
+      color-mix(in oklab, oklch(var(--border)) 90%, transparent);
+    background: color-mix(in oklab, oklch(var(--popover)) 100%, transparent);
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .brand-mark {
+    color: oklch(var(--primary));
+    font-size: 14px;
+  }
+  .brand-title {
+    font-weight: 700;
+  }
+  .brand-sub {
+    color: oklch(var(--muted-foreground));
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .ctx {
+    justify-self: center;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 4px 10px;
+    border: 1px dashed color-mix(in oklab, oklch(var(--border)) 90%, transparent);
+    border-radius: 999px;
+    font-size: 11px;
+    color: oklch(var(--muted-foreground));
+  }
+  .ctx-label {
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    color: color-mix(in oklab, oklch(var(--foreground)) 50%, transparent);
+  }
+  .ctx-sym {
+    color: oklch(var(--foreground));
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .iconbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid color-mix(in oklab, oklch(var(--border)) 100%, transparent);
+    border-radius: 4px;
+    background: transparent;
+    color: oklch(var(--muted-foreground));
+    cursor: pointer;
+    transition: all 120ms ease;
+  }
+  .iconbtn.close:hover {
+    border-color: color-mix(in oklab, #ff7373 60%, transparent);
+    color: #ff9c9c;
+    background: color-mix(in oklab, #ff7373 12%, transparent);
+  }
+
+  .body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) minmax(0, 1.25fr);
+  }
+  .chart-pane,
+  .tabs-pane {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .tabs-pane {
+    border-top: 1px solid
+      color-mix(in oklab, oklch(var(--border)) 100%, transparent);
+  }
+  .status {
+    margin: auto;
+    padding: 24px;
+    color: oklch(var(--muted-foreground));
+    font-size: 13px;
+    letter-spacing: 0.06em;
+  }
+  .status.err {
+    color: #ff9c9c;
+  }
+
+  :global(html:not(.dark)) .panel {
+    background: #ffffff;
+    border-top: 1px solid #000;
+  }
+  :global(html:not(.dark)) .topbar {
+    background: #ffffff;
+    border-bottom: 1px dashed #000;
+  }
+  :global(html:not(.dark)) .tabs-pane {
+    border-top-color: #000;
+  }
+  :global(html:not(.dark)) .iconbtn {
+    border-color: #000;
+    color: #000;
+  }
+</style>

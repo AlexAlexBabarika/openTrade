@@ -1,0 +1,67 @@
+/**
+ * Dashboard state: the loaded `BacktestResult`, the active result tab, and the
+ * marker↔row hover link shared between the chart (pane 2) and the trades table
+ * (pane 3). Runes-based, mirroring `AnalyticsState`.
+ *
+ * The result is loaded through an injectable `loader` (defaulting to a
+ * dynamically-imported sample fixture, so the ~0.5MB blob is code-split into a
+ * lazy chunk fetched only when the dashboard opens). Tests pass their own
+ * loader. When the backend read-API lands, the loader becomes an HTTP fetch and
+ * nothing else here changes.
+ */
+import { loadResult } from './loadResult';
+import type { BacktestResult } from './types';
+
+export type ResultTab = 'equity' | 'drawdown' | 'trades' | 'monthly' | 'stats';
+
+export const RESULT_TABS: { id: ResultTab; label: string }[] = [
+  { id: 'equity', label: 'Equity' },
+  { id: 'drawdown', label: 'Drawdown' },
+  { id: 'trades', label: 'Trades' },
+  { id: 'monthly', label: 'Monthly' },
+  { id: 'stats', label: 'Stats' },
+];
+
+type Loader = () => Promise<unknown>;
+
+const defaultLoader: Loader = () =>
+  import('./fixtures/sample-run.json').then(m => m.default);
+
+export class BacktestState {
+  result = $state<BacktestResult | null>(null);
+  loading = $state(false);
+  error = $state<string | null>(null);
+  activeTab = $state<ResultTab>('equity');
+
+  /** Index into `result.trades` currently hovered (chart marker or table row),
+   * or null. The chart highlights this marker; the table highlights this row. */
+  hoveredTrade = $state<number | null>(null);
+
+  #loader: Loader;
+
+  constructor(loader: Loader = defaultLoader) {
+    this.#loader = loader;
+  }
+
+  /** Load the result once. No-op if already loaded or in flight. */
+  async load(): Promise<void> {
+    if (this.result || this.loading) return;
+    this.loading = true;
+    this.error = null;
+    try {
+      this.result = loadResult(await this.#loader());
+    } catch (err) {
+      this.error = err instanceof Error ? err.message : 'Failed to load result';
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  setTab(tab: ResultTab): void {
+    this.activeTab = tab;
+  }
+
+  hoverTrade(index: number | null): void {
+    this.hoveredTrade = index;
+  }
+}

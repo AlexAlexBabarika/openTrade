@@ -103,8 +103,10 @@
   import ToolboxPanel from './components/toolbar/ToolboxPanel.svelte';
   import IndicatorsPanel from './components/indicators/IndicatorsPanel.svelte';
   import AnalyticsPanel from './components/analytics/AnalyticsPanel.svelte';
+  import BacktestPanel from './components/backtest/BacktestPanel.svelte';
   import { IndicatorState } from '$lib/features/indicators/indicatorState.svelte';
   import { AnalyticsState } from '$lib/features/analytics/analyticsState.svelte';
+  import { BacktestState } from '$lib/features/backtest/backtestState.svelte';
   import LeftToolbar from './components/toolbar/LeftToolbar.svelte';
   import ToolSettingsModal from './components/toolbar/ToolSettingsModal.svelte';
   import DrawablesPersistence from '$lib/features/drawables/DrawablesPersistence.svelte';
@@ -281,12 +283,15 @@
   let toolboxOpen = $state(false);
   let indicatorsOpen = $state(false);
   let analyticsOpen = $state(false);
+  let backtestOpen = $state(false);
   const indicators = new IndicatorState();
   const analytics = new AnalyticsState();
+  const backtest = new BacktestState();
 
   const toolboxTileHandlers: Record<string, () => void> = {
     Indicators: () => (indicatorsOpen = true),
     Analytics: () => (analyticsOpen = true),
+    Backtesting: () => (backtestOpen = true),
   };
 
   function handleToolboxTile(title: string) {
@@ -810,6 +815,7 @@
     symbol={chart.loadedSymbol || chart.symbol}
     {analytics}
   />
+  <BacktestPanel bind:open={backtestOpen} {backtest} />
   <AppDialogs
     {groupDialogInitial}
     {groupDialogExistingNames}

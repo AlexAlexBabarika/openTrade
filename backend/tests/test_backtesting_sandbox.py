@@ -43,9 +43,12 @@ def test_buy_and_hold_strategy_runs_end_to_end(df: pl.DataFrame) -> None:
     )
     res = run_strategy(code, df, starting_cash=100_000.0, timeout_s=10.0)
     assert res.status == "ok", res.stderr
-    assert len(res.equity_curve) == 30
+    assert len(res.equity) == 30
+    assert len(res.bars) == 30
     assert len(res.fills) == 1
     assert res.fills[0]["side"] == "buy"
+    assert res.metrics["total_return"] is not None
+    assert res.meta["seed"] == 0
 
 
 def test_strategy_can_use_ctx_state(df: pl.DataFrame) -> None:
@@ -109,3 +112,13 @@ def test_strategy_namespace_excludes_numpy(df: pl.DataFrame) -> None:
     code = "def on_bar(ctx):\n    np.array([1, 2, 3])\n"
     res = run_strategy(code, df, timeout_s=10.0)
     assert res.status == "error"
+
+
+def test_run_strategy_returns_canonical_blob_keys(df: pl.DataFrame) -> None:
+    code = "def on_bar(ctx):\n    pass\n"
+    res = run_strategy(code, df, timeout_s=10.0)
+
+    assert res.status == "ok", res.stderr
+    assert res.meta != {}
+    assert isinstance(res.trades, list)
+    assert "max_drawdown" in res.metrics
