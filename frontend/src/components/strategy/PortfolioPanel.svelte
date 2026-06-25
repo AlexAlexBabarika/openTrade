@@ -5,6 +5,7 @@
   import PortfolioHoldings from './PortfolioHoldings.svelte';
   import WeightsHeatmap from './WeightsHeatmap.svelte';
   import RunIdChip from '../backtest/RunIdChip.svelte';
+  import ErrorBanner from '../ErrorBanner.svelte';
   import { PortfolioState } from '$lib/features/portfolio/portfolioState.svelte';
   import { runsHistory } from '$lib/features/runs/runsHistory.svelte';
   import { MAX_UNIVERSE_SYMBOLS } from '$lib/features/portfolio/universe';
@@ -144,12 +145,12 @@
 
     <footer class="card-foot">
       {#if portfolio.ingestError}
-        <span class="banner err" role="status">{portfolio.ingestError}</span>
+        <ErrorBanner message={portfolio.ingestError} />
       {:else if ingestSummary}
         <span class="banner ok" role="status">{ingestSummary}</span>
       {/if}
       {#if portfolio.runError}
-        <span class="banner err" role="status">{portfolio.runError}</span>
+        <ErrorBanner message={portfolio.runError} />
       {/if}
       <button
         type="button"
@@ -384,11 +385,6 @@
     padding: 4px 10px;
     border-radius: 3px;
     font-size: 11px;
-  }
-  .banner.err {
-    border: 1px solid color-mix(in oklab, #ff7373 50%, transparent);
-    background: color-mix(in oklab, #ff7373 10%, transparent);
-    color: #ff9c9c;
   }
   .banner.ok {
     border: 1px solid color-mix(in oklab, oklch(var(--primary)) 45%, transparent);

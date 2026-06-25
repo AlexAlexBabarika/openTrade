@@ -10,6 +10,7 @@
   import SweepPanel from '../sweep/SweepPanel.svelte';
   import PortfolioPanel from './PortfolioPanel.svelte';
   import BacktestPanel from '../backtest/BacktestPanel.svelte';
+  import ErrorBanner from '../ErrorBanner.svelte';
   import { StrategyState } from '$lib/features/strategy/strategyState.svelte';
   import { SweepState } from '$lib/features/sweep/sweepState.svelte';
   import { PortfolioState } from '$lib/features/portfolio/portfolioState.svelte';
@@ -298,10 +299,10 @@
 
             <div class="actions">
               {#if strat.saveError}
-                <span class="banner err" role="status">{strat.saveError}</span>
+                <ErrorBanner message={strat.saveError} />
               {/if}
               {#if strat.runError}
-                <span class="banner err" role="status">{strat.runError}</span>
+                <ErrorBanner message={strat.runError} />
               {/if}
 
               <button
@@ -727,20 +728,6 @@
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-
-  .banner.err {
-    max-width: 360px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 4px 10px;
-    border: 1px solid color-mix(in oklab, #ff7373 50%, transparent);
-    border-radius: 3px;
-    background: color-mix(in oklab, #ff7373 10%, transparent);
-    color: #ff9c9c;
-    font-size: 11px;
-    letter-spacing: 0.02em;
   }
 
   .btn {

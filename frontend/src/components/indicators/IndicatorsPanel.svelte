@@ -9,6 +9,7 @@
   import ScriptEditor from './ScriptEditor.svelte';
   import ScriptOutputs from './ScriptOutputs.svelte';
   import ScriptDocs from './ScriptDocs.svelte';
+  import ErrorBanner from '../ErrorBanner.svelte';
   import { IndicatorState } from '$lib/features/indicators/indicatorState.svelte';
   import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
 
@@ -304,7 +305,7 @@
 
           <div class="actions">
             {#if ind.saveError}
-              <span class="banner err" role="status">{ind.saveError}</span>
+              <ErrorBanner message={ind.saveError} />
             {/if}
 
             <button
@@ -802,15 +803,6 @@
     gap: 8px;
   }
 
-  .banner.err {
-    padding: 4px 10px;
-    border: 1px solid color-mix(in oklab, #ff7373 50%, transparent);
-    border-radius: 3px;
-    background: color-mix(in oklab, #ff7373 10%, transparent);
-    color: #ff9c9c;
-    font-size: 11px;
-    letter-spacing: 0.02em;
-  }
 
   .btn {
     display: inline-flex;
