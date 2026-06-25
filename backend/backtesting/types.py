@@ -51,7 +51,10 @@ class BarEvent:
 
 @dataclass(slots=True)
 class Order:
-    """A submitted order. ``id`` and ``submitted_index`` are set by the broker."""
+    """A submitted order. ``id`` and ``submitted_index`` are set by the broker.
+
+    ``symbol`` is ``None`` in single-symbol runs (the run's one instrument is
+    implicit) and required by the multi-asset broker."""
 
     side: Side
     quantity: float
@@ -61,6 +64,7 @@ class Order:
     id: int | None = None
     submitted_index: int | None = None
     triggered: bool = False  # set once a stop/stop-limit's stop has been hit
+    symbol: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +87,7 @@ class Fill:
     submitted_index: int
     fill_index: int
     reason: str
+    symbol: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +121,7 @@ class Trade:
     pnl: float
     pnl_pct: float
     bars_held: int
+    symbol: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

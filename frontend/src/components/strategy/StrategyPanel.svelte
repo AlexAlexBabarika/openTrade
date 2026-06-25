@@ -8,9 +8,11 @@
   import ScriptEditor from '../indicators/ScriptEditor.svelte';
   import StrategyDocs from './StrategyDocs.svelte';
   import SweepPanel from '../sweep/SweepPanel.svelte';
+  import PortfolioPanel from './PortfolioPanel.svelte';
   import BacktestPanel from '../backtest/BacktestPanel.svelte';
   import { StrategyState } from '$lib/features/strategy/strategyState.svelte';
   import { SweepState } from '$lib/features/sweep/sweepState.svelte';
+  import { PortfolioState } from '$lib/features/portfolio/portfolioState.svelte';
   import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
 
   let {
@@ -31,11 +33,19 @@
 
   const strat = $derived(strategy);
 
-  let tab = $state<'editor' | 'sweep' | 'docs'>('editor');
+  let tab = $state<'editor' | 'sweep' | 'portfolio' | 'docs'>('editor');
   // One SweepState for the panel's lifetime so a running sweep survives
-  // toggling between the editor and sweep views.
+  // toggling between the editor and sweep views; same for the portfolio run.
   const sweep = new SweepState();
+  const portfolio = new PortfolioState();
   let backtestOpen = $state(false);
+
+  function openPortfolioTab() {
+    // Seed the universe with the chart's symbol so the tab is one click
+    // from a runnable state.
+    if (portfolio.symbols.length === 0 && symbol) portfolio.add(symbol);
+    tab = 'portfolio';
+  }
 
   $effect(() => {
     if (open) void strat.load();
@@ -138,6 +148,12 @@
         <button
           type="button"
           class="tab"
+          class:active={tab === 'portfolio'}
+          onclick={openPortfolioTab}
+        >portfolio</button>
+        <button
+          type="button"
+          class="tab"
           class:active={tab === 'docs'}
           onclick={() => (tab = 'docs')}
         >docs</button>
@@ -161,9 +177,21 @@
       </button>
     </header>
 
-    <div class="body" class:sweep-mode={tab === 'sweep'} class:docs-mode={tab === 'docs'}>
+    <div
+      class="body"
+      class:sweep-mode={tab === 'sweep' || tab === 'portfolio'}
+      class:docs-mode={tab === 'docs'}
+    >
       {#if tab === 'docs'}
         <StrategyDocs />
+      {:else if tab === 'portfolio'}
+        <PortfolioPanel
+          code={strat.draftCode}
+          {provider}
+          {period}
+          {interval}
+          {portfolio}
+        />
       {:else if tab === 'sweep'}
         <SweepPanel code={strat.draftCode} {sweep} />
       {:else}
