@@ -21,6 +21,7 @@ import polars as pl
 
 from backend.backtesting.engine import run_backtest
 from backend.backtesting.errors import EngineError
+from backend.backtesting.optimize.space import Choice, Float, Int, parse_schema
 from backend.backtesting.serialize import result_to_dict
 from backend.backtesting.strategy import Strategy
 from backend.scripts.ast_guard import ScriptValidationError, validate
@@ -62,13 +63,18 @@ class _FunctionStrategy(Strategy):
 
 
 def _strategy_globals() -> dict[str, Any]:
-    """Namespace for executing a strategy script: safe builtins only.
+    """Namespace for executing a strategy script: safe builtins + schema types.
 
-    No whole-series data (the strategy sees data only through ``ctx``) and no
-    ``np``/``pl`` — numpy in particular exposes file I/O (np.load/fromfile).
-    Strategies needing maths can import the AST-allowed stdlib (math/statistics).
+    No whole-series data and no ``np``/``pl``. ``Int``/``Float``/``Choice`` are
+    injected so a strategy can declare ``params = {...}``; they are plain value
+    objects with no I/O surface.
     """
-    return {"__builtins__": _SAFE_BUILTINS}
+    return {
+        "__builtins__": _SAFE_BUILTINS,
+        "Int": Int,
+        "Float": Float,
+        "Choice": Choice,
+    }
 
 
 def _child_main(
@@ -163,3 +169,29 @@ def run_strategy(
         stderr=payload.get("stderr", ""),
         elapsed_ms=elapsed_ms,
     )
+
+
+def parse_strategy_schema(code: str) -> dict:
+    """Validate ``code`` and return its declared parameter schema (may be empty).
+
+    Executes the module body in the strategy sandbox namespace to materialize the
+    ``params`` declaration, then validates each entry is an Int/Float/Choice. Any
+    failure — unsafe code, a malformed ``params`` declaration, or an error raised
+    while evaluating the module body — surfaces as ``ScriptValidationError`` so
+    callers have a single exception contract.
+
+    Note: the AST guard is the security control, but it does not bound CPU/memory.
+    This exec runs in-process with no resource limits, so a syntactically valid but
+    expensive declaration (e.g. a giant comprehension) can exhaust resources.
+    Callers exposing this to untrusted input must gate request size / rate, or run
+    it behind the spawn sandbox used by ``run_strategy``.
+    """
+    validate(code)
+    g = _strategy_globals()
+    try:
+        exec(compile(code, "<strategy>", "exec"), g)
+        return parse_schema(g)
+    except ScriptValidationError:
+        raise
+    except Exception as e:  # normalize bad-params / module-body errors
+        raise ScriptValidationError(f"could not evaluate strategy schema: {e}") from e

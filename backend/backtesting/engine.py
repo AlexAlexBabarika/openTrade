@@ -60,7 +60,13 @@ def run_backtest(
     series = BarSeries(bars)
     broker = Broker(costs=costs)
     portfolio = Portfolio(starting_cash=starting_cash)
-    ctx = Context(series, broker=broker, portfolio=portfolio, rng=random.Random(seed))
+    ctx = Context(
+        series,
+        broker=broker,
+        portfolio=portfolio,
+        rng=random.Random(seed),
+        params=params,
+    )
 
     for index, event in enumerate(loop):
         series.advance()

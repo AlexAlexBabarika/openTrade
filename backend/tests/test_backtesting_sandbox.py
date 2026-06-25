@@ -122,3 +122,44 @@ def test_run_strategy_returns_canonical_blob_keys(df: pl.DataFrame) -> None:
     assert res.meta != {}
     assert isinstance(res.trades, list)
     assert "max_drawdown" in res.metrics
+
+
+def test_parse_strategy_schema_reads_declared_params() -> None:
+    from backend.backtesting.sandbox import parse_strategy_schema
+
+    code = (
+        "params = {\n"
+        "    'fast': Int(5, 50, step=5),\n"
+        "    'stop': Float(0.5, 5.0, step=0.5),\n"
+        "    'regime': Choice(['trend', 'meanrev']),\n"
+        "}\n"
+        "def on_bar(ctx):\n"
+        "    pass\n"
+    )
+    schema = parse_strategy_schema(code)
+    assert set(schema) == {"fast", "stop", "regime"}
+    assert schema["fast"].values() == [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+
+
+def test_parse_strategy_schema_empty_when_no_params() -> None:
+    from backend.backtesting.sandbox import parse_strategy_schema
+
+    assert parse_strategy_schema("def on_bar(ctx):\n    pass\n") == {}
+
+
+def test_parse_strategy_schema_rejects_unsafe_code() -> None:
+    from backend.backtesting.sandbox import parse_strategy_schema
+    from backend.scripts.ast_guard import ScriptValidationError
+
+    with pytest.raises(ScriptValidationError):
+        parse_strategy_schema("import os\ndef on_bar(ctx):\n    pass\n")
+
+
+def test_parse_strategy_schema_normalizes_bad_params_to_validation_error() -> None:
+    # A malformed `params` (not a dict of Param) surfaces as ScriptValidationError,
+    # not a raw ValueError, so callers have one exception contract.
+    from backend.backtesting.sandbox import parse_strategy_schema
+    from backend.scripts.ast_guard import ScriptValidationError
+
+    with pytest.raises(ScriptValidationError):
+        parse_strategy_schema("params = 42\ndef on_bar(ctx):\n    pass\n")

@@ -101,14 +101,22 @@ class Context:
         broker: "Broker | None" = None,
         portfolio: "Portfolio | None" = None,
         rng: random.Random | None = None,
+        params: dict | None = None,
     ) -> None:
         self._bars = bars
         self._broker = broker
         self._portfolio = portfolio
         self._rng = rng
+        self._params = dict(params) if params else {}
         self._bars_view = BarsView(bars)
         self.state: dict = {}
         """Free-form per-run scratch space for strategy state across bars."""
+
+    @property
+    def params(self) -> dict:
+        """The concrete parameter values for this run (empty if unparameterized).
+        Strategy code reads ``ctx.params["fast_ma"]`` etc."""
+        return self._params
 
     @property
     def random(self) -> random.Random:

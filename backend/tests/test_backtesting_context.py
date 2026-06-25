@@ -95,3 +95,49 @@ def test_ctx_state_is_a_persistent_dict() -> None:
     assert ctx.state == {}
     ctx.state["seen"] = 1
     assert ctx.state["seen"] == 1  # same dict persists across bars within a run
+
+
+def test_ctx_exposes_params_passed_to_the_engine() -> None:
+    from datetime import datetime, timezone
+
+    import polars as pl
+
+    from backend.backtesting.engine import run_backtest
+    from backend.backtesting.strategy import Strategy
+
+    seen: dict = {}
+
+    class _Recorder(Strategy):
+        def on_bar(self, ctx) -> None:
+            seen.update(ctx.params)
+
+    frame = pl.DataFrame(
+        {
+            "timestamp": [datetime(2020, 1, 1, tzinfo=timezone.utc)],
+            "open": [10.0],
+            "high": [10.0],
+            "low": [10.0],
+            "close": [10.0],
+            "volume": [1.0],
+        }
+    ).with_columns(pl.col("timestamp").dt.replace_time_zone("UTC"))
+
+    run_backtest(
+        frame=frame,
+        strategy=_Recorder(),
+        starting_cash=1000.0,
+        params={"fast": 10, "slow": 30},
+    )
+    assert seen == {"fast": 10, "slow": 30}
+
+
+def test_ctx_params_defaults_to_empty_dict() -> None:
+    from backend.backtesting.context import BarSeries, Context
+    from backend.backtesting.types import Bar
+    from datetime import datetime, timezone
+
+    bar = Bar(datetime(2020, 1, 1, tzinfo=timezone.utc), 1, 1, 1, 1, 1)
+    series = BarSeries([bar])
+    series.advance()
+    ctx = Context(series)
+    assert ctx.params == {}
