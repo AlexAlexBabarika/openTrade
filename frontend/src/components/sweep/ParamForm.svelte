@@ -91,7 +91,7 @@
         <label>Trials <input type="number" min="1" bind:value={nRandom} /></label>
       {/if}
       <label>Seed <input type="number" bind:value={seed} /></label>
-      <button type="submit" class="btn primary" disabled={vary.length === 0}>
+      <button type="submit" class="btn primary run" disabled={vary.length === 0}>
         <Play class="h-3.5 w-3.5" />
         <span>run sweep</span>
       </button>
@@ -160,6 +160,9 @@
   :global(html:not(.dark)) .btn.primary {
     background: oklch(var(--primary));
     color: oklch(var(--primary-foreground));
+  }
+  .run {
+    margin-left: auto;
   }
   .hint { font-size: 12px; color: oklch(var(--muted-foreground)); }
 </style>
