@@ -7,6 +7,7 @@
 </script>
 
 <script lang="ts">
+  import Play from '@lucide/svelte/icons/play';
   import type { ParamSchema, SweepFormValues } from '$lib/features/sweep/types';
 
   let {
@@ -90,7 +91,10 @@
         <label>Trials <input type="number" min="1" bind:value={nRandom} /></label>
       {/if}
       <label>Seed <input type="number" bind:value={seed} /></label>
-      <button type="submit" class="run" disabled={vary.length === 0}>Run sweep</button>
+      <button type="submit" class="btn primary run" disabled={vary.length === 0}>
+        <Play class="h-3.5 w-3.5" />
+        <span>run sweep</span>
+      </button>
     </div>
   </fieldset>
 </form>
@@ -119,7 +123,46 @@
   .prange { color: oklch(var(--muted-foreground)); }
   .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
   .row label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: oklch(var(--muted-foreground)); }
-  .run { margin-left: auto; padding: 8px 16px; border-radius: 6px; border: 1px solid oklch(var(--primary)); background: oklch(var(--primary) / 0.15); color: oklch(var(--foreground)); cursor: pointer; }
-  .run:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Match the portfolio tab's "run portfolio backtest" button (.btn.primary). */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid color-mix(in oklab, oklch(var(--border)) 100%, transparent);
+    background: transparent;
+    color: oklch(var(--foreground));
+    font-family: inherit;
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
+    cursor: pointer;
+    transition: all 120ms ease;
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .btn.primary {
+    background: oklch(var(--primary));
+    border-color: oklch(var(--primary));
+    color: oklch(var(--primary-foreground));
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .btn.primary:hover:not(:disabled) {
+    box-shadow: 0 6px 18px -6px
+      color-mix(in oklab, oklch(var(--primary)) 60%, transparent);
+    transform: translateY(-1px);
+  }
+  :global(html:not(.dark)) .btn.primary {
+    background: oklch(var(--primary));
+    color: oklch(var(--primary-foreground));
+  }
+  .run {
+    margin-left: auto;
+  }
   .hint { font-size: 12px; color: oklch(var(--muted-foreground)); }
 </style>
