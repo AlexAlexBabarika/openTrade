@@ -10,6 +10,7 @@
   import SweepPanel from '../sweep/SweepPanel.svelte';
   import PortfolioPanel from './PortfolioPanel.svelte';
   import BacktestPanel from '../backtest/BacktestPanel.svelte';
+  import ErrorBanner from '../ErrorBanner.svelte';
   import { StrategyState } from '$lib/features/strategy/strategyState.svelte';
   import { SweepState } from '$lib/features/sweep/sweepState.svelte';
   import { PortfolioState } from '$lib/features/portfolio/portfolioState.svelte';
@@ -22,6 +23,8 @@
     period,
     interval,
     strategy,
+    onOpenRuns,
+    portfolioRunId = null,
   }: {
     open?: boolean;
     symbol: string;
@@ -29,6 +32,9 @@
     period: string;
     interval: string;
     strategy: StrategyState;
+    onOpenRuns?: () => void;
+    /** When set to a new id, load that stored portfolio run and show it. */
+    portfolioRunId?: string | null;
   } = $props();
 
   const strat = $derived(strategy);
@@ -46,6 +52,18 @@
     if (portfolio.symbols.length === 0 && symbol) portfolio.add(symbol);
     tab = 'portfolio';
   }
+
+  // Load a stored portfolio run when the parent hands us a new id, and surface
+  // it on the portfolio tab. Tracked so the same id doesn't reload on re-render.
+  let loadedPortfolioRun: string | null = null;
+  $effect(() => {
+    const id = portfolioRunId;
+    if (id && id !== loadedPortfolioRun) {
+      loadedPortfolioRun = id;
+      tab = 'portfolio';
+      void portfolio.loadStored(id);
+    }
+  });
 
   $effect(() => {
     if (open) void strat.load();
@@ -191,6 +209,7 @@
           {period}
           {interval}
           {portfolio}
+          {onOpenRuns}
         />
       {:else if tab === 'sweep'}
         <SweepPanel code={strat.draftCode} {sweep} />
@@ -280,10 +299,10 @@
 
             <div class="actions">
               {#if strat.saveError}
-                <span class="banner err" role="status">{strat.saveError}</span>
+                <ErrorBanner message={strat.saveError} />
               {/if}
               {#if strat.runError}
-                <span class="banner err" role="status">{strat.runError}</span>
+                <ErrorBanner message={strat.runError} />
               {/if}
 
               <button
@@ -709,20 +728,6 @@
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-
-  .banner.err {
-    max-width: 360px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 4px 10px;
-    border: 1px solid color-mix(in oklab, #ff7373 50%, transparent);
-    border-radius: 3px;
-    background: color-mix(in oklab, #ff7373 10%, transparent);
-    color: #ff9c9c;
-    font-size: 11px;
-    letter-spacing: 0.02em;
   }
 
   .btn {

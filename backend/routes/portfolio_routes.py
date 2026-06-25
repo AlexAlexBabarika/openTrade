@@ -26,6 +26,9 @@ from backend.backtesting.multi.sandbox import (
     parse_portfolio_strategy_schema,
     run_portfolio_strategy,
 )
+from backend.backtesting.run_config import RunInputs
+from backend.backtesting.run_snapshot import assemble_snapshot
+from backend.backtesting.run_store import RunStore
 from backend.datastore.errors import DataNotFound
 from backend.datastore.layout import StoreLayout
 from backend.datastore.store import HistoricalStore
@@ -45,6 +48,24 @@ _STORE_PROVIDER = "yfinance"
 
 def _store() -> HistoricalStore:
     return HistoricalStore(_STORE_LAYOUT, provider_name=_STORE_PROVIDER)
+
+
+_RUN_STORE = RunStore.default()
+
+
+def _persist_portfolio(
+    blob, *, code, params, data_version, seed, starting_cash, universe, constraints
+) -> str:
+    inputs = RunInputs(
+        code=code,
+        params=params,
+        data_version=data_version,
+        seed=seed,
+        starting_cash=starting_cash,
+        universe=universe,
+        constraints=constraints,
+    )
+    return _RUN_STORE.write(assemble_snapshot(blob, inputs))
 
 
 class ConstraintsModel(BaseModel):
@@ -164,4 +185,21 @@ async def run(body: PortfolioRunRequest) -> dict:
         universe=universe,
         data_version=store.head_version(),
     )
-    return dataclasses.asdict(result)
+    blob = dataclasses.asdict(result)
+    if result.status == "ok":
+        run_id = _persist_portfolio(
+            blob,
+            code=body.code,
+            params=params,
+            data_version=store.head_version(),
+            seed=body.seed,
+            starting_cash=body.starting_cash,
+            universe=universe,
+            constraints=body.constraints.to_constraints() if body.constraints else None,
+        )
+        blob["run_id"] = run_id
+        # Expose the content-addressed id as meta.run_id too, so it matches the
+        # stored snapshot (and what GET /backtests/runs/{id} returns) rather than
+        # the engine's throwaway uuid.
+        blob["meta"]["run_id"] = run_id
+    return blob

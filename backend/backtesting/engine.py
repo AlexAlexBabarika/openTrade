@@ -30,6 +30,7 @@ from backend.backtesting.portfolio import Portfolio
 from backend.backtesting.strategy import Strategy
 from backend.backtesting.trades import match_trades
 from backend.backtesting.types import BacktestResult, EquityPoint, RunMeta
+from backend.backtesting.version import ENGINE_VERSION
 
 
 def run_backtest(
@@ -88,6 +89,7 @@ def run_backtest(
             strategy_id=strategy_id,
             params=params,
             data_version=data_version,
+            engine_version=ENGINE_VERSION,
         ),
         bars=bars,
         orders=broker.orders,

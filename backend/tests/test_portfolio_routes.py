@@ -213,3 +213,57 @@ def test_too_many_symbols_is_a_422():
         },
     )
     assert r.status_code == 422
+
+
+def test_portfolio_persist_helper_writes_snapshot(tmp_path):
+    """Unit-test the persistence helper directly (avoids needing an ingested store)."""
+    import backend.routes.portfolio_routes as pr
+    from backend.backtesting.run_store import RunStore
+
+    store = RunStore(tmp_path)
+    pr._RUN_STORE = store
+
+    # Minimal portfolio blob (one symbol, one bar) shaped like portfolio_result_to_dict.
+    blob = {
+        "meta": {
+            "engine_version": "1.0.0",
+            "seed": 0,
+            "data_version": "v1",
+            "starting_cash": 1e5,
+            "strategy_id": None,
+            "params": {},
+            "started_at": "2020-01-01T00:00:00+00:00",
+            "finished_at": "2020-01-01T00:00:01+00:00",
+            "run_id": "tmp",
+        },
+        "symbols": ["AAPL"],
+        "bars": {
+            "AAPL": [
+                {
+                    "t": 1577836800,
+                    "open": 1.0,
+                    "high": 1.0,
+                    "low": 1.0,
+                    "close": 1.0,
+                    "volume": 1.0,
+                }
+            ]
+        },
+        "orders": [],
+        "fills": [],
+        "equity": [],
+        "trades": [],
+        "constraint_events": [],
+        "metrics": {"portfolio": {"total_return": 0.0}},
+    }
+    rid = pr._persist_portfolio(
+        blob,
+        code="def on_bar(ctx):\n    pass\n",
+        params={},
+        data_version="v1",
+        seed=0,
+        starting_cash=1e5,
+        universe=None,
+        constraints=None,
+    )
+    assert store.exists(rid)

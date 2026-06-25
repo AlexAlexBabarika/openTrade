@@ -8,6 +8,7 @@ Runs *before* `compile()` so well-known sandbox escapes
 from __future__ import annotations
 
 import ast
+import hashlib
 
 
 ALLOWED_IMPORTS: frozenset[str] = frozenset(
@@ -105,3 +106,34 @@ def validate(code: str) -> None:
     v.visit(tree)
     if v.errors:
         raise ScriptValidationError("; ".join(v.errors))
+
+
+def _strip_docstrings(tree: ast.Module) -> None:
+    """Drop leading string-expression statements from the module and every
+    function/class body, so docstring edits don't perturb the hash."""
+    for node in ast.walk(tree):
+        body = getattr(node, "body", None)
+        if not isinstance(body, list) or not body:
+            continue
+        first = body[0]
+        if (
+            isinstance(first, ast.Expr)
+            and isinstance(first.value, ast.Constant)
+            and isinstance(first.value.value, str)
+        ):
+            body.pop(0)
+
+
+def ast_hash(code: str) -> str:
+    """A whitespace/comment/docstring-stable sha256 of strategy source.
+
+    Stable across reformatting, comments, and docstrings; changes on any other
+    source edit. Use this for run identity, not the source hash.
+    """
+    try:
+        tree = ast.parse(code, filename="<script>", mode="exec")
+    except SyntaxError as e:
+        raise ScriptValidationError(f"syntax error: {e}") from e
+    _strip_docstrings(tree)
+    dumped = ast.dump(tree, include_attributes=False)
+    return hashlib.sha256(dumped.encode()).hexdigest()

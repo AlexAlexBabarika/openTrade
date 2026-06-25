@@ -11,6 +11,7 @@
  */
 import { loadResult } from './loadResult';
 import type { BacktestResult } from './types';
+import type { RunStatus } from '$lib/features/runs/runTypes';
 
 export type ResultTab = 'equity' | 'drawdown' | 'trades' | 'monthly' | 'stats';
 
@@ -32,6 +33,7 @@ export class BacktestState {
   loading = $state(false);
   error = $state<string | null>(null);
   activeTab = $state<ResultTab>('equity');
+  status = $state<RunStatus | null>(null);
 
   /** Index into `result.trades` currently hovered (chart marker or table row),
    * or null. The chart highlights this marker; the table highlights this row. */
@@ -49,7 +51,12 @@ export class BacktestState {
     this.loading = true;
     this.error = null;
     try {
-      this.result = loadResult(await this.#loader());
+      const raw = await this.#loader();
+      this.result = loadResult(raw);
+      this.status =
+        typeof raw === 'object' && raw !== null && 'status' in raw
+          ? ((raw as { status: RunStatus }).status ?? null)
+          : null;
     } catch (err) {
       this.error = err instanceof Error ? err.message : 'Failed to load result';
     } finally {

@@ -4,7 +4,10 @@
   import X from '@lucide/svelte/icons/x';
   import PortfolioHoldings from './PortfolioHoldings.svelte';
   import WeightsHeatmap from './WeightsHeatmap.svelte';
+  import RunIdChip from '../backtest/RunIdChip.svelte';
+  import ErrorBanner from '../ErrorBanner.svelte';
   import { PortfolioState } from '$lib/features/portfolio/portfolioState.svelte';
+  import { runsHistory } from '$lib/features/runs/runsHistory.svelte';
   import { MAX_UNIVERSE_SYMBOLS } from '$lib/features/portfolio/universe';
   import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
 
@@ -14,12 +17,14 @@
     period,
     interval,
     portfolio,
+    onOpenRuns,
   }: {
     code: string;
     provider: MarketDataProviderValue;
     period: string;
     interval: string;
     portfolio: PortfolioState;
+    onOpenRuns?: () => void;
   } = $props();
 
   let tickerInput = $state('');
@@ -43,6 +48,19 @@
   async function runNow() {
     if (portfolio.isRunning) return;
     await portfolio.run(code, { provider, period, interval });
+    const runId = portfolio.response?.meta?.run_id;
+    if (runId) {
+      const label =
+        portfolio.symbols.length <= 3
+          ? portfolio.symbols.join(', ')
+          : `${portfolio.symbols.slice(0, 3).join(', ')}... (${portfolio.symbols.length})`;
+      runsHistory.record({
+        run_id: runId,
+        kind: 'portfolio',
+        label,
+        created_at: new Date().toISOString(),
+      });
+    }
   }
 
   async function ingestNow() {
@@ -127,12 +145,12 @@
 
     <footer class="card-foot">
       {#if portfolio.ingestError}
-        <span class="banner err" role="status">{portfolio.ingestError}</span>
+        <ErrorBanner message={portfolio.ingestError} />
       {:else if ingestSummary}
         <span class="banner ok" role="status">{ingestSummary}</span>
       {/if}
       {#if portfolio.runError}
-        <span class="banner err" role="status">{portfolio.runError}</span>
+        <ErrorBanner message={portfolio.runError} />
       {/if}
       <button
         type="button"
@@ -172,6 +190,9 @@
       <header class="card-head">
         <span class="card-title">last run</span>
         <span class="count">{result.symbols.length} symbols</span>
+        {#if result.meta?.run_id}
+          <RunIdChip runId={result.meta.run_id} onCompare={onOpenRuns} />
+        {/if}
       </header>
 
       <div class="stats">
@@ -364,11 +385,6 @@
     padding: 4px 10px;
     border-radius: 3px;
     font-size: 11px;
-  }
-  .banner.err {
-    border: 1px solid color-mix(in oklab, #ff7373 50%, transparent);
-    background: color-mix(in oklab, #ff7373 10%, transparent);
-    color: #ff9c9c;
   }
   .banner.ok {
     border: 1px solid color-mix(in oklab, oklch(var(--primary)) 45%, transparent);

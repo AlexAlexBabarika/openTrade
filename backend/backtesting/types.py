@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
+from backend.backtesting.version import ENGINE_VERSION
+
 
 class Side(Enum):
     BUY = "buy"
@@ -163,6 +165,7 @@ class RunMeta:
     strategy_id: str | None = None
     params: dict | None = None
     data_version: str | None = None
+    engine_version: str = ENGINE_VERSION
 
 
 @dataclass(frozen=True, slots=True)

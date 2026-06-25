@@ -72,6 +72,10 @@ class Universe:
     def is_active(self, symbol: str, time: datetime) -> bool:
         return any(m.contains(time) for m in self._intervals.get(symbol, ()))
 
+    def memberships(self) -> list["Membership"]:
+        """Flattened membership intervals (sorted by symbol, then start)."""
+        return [m for ms in self._intervals.values() for m in ms]
+
     def active(self, time: datetime) -> tuple[str, ...]:
         """Symbols that are members at ``time``, sorted."""
         return tuple(s for s in self._intervals if self.is_active(s, time))

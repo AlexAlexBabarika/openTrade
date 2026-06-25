@@ -60,3 +60,30 @@ describe('BacktestState interaction', () => {
     expect(s.hoveredTrade).toBeNull();
   });
 });
+
+import { describe as describe2, it as it2, expect as expect2 } from 'vitest';
+
+describe2('BacktestState.status', () => {
+  it2('captures status from a stored-run blob', async () => {
+    const { BacktestState } = await import('./backtestState.svelte');
+    const blob = {
+      ...(await import('./fixtures/sample-run.json')).default,
+      status: { stale: true, recorded: '1.0.0', current: '1.1.0' },
+    };
+    const s = new BacktestState(async () => blob);
+    await s.load();
+    expect2(s.status).toEqual({
+      stale: true,
+      recorded: '1.0.0',
+      current: '1.1.0',
+    });
+  });
+
+  it2('leaves status null for a blob without it (live run)', async () => {
+    const { BacktestState } = await import('./backtestState.svelte');
+    const blob = (await import('./fixtures/sample-run.json')).default;
+    const s = new BacktestState(async () => blob);
+    await s.load();
+    expect2(s.status).toBeNull();
+  });
+});
