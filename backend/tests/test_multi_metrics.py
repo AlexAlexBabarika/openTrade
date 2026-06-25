@@ -16,9 +16,11 @@ import pytest
 from backend.backtesting.costs import Costs
 from backend.backtesting.multi.book import PortfolioEquityPoint
 from backend.backtesting.multi.engine import run_portfolio_backtest
+from backend.backtesting.errors import EngineError
 from backend.backtesting.multi.metrics import (
     PortfolioMetrics,
     attribution_by_symbol,
+    compute_portfolio_metrics,
     concentration,
     contribution_series,
     pairwise_correlation,
@@ -76,6 +78,16 @@ def _fill(
         reason="market",
         symbol=symbol,
     )
+
+
+def test_non_finite_equity_raises_a_clear_error() -> None:
+    # Defense-in-depth: if a run still produces non-finite equity (e.g. a strategy
+    # blowing the book up via raw ctx.buy), metrics must fail with an actionable
+    # message rather than the opaque "'float' object has no attribute 'numerator'"
+    # from statistics.pstdev/stdev deep in the metrics path.
+    curve = [_point(0, {"A": 1.0}), _point(1, {"A": 1.0}, equity=float("inf"))]
+    with pytest.raises(EngineError, match="non-finite"):
+        compute_portfolio_metrics(events=[], fills=[], equity_curve=curve, trades=[])
 
 
 def test_concentration_summarizes_hhi_top5_and_single_name() -> None:

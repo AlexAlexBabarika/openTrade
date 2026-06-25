@@ -41,6 +41,25 @@ export type PortfolioRunResponse = PortfolioResult & {
   elapsed_ms: number;
 };
 
+/** Mirrors the backend `IngestReport` returned by `POST /datastore/ingest`. */
+export type IngestReport = {
+  data_version: string;
+  rows_written: Record<string, number>;
+  quarantined: Record<string, number>;
+  gap_warnings: string[];
+};
+
+export function ingestSymbols(
+  symbols: string[],
+  interval = '1d',
+): Promise<IngestReport> {
+  return apiJson<IngestReport>(
+    '/datastore/ingest',
+    { method: 'POST', body: JSON.stringify({ symbols, interval }) },
+    true,
+  );
+}
+
 export function runPortfolioBacktest(
   params: PortfolioRunParams,
 ): Promise<PortfolioRunResponse> {
@@ -53,8 +72,10 @@ export function runPortfolioBacktest(
 
 export type PortfolioClient = {
   run(params: PortfolioRunParams): Promise<PortfolioRunResponse>;
+  ingest(symbols: string[], interval?: string): Promise<IngestReport>;
 };
 
 export const httpPortfolioClient: PortfolioClient = {
   run: runPortfolioBacktest,
+  ingest: ingestSymbols,
 };

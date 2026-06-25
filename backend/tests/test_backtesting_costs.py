@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
+
 from backend.backtesting.costs import (
+    BpsCommission,
     Costs,
     FixedBpsHalfSpread,
     FixedBpsSlippage,
@@ -39,6 +42,24 @@ def test_fixed_bps_slippage_is_bps_of_reference_price() -> None:
 
 def test_per_share_commission_scales_with_quantity() -> None:
     assert PerShareCommission(0.01).commission(100.0, 10.0) == 0.1
+
+
+def test_bps_commission_scales_with_notional() -> None:
+    # 10 bps of a 100 * 10 = 1_000 notional -> 1.0, independent of share count.
+    assert BpsCommission(10.0).commission(100.0, 10.0) == 1.0
+
+
+def test_default_commission_is_notional_scaled_not_per_share() -> None:
+    # Default commission is bps-based, so two fills of equal notional cost the
+    # same regardless of share count — back-adjusted (tiny-price, huge-quantity)
+    # bars no longer inflate it. Per-share commission would differ ~10_000x here.
+    _, _, _, penny = Costs.default().apply(
+        reference_price=0.01, side=Side.BUY, quantity=1_000_000.0, bar=_bar()
+    )
+    _, _, _, normal = Costs.default().apply(
+        reference_price=100.0, side=Side.BUY, quantity=100.0, bar=_bar()
+    )
+    assert penny == pytest.approx(normal)
 
 
 def test_fixed_bps_half_spread_is_bps_of_reference_price() -> None:

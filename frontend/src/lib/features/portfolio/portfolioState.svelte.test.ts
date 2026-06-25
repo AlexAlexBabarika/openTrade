@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { PortfolioState } from './portfolioState.svelte';
-import type { PortfolioClient, PortfolioRunResponse } from './portfolioClient';
+import type {
+  IngestReport,
+  PortfolioClient,
+  PortfolioRunResponse,
+} from './portfolioClient';
 
 function okRun(over: Partial<PortfolioRunResponse> = {}): PortfolioRunResponse {
   return {
@@ -21,9 +25,20 @@ function okRun(over: Partial<PortfolioRunResponse> = {}): PortfolioRunResponse {
   } as PortfolioRunResponse;
 }
 
+function okReport(over: Partial<IngestReport> = {}): IngestReport {
+  return {
+    data_version: 'abc123',
+    rows_written: { AAPL: 10 },
+    quarantined: {},
+    gap_warnings: [],
+    ...over,
+  };
+}
+
 function fakeClient(over: Partial<PortfolioClient> = {}): PortfolioClient {
   return {
     run: vi.fn(async () => okRun()),
+    ingest: vi.fn(async () => okReport()),
     ...over,
   };
 }
@@ -90,5 +105,37 @@ describe('PortfolioState', () => {
         constraints: { max_position_weight: 0.2 },
       }),
     );
+  });
+
+  it('refuses to ingest with an empty universe', async () => {
+    const client = fakeClient();
+    const state = new PortfolioState(client);
+    await state.ingest();
+    expect(state.ingestError).toMatch(/at least one symbol/i);
+    expect(client.ingest).not.toHaveBeenCalled();
+  });
+
+  it('ingests the current universe and stores the report', async () => {
+    const client = fakeClient();
+    const state = new PortfolioState(client);
+    state.add('msft aapl');
+    await state.ingest('1d');
+    expect(client.ingest).toHaveBeenCalledWith(['MSFT', 'AAPL'], '1d');
+    expect(state.ingestReport?.data_version).toBe('abc123');
+    expect(state.ingestError).toBeNull();
+    expect(state.isIngesting).toBe(false);
+  });
+
+  it('surfaces ingest failures as ingestError', async () => {
+    const client = fakeClient({
+      ingest: vi.fn(async () => {
+        throw new Error('yfinance down');
+      }),
+    });
+    const state = new PortfolioState(client);
+    state.add('AAPL');
+    await state.ingest();
+    expect(state.ingestError).toBe('yfinance down');
+    expect(state.ingestReport).toBeNull();
   });
 });

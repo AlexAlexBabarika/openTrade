@@ -51,6 +51,14 @@ class PerShareCommission:
 
 
 @dataclass(frozen=True, slots=True)
+class BpsCommission:
+    bps: float
+
+    def commission(self, price: float, quantity: float) -> float:
+        return abs(price * quantity) * self.bps / 1e4
+
+
+@dataclass(frozen=True, slots=True)
 class FixedBpsHalfSpread:
     bps: float
 
@@ -69,10 +77,16 @@ class Costs:
     @classmethod
     def default(cls) -> "Costs":
         """Conservative, non-zero defaults (5 bps slippage, 2 bps half-spread,
-        $0.005/share commission)."""
+        1 bps commission).
+
+        Commission is notional-based (bps) rather than per-share so that every
+        cost is scale-invariant: back-adjusted history can drive prices to a
+        fraction of a cent (and share counts into the billions), where a
+        per-share commission would dwarf the position value and bankrupt the
+        book on a single fill."""
         return cls(
             slippage=FixedBpsSlippage(5.0),
-            commission=PerShareCommission(0.005),
+            commission=BpsCommission(1.0),
             spread=FixedBpsHalfSpread(2.0),
         )
 

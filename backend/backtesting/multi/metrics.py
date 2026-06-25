@@ -20,11 +20,13 @@ is deliberately left out.
 
 from __future__ import annotations
 
+import math
 import statistics
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Mapping
 
+from backend.backtesting.errors import EngineError
 from backend.backtesting.metrics import (
     Metrics,
     compute_metrics,
@@ -238,6 +240,12 @@ def compute_portfolio_metrics(
     sectors: Mapping[str, str] | None = None,
 ) -> PortfolioMetrics:
     """Assemble the full portfolio metrics block from a run's raw record."""
+    for p in equity_curve:
+        if not math.isfinite(p.equity):
+            raise EngineError(
+                f"portfolio equity became non-finite at {p.time.isoformat()} "
+                "— likely runaway leverage; check costs and strategy sizing"
+            )
     eq_points = [
         EquityPoint(time=p.time, equity=p.equity, cash=p.cash, holdings=p.holdings)
         for p in equity_curve

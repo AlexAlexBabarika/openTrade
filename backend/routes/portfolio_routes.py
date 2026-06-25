@@ -1,20 +1,22 @@
 # backend/routes/portfolio_routes.py
-"""Portfolio (multi-asset) backtest endpoint.
+"""Portfolio (multi-asset) backtest endpoint — store-backed.
 
-Runs one strategy script against a universe of symbols inside the spawn
-sandbox (``run_portfolio_strategy``) and returns the full canonical portfolio
-blob plus run status and captured stdout/stderr. Market data per symbol is
-loaded with the same cache+provider path as ``/backtests`` and ``/sweeps``;
-constraints declared in the request are enforced by the engine and their
-bindings come back in ``constraint_events``.
+Runs one strategy script against a universe of symbols inside the spawn sandbox
+(``run_portfolio_strategy``) and returns the full canonical portfolio blob plus
+run status and captured stdout/stderr. Market data is read from the on-disk
+datastore (raw bars + read-time corporate-action adjustment), NOT fetched live:
+a missing symbol is a 4xx asking the user to ingest first. The universe is either
+an explicit symbol list or a survivorship-correct index handle resolved from
+historical membership. Every result records the store's ``data_version``.
 """
 
 from __future__ import annotations
 
-import asyncio
 import dataclasses
 import logging
+from datetime import datetime, timezone
 
+import polars as pl
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
@@ -24,8 +26,10 @@ from backend.backtesting.multi.sandbox import (
     parse_portfolio_strategy_schema,
     run_portfolio_strategy,
 )
+from backend.datastore.errors import DataNotFound
+from backend.datastore.layout import StoreLayout
+from backend.datastore.store import HistoricalStore
 from backend.models.market_data_models import MarketDataProviderEnum
-from backend.routes.sweep_routes import _load_frame
 from backend.scripts.ast_guard import ScriptValidationError
 
 logger = logging.getLogger(__name__)
@@ -33,6 +37,14 @@ router = APIRouter(prefix="/portfolio-backtests", tags=["portfolio-backtests"])
 
 _RUN_TIMEOUT_S = 30.0
 _MAX_SYMBOLS = 50
+
+# Module-level store handles (overridable in tests).
+_STORE_LAYOUT = StoreLayout.default()
+_STORE_PROVIDER = "yfinance"
+
+
+def _store() -> HistoricalStore:
+    return HistoricalStore(_STORE_LAYOUT, provider_name=_STORE_PROVIDER)
 
 
 class ConstraintsModel(BaseModel):
@@ -64,24 +76,37 @@ class ConstraintsModel(BaseModel):
 
 class PortfolioRunRequest(BaseModel):
     code: str = Field(..., min_length=1, max_length=200_000)
-    symbols: list[str] = Field(..., min_length=1, max_length=_MAX_SYMBOLS)
+    symbols: list[str] | None = Field(default=None, max_length=_MAX_SYMBOLS)
+    index: str | None = None
+    start: str | None = None  # ISO date, inclusive
+    end: str | None = None  # ISO date, exclusive
     provider: MarketDataProviderEnum
-    period: str = "1y"
-    interval: str = "1d"
     starting_cash: float = 100_000.0
     seed: int = 0
     params: dict = Field(default_factory=dict)
     constraints: ConstraintsModel | None = None
 
 
-@dataclasses.dataclass
-class _SymbolDataRequest:
-    """Shim matching the attribute shape ``_load_frame`` reads."""
+def _parse_day(value: str | None, field: str) -> datetime | None:
+    if value is None:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError as e:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, f"bad {field} date: {value}"
+        ) from e
 
-    symbol: str
-    provider: MarketDataProviderEnum
-    period: str
-    interval: str
+
+def _clip(
+    frame: pl.DataFrame, start: datetime | None, end: datetime | None
+) -> pl.DataFrame:
+    expr = pl.lit(True)
+    if start is not None:
+        expr = expr & (pl.col("timestamp") >= start)
+    if end is not None:
+        expr = expr & (pl.col("timestamp") < end)
+    return frame.filter(expr)
 
 
 @router.post("/run")
@@ -95,24 +120,37 @@ async def run(body: PortfolioRunRequest) -> dict:
     defaults = {name: p.values()[0] for name, p in schema.items()}
     params = {**defaults, **body.params}
 
-    symbols = sorted({s.strip() for s in body.symbols if s.strip()})
-    if not symbols:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "no symbols given")
-
-    loaded = await asyncio.gather(
-        *(
-            _load_frame(
-                _SymbolDataRequest(
-                    symbol=symbol,
-                    provider=body.provider,
-                    period=body.period,
-                    interval=body.interval,
-                )
-            )
-            for symbol in symbols
+    if bool(body.index) == bool(body.symbols):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "provide exactly one of 'index' or 'symbols'"
         )
-    )
-    frames = {symbol: frame for symbol, (frame, _) in zip(symbols, loaded)}
+
+    store = _store()
+    start = _parse_day(body.start, "start")
+    end = _parse_day(body.end, "end")
+    universe = None
+
+    try:
+        if body.index:
+            if start is None or end is None:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST, "'index' requires 'start' and 'end'"
+                )
+            universe = store.resolve_universe(body.index, start, end)
+            symbols = sorted(universe.symbols)
+        else:
+            symbols = sorted({s.strip() for s in (body.symbols or []) if s.strip()})
+            if not symbols:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "no symbols given")
+
+        frames = store.read_frames(symbols)
+    except DataNotFound as e:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, f"{e} (run ingest first)"
+        ) from e
+
+    if start is not None or end is not None:
+        frames = {s: _clip(f, start, end) for s, f in frames.items()}
 
     result = await run_in_threadpool(
         run_portfolio_strategy,
@@ -123,5 +161,7 @@ async def run(body: PortfolioRunRequest) -> dict:
         seed=body.seed,
         params=params,
         constraints=body.constraints.to_constraints() if body.constraints else None,
+        universe=universe,
+        data_version=store.head_version(),
     )
     return dataclasses.asdict(result)

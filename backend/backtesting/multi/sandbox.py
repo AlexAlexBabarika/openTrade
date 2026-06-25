@@ -22,6 +22,7 @@ import polars as pl
 from backend.backtesting.errors import EngineError
 from backend.backtesting.multi.constraints import Constraints
 from backend.backtesting.multi.engine import run_portfolio_backtest
+from backend.backtesting.multi.universe import Universe
 from backend.backtesting.multi.policies import (
     PeriodicRebalance,
     SignalRebalance,
@@ -127,6 +128,8 @@ def _child_main(
     seed: int,
     params: dict | None,
     constraints: Constraints | None,
+    universe: "Universe | None",
+    data_version: str | None,
 ) -> None:
     """Picklable child entrypoint: build the strategy and run the backtest."""
     _apply_resource_limits(DEFAULT_MEMORY_MB)
@@ -150,6 +153,8 @@ def _child_main(
                 constraints=constraints,
                 seed=seed,
                 params=params,
+                universe=universe,
+                data_version=data_version,
             )
         payload.update(portfolio_result_to_dict(result))
     except SystemExit:
@@ -178,6 +183,8 @@ def run_portfolio_strategy(
     seed: int = 0,
     params: dict | None = None,
     constraints: Constraints | None = None,
+    universe: Universe | None = None,
+    data_version: str | None = None,
 ) -> PortfolioStrategyRunResult:
     """Validate and run a portfolio strategy script against ``frames``."""
     started = time.monotonic()
@@ -191,7 +198,18 @@ def run_portfolio_strategy(
         )
 
     payload, timed_out, exitcode = spawn_and_collect(
-        _child_main, (code, frames, starting_cash, seed, params, constraints), timeout_s
+        _child_main,
+        (
+            code,
+            frames,
+            starting_cash,
+            seed,
+            params,
+            constraints,
+            universe,
+            data_version,
+        ),
+        timeout_s,
     )
     elapsed_ms = int((time.monotonic() - started) * 1000)
 

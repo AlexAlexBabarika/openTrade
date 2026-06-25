@@ -5,6 +5,7 @@
  */
 import {
   httpPortfolioClient,
+  type IngestReport,
   type PortfolioClient,
   type PortfolioConstraintsBody,
   type PortfolioRunParams,
@@ -28,6 +29,11 @@ export class PortfolioState {
   runError = $state<string | null>(null);
   /** Last successful run's full blob (canonical result + sandbox envelope). */
   response = $state<PortfolioRunResponse | null>(null);
+
+  isIngesting = $state(false);
+  ingestError = $state<string | null>(null);
+  /** Report from the last successful ingest of the current universe. */
+  ingestReport = $state<IngestReport | null>(null);
 
   #client: PortfolioClient;
 
@@ -77,6 +83,29 @@ export class PortfolioState {
         err instanceof Error ? err.message : 'Portfolio backtest failed';
     } finally {
       this.isRunning = false;
+    }
+  }
+
+  /**
+   * Populate the datastore for the current universe so a subsequent run finds
+   * bars. Failures surface as `ingestError`; success exposes the report.
+   */
+  async ingest(interval = '1d'): Promise<void> {
+    if (this.symbols.length === 0) {
+      this.ingestError = 'Add at least one symbol to the universe';
+      return;
+    }
+    this.isIngesting = true;
+    this.ingestError = null;
+    try {
+      this.ingestReport = await this.#client.ingest(
+        [...this.symbols],
+        interval,
+      );
+    } catch (err) {
+      this.ingestError = err instanceof Error ? err.message : 'Ingest failed';
+    } finally {
+      this.isIngesting = false;
     }
   }
 }

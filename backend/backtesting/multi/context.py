@@ -223,6 +223,12 @@ class PortfolioContext:
         and every binding — including min-trade-size skips — is recorded in
         ``constraint_log``."""
         equity = self._book.equity(self._marks)
+        if equity <= 0.0:
+            # An insolvent book cannot be sized to weight targets: target_value
+            # = weight * equity would flip every target to a short and compound
+            # into an ever-larger position. Mirror book.weights(), which already
+            # reports no weights at non-positive equity, and stop trading.
+            return []
         effective = {
             symbol: weight
             for symbol, weight in sorted(self._targets.items())

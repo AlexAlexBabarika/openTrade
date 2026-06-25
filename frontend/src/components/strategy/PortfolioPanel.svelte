@@ -1,5 +1,6 @@
 <script lang="ts">
   import Play from '@lucide/svelte/icons/play';
+  import Database from '@lucide/svelte/icons/database';
   import X from '@lucide/svelte/icons/x';
   import PortfolioHoldings from './PortfolioHoldings.svelte';
   import WeightsHeatmap from './WeightsHeatmap.svelte';
@@ -43,6 +44,20 @@
     if (portfolio.isRunning) return;
     await portfolio.run(code, { provider, period, interval });
   }
+
+  async function ingestNow() {
+    if (portfolio.isIngesting) return;
+    await portfolio.ingest(interval);
+  }
+
+  const ingestSummary = $derived.by(() => {
+    const r = portfolio.ingestReport;
+    if (!r) return null;
+    const names = Object.keys(r.rows_written);
+    const rows = Object.values(r.rows_written).reduce((a, b) => a + b, 0);
+    const dropped = Object.values(r.quarantined).reduce((a, b) => a + b, 0);
+    return `ingested ${names.length} symbol${names.length === 1 ? '' : 's'} · ${rows} rows${dropped ? ` · ${dropped} dropped` : ''}`;
+  });
 
   const pct = (x: number) => `${(x * 100).toFixed(2)}%`;
   const num = (x: number) => x.toFixed(2);
@@ -111,9 +126,26 @@
     {/if}
 
     <footer class="card-foot">
+      {#if portfolio.ingestError}
+        <span class="banner err" role="status">{portfolio.ingestError}</span>
+      {:else if ingestSummary}
+        <span class="banner ok" role="status">{ingestSummary}</span>
+      {/if}
       {#if portfolio.runError}
         <span class="banner err" role="status">{portfolio.runError}</span>
       {/if}
+      <button
+        type="button"
+        class="btn ghost"
+        onclick={ingestNow}
+        disabled={portfolio.isIngesting ||
+          portfolio.isRunning ||
+          portfolio.symbols.length === 0}
+        title="Fetch & store market data for the universe so backtests find bars"
+      >
+        <Database class="h-3.5 w-3.5" />
+        <span>{portfolio.isIngesting ? 'ingesting…' : 'ingest data'}</span>
+      </button>
       <button
         type="button"
         class="btn primary"
@@ -124,6 +156,15 @@
         <span>{portfolio.isRunning ? 'running…' : 'run portfolio backtest'}</span>
       </button>
     </footer>
+
+    {#if portfolio.ingestReport && portfolio.ingestReport.gap_warnings.length > 0}
+      <p class="hint">
+        data gaps detected — {portfolio.ingestReport.gap_warnings[0]}
+        {#if portfolio.ingestReport.gap_warnings.length > 1}
+          (+{portfolio.ingestReport.gap_warnings.length - 1} more)
+        {/if}
+      </p>
+    {/if}
   </section>
 
   {#if result && metrics}
@@ -315,17 +356,24 @@
     gap: 10px;
   }
 
-  .banner.err {
+  .banner {
     max-width: 480px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     padding: 4px 10px;
-    border: 1px solid color-mix(in oklab, #ff7373 50%, transparent);
     border-radius: 3px;
+    font-size: 11px;
+  }
+  .banner.err {
+    border: 1px solid color-mix(in oklab, #ff7373 50%, transparent);
     background: color-mix(in oklab, #ff7373 10%, transparent);
     color: #ff9c9c;
-    font-size: 11px;
+  }
+  .banner.ok {
+    border: 1px solid color-mix(in oklab, oklch(var(--primary)) 45%, transparent);
+    background: color-mix(in oklab, oklch(var(--primary)) 10%, transparent);
+    color: oklch(var(--foreground));
   }
 
   .btn {

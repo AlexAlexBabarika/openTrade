@@ -67,3 +67,6 @@ todo/
 
 # Backtest Fixtures
 frontend/src/lib/features/backtest/fixtures
+
+# Datastore local store
+backend/datastore/_data/

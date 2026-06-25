@@ -17,9 +17,21 @@ export const SEED_CODE = `params = {
     "slow": Int(20, 200, step=10),
 }
 
+def sma(ctx, n):
+    m = len(ctx.bars)
+    if m < n:
+        return None
+    return sum(ctx.bars[i].close for i in range(m - n, m)) / n
+
 def on_bar(ctx):
-    if ctx.position.quantity == 0:
-        ctx.buy(1)
+    fast = sma(ctx, ctx.params["fast"])
+    slow = sma(ctx, ctx.params["slow"])
+    if fast is None or slow is None:
+        return
+    if fast > slow and ctx.position.quantity == 0:
+        ctx.buy(10)
+    elif fast < slow and ctx.position.quantity > 0:
+        ctx.sell(ctx.position.quantity)
 `;
 
 export type RunContext = Omit<BacktestRunParams, 'code'>;
