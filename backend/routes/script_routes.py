@@ -175,9 +175,10 @@ async def execute(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
             ) from e
         except (requests.HTTPError, DatabaseError, RuntimeError) as e:
-            logger.warning("Script: provider error: %s", e)
+            logger.warning("Script market-data provider request failed")
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Market data provider request failed",
             ) from e
         except Exception as e:
             logger.exception("Script: market data fetch failed: %s", e)

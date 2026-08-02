@@ -26,10 +26,15 @@ function wsBase(): string {
   return base;
 }
 
-export function wsStreamUrl(provider: string, symbol: string): string {
+export function wsStreamUrl(
+  provider: string,
+  symbol: string,
+  token?: string | null,
+): string {
   const p = encodeURIComponent(provider);
   const s = encodeURIComponent(symbol);
-  return `${wsBase()}/ws/stream/${p}/${s}`;
+  const query = token ? `?token=${encodeURIComponent(token)}` : '';
+  return `${wsBase()}/ws/stream/${p}/${s}${query}`;
 }
 
 export function wsLiveUrl(): string {

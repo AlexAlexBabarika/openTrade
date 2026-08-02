@@ -1,7 +1,6 @@
 """Local email/password authentication with rotating refresh sessions."""
 
 import hashlib
-import os
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
@@ -19,6 +18,7 @@ from backend.core.auth_deps import (
     get_current_user,
 )
 from backend.core.database import DatabaseError, connection
+from backend.core.config import security_settings
 from backend.models.auth_models import (
     AuthLoginRequest,
     AuthSessionResponse,
@@ -31,28 +31,29 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 REFRESH_COOKIE_NAME = "opentrade_refresh_token"
 REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 ACCESS_TOKEN_MAX_AGE = 60 * 15
-COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "0") == "1"
 _passwords = PasswordHasher()
 
 
 def _set_refresh_cookie(response: Response, token: str) -> None:
+    settings = security_settings()
     response.set_cookie(
         REFRESH_COOKIE_NAME,
         token,
         httponly=True,
-        secure=COOKIE_SECURE,
-        samesite="lax",
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
         path="/auth",
         max_age=REFRESH_COOKIE_MAX_AGE,
     )
 
 
 def _clear_refresh_cookie(response: Response) -> None:
+    settings = security_settings()
     response.delete_cookie(
         REFRESH_COOKIE_NAME,
         httponly=True,
-        secure=COOKIE_SECURE,
-        samesite="lax",
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
         path="/auth",
     )
 

@@ -97,7 +97,9 @@ async def _load_frame(body: _DataRequest) -> tuple[pl.DataFrame, str]:
         except ValueError as e:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
         except (requests.HTTPError, DatabaseError, RuntimeError) as e:
-            raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(e)) from e
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, "Market data provider request failed"
+            ) from e
         candles = cap_candles(candles)
         cache.set_cached(
             body.provider.value,
@@ -148,7 +150,13 @@ async def start_sweep(body: SweepRequest) -> dict:
         data_version=data_version,
         fixed=body.fixed,
     )
-    sweep_id = _registry.start(code=body.code, frame=frame, config=config)
+    try:
+        sweep_id = _registry.start(code=body.code, frame=frame, config=config)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many optimization jobs are already running",
+        ) from exc
     return {"sweep_id": sweep_id}
 
 

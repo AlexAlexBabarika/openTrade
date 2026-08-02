@@ -2,6 +2,13 @@
 
 A fully functional trading charter web-app created for financial instrument analysis, including: shares, crypto, ETFs, etc. using multiple data-sources.
 
+> [!WARNING]
+> OpenTrade is educational and research software, not investment advice or a
+> brokerage. Backtests and simulated results do not guarantee future
+> performance. Market data may be delayed, incomplete, or inaccurate. Verify
+> important information with an authoritative source before making financial
+> decisions.
+
 ## Core functionality
 
    1. Load OHLCV data (Open, High, Low, Close, Volume) from different sources:

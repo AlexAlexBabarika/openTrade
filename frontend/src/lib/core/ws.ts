@@ -1,6 +1,7 @@
 import type { OHLCVCandle } from './types';
 import { wsStreamUrl } from './config';
 import type { MarketDataProviderValue } from '$lib/features/market/marketDataProviders';
+import { getAccessToken } from './api';
 
 export type ConnectionStatus =
   | 'connecting'
@@ -51,7 +52,7 @@ export class WSClient {
 
   private doConnect(): void {
     this.onStatus?.('connecting');
-    const url = wsStreamUrl(this.provider, this.symbol);
+    const url = wsStreamUrl(this.provider, this.symbol, getAccessToken());
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {

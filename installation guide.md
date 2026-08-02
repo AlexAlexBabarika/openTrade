@@ -50,6 +50,19 @@ browser port or cookie behavior. If you provide `API_KEYS_ENCRYPTION_KEY`, keep
 the same value across upgrades and restores; changing it makes existing saved
 provider keys unreadable.
 
+The default service listens only on `127.0.0.1`. Before putting OpenTrade behind
+an internet-facing hostname, terminate HTTPS with a reverse proxy, set
+`COOKIE_SECURE=1`, and keep `COOKIE_SAMESITE=lax` unless a separate cross-site
+frontend is unavoidable. `COOKIE_SAMESITE=none` is rejected unless secure
+cookies are enabled. Leave `CORS_ORIGINS` empty for the normal same-origin setup;
+otherwise set it to an explicit comma-separated list of trusted origins.
+Add the public hostname to `ALLOWED_HOSTS`; wildcard hosts are rejected.
+
+Uploads default to 10 MiB, WebSocket messages to 64 KiB, each client address to
+20 WebSocket connections and 120 messages per minute, each socket to 20 active
+subscriptions, and the server to two concurrent optimization sweeps. These can
+be adjusted with the variables documented in `env.example`.
+
 For development outside Docker, install `backend/requirements.txt` and
 `backend/requirements-dev.txt`, install the frontend packages with `npm install`,
 and set `DATABASE_URL` to your PostgreSQL instance.

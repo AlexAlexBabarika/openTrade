@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 
 import polars as pl
 
+from backend.core.config import security_settings
 from backend.backtesting.optimize.runner import run_sweep
 from backend.backtesting.optimize.serialize import sweep_to_dict
 from backend.backtesting.optimize.types import SweepConfig, Trial
@@ -45,6 +46,9 @@ class SweepRegistry:
         sweep_id = uuid.uuid4().hex
         job = SweepJob(sweep_id=sweep_id)
         with self._lock:
+            active = sum(item.status == "running" for item in self._jobs.values())
+            if active >= security_settings().max_concurrent_sweeps:
+                raise RuntimeError("Too many optimization jobs are already running")
             self._jobs[sweep_id] = job
         t = threading.Thread(
             target=self._run, args=(job, code, frame, config), daemon=True

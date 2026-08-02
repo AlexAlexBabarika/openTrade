@@ -1,0 +1,3 @@
+# FastAPI 0.141.1 still requires Starlette <0.53.0. See SECURITY_EXCEPTIONS.md.
+CVE-2026-48818
+CVE-2026-54283

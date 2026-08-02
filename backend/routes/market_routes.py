@@ -131,10 +131,10 @@ async def get_market_ohlcv(
             detail=str(e),
         ) from e
     except requests.HTTPError as e:
-        logger.warning("Market data HTTP error: %s", e)
+        logger.warning("Market data provider returned an HTTP error")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(e),
+            detail="Market data provider request failed",
         ) from e
     except DatabaseError as e:
         logger.warning("Market data: database error (e.g. API key lookup): %s", e)
@@ -143,10 +143,10 @@ async def get_market_ohlcv(
             detail="Database error while loading provider configuration.",
         ) from e
     except RuntimeError as e:
-        logger.warning("Market data provider error: %s", e)
+        logger.warning("Market data provider rejected the request")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(e),
+            detail="Market data provider request failed",
         ) from e
     except Exception as e:
         logger.exception("Market data fetch failed: %s", e)

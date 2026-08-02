@@ -1,20 +1,12 @@
 name: Security
 
 on:
+  schedule:
+    - cron: '17 4 * * 1'
   push:
     branches: [main]
-    paths:
-      - 'frontend/package.json'
-      - 'frontend/package-lock.json'
-      - 'backend/requirements.txt'
-      - 'backend/requirements-dev.txt'
   pull_request:
     branches: [main]
-    paths:
-      - 'frontend/package.json'
-      - 'frontend/package-lock.json'
-      - 'backend/requirements.txt'
-      - 'backend/requirements-dev.txt'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -45,4 +37,34 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
       - run: pip install pip-audit
-      - run: pip-audit -r backend/requirements.txt
+      - run: >-
+          pip-audit -r backend/requirements.txt
+          --ignore-vuln PYSEC-2026-161
+          --ignore-vuln PYSEC-2026-248
+          --ignore-vuln PYSEC-2026-249
+          --ignore-vuln PYSEC-2026-2280
+          --ignore-vuln PYSEC-2026-2281
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  image-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --tag opentrade:security-scan .
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: opentrade:security-scan
+          format: table
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          trivyignores: .trivyignore

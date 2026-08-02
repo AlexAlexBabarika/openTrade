@@ -48,31 +48,31 @@ Definitions used below:
 
 ## P0 — security and safe defaults
 
-- [ ] Replace `allow_origins=["*"]` with a configurable allowlist. The default
+- [x] Replace `allow_origins=["*"]` with a configurable allowlist. The default
   single-container deployment should use same-origin requests and need no CORS
   wildcard.
-- [ ] Bind published ports to `127.0.0.1` by default, or clearly explain that
+- [x] Bind published ports to `127.0.0.1` by default, or clearly explain that
   binding to all interfaces exposes the service to the local network.
-- [ ] Validate required secrets and configuration at startup with actionable
+- [x] Validate required secrets and configuration at startup with actionable
   errors; do not leave features to fail later with HTTP 503 responses.
-- [ ] Review authentication cookies for the supported deployment modes. Document
+- [x] Review authentication cookies for the supported deployment modes. Document
   that internet exposure requires HTTPS and `COOKIE_SECURE=1`; verify `HttpOnly`,
   `SameSite`, expiry, rotation, logout, and session revocation behavior.
-- [ ] Authenticate or explicitly disable sensitive WebSocket operations for
+- [x] Authenticate or explicitly disable sensitive WebSocket operations for
   anonymous users. Apply connection/message limits and maximum payload sizes.
-- [ ] Set upload-size, request-size, timeout, and concurrency limits, especially
+- [x] Set upload-size, request-size, timeout, and concurrency limits, especially
   for CSV ingestion, backtests, sweeps, and optimization jobs.
-- [ ] Ensure logs and API errors never expose passwords, tokens, provider keys,
+- [x] Ensure logs and API errors never expose passwords, tokens, provider keys,
   database URLs, uploaded data, or stack traces.
-- [ ] Run secret scanning against the entire Git history, not only the current
+- [x] Run secret scanning against the entire Git history, not only the current
   tree. Rotate anything that may previously have been committed.
-- [ ] Run dependency and container-image vulnerability scans and resolve all
+- [x] Run dependency and container-image vulnerability scans and resolve all
   known critical/high findings or document an explicit, time-bounded exception.
-- [ ] Run the application as a non-root user in the final image and use a minimal
+- [x] Run the application as a non-root user in the final image and use a minimal
   writable filesystem area.
-- [ ] Add `SECURITY.md` with supported versions, a private reporting channel,
+- [x] Add `SECURITY.md` with supported versions, a private reporting channel,
   expected response times, and coordinated-disclosure guidance.
-- [ ] Add an obvious financial disclaimer: educational/research software, not
+- [x] Add an obvious financial disclaimer: educational/research software, not
   investment advice; backtest results do not guarantee future performance; data
   may be delayed or inaccurate.
 
