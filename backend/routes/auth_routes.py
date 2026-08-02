@@ -1,43 +1,44 @@
-"""
-Auth endpoints: signup, login, logout, session, refresh.
-All auth is proxied through the backend to Supabase.
+"""Local email/password authentication with rotating refresh sessions."""
 
-Token strategy:
-  - refresh_token → HttpOnly cookie (never exposed to JS)
-  - access_token  → returned in JSON body, held in-memory on the frontend
-"""
-
-import logging
+import hashlib
 import os
+import secrets
+import time
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials
 
-from backend.core.auth_deps import _bearer_scheme, get_current_user
+from backend.core.auth_deps import (
+    JWT_ALGORITHM,
+    _bearer_scheme,
+    _secret,
+    get_current_user,
+)
+from backend.core.database import DatabaseError, connection
 from backend.models.auth_models import (
     AuthLoginRequest,
     AuthSessionResponse,
     AuthSessionUserResponse,
-    AuthSignupPendingResponse,
     AuthSignupRequest,
     AuthUserInfo,
 )
-from backend.core.supabase_client import get_supabase_client, require_supabase_client
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
 REFRESH_COOKIE_NAME = "opentrade_refresh_token"
-REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
+REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
+ACCESS_TOKEN_MAX_AGE = 60 * 15
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "0") == "1"
+_passwords = PasswordHasher()
 
 
-def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+def _set_refresh_cookie(response: Response, token: str) -> None:
     response.set_cookie(
-        key=REFRESH_COOKIE_NAME,
-        value=refresh_token,
+        REFRESH_COOKIE_NAME,
+        token,
         httponly=True,
         secure=COOKIE_SECURE,
         samesite="lax",
@@ -48,7 +49,7 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
 
 def _clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(
-        key=REFRESH_COOKIE_NAME,
+        REFRESH_COOKIE_NAME,
         httponly=True,
         secure=COOKIE_SECURE,
         samesite="lax",
@@ -56,97 +57,107 @@ def _clear_refresh_cookie(response: Response) -> None:
     )
 
 
-def _build_session_response(sb_response) -> AuthSessionResponse:
-    """Build AuthSessionResponse from Supabase AuthResponse."""
-    session = sb_response.session
-    user = sb_response.user
-    if not session or not user:
-        raise HTTPException(
-            status_code=500, detail="Invalid auth response from Supabase"
-        )
-    return AuthSessionResponse(
-        access_token=session.access_token,
-        expires_at=getattr(session, "expires_at", None),
-        user=AuthUserInfo(id=str(user.id), email=getattr(user, "email", None)),
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _new_session(cur, user_id: str) -> str:
+    token = secrets.token_urlsafe(48)
+    cur.execute(
+        "INSERT INTO refresh_sessions (token_hash, user_id, expires_at) VALUES (%s, %s, %s)",
+        (
+            _token_hash(token),
+            user_id,
+            datetime.now(timezone.utc) + timedelta(seconds=REFRESH_COOKIE_MAX_AGE),
+        ),
     )
+    return token
+
+
+def _response(user: AuthUserInfo) -> AuthSessionResponse:
+    expires_at = int(time.time()) + ACCESS_TOKEN_MAX_AGE
+    token = jwt.encode(
+        {
+            "sub": user.id,
+            "email": user.email,
+            "type": "access",
+            "iat": int(time.time()),
+            "exp": expires_at,
+        },
+        _secret(),
+        algorithm=JWT_ALGORITHM,
+    )
+    return AuthSessionResponse(access_token=token, expires_at=expires_at, user=user)
 
 
 @router.post(
-    "/signup",
-    response_model=AuthSessionResponse,
-    responses={
-        202: {
-            "model": AuthSignupPendingResponse,
-            "description": "Email confirmation required. Check your email to confirm your account, then log in.",
-        },
-    },
+    "/signup", response_model=AuthSessionResponse, status_code=status.HTTP_201_CREATED
 )
-def signup(body: AuthSignupRequest, response: Response):
-    """
-    Create a new user account. On success without email confirmation:
-    returns 200 with access_token (refresh_token set as HttpOnly cookie).
-    If email confirmation is required: returns 202 Accepted with a message.
-    """
-    supabase = require_supabase_client()
+def signup(body: AuthSignupRequest, response: Response) -> AuthSessionResponse:
+    email = str(body.email).strip().lower()
     try:
-        sb_response = supabase.auth.sign_up(
-            {"email": body.email, "password": body.password}
-        )
+        with connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id, email",
+                (email, _passwords.hash(body.password)),
+            )
+            row = cur.fetchone()
+            refresh_token = _new_session(cur, str(row["id"]))
+    except DatabaseError:
+        raise
     except Exception as exc:
-        logger.error("Supabase sign_up failed: %s", exc)
-        raise HTTPException(status_code=400, detail="Signup failed")
-    if sb_response.session and sb_response.user:
-        _set_refresh_cookie(response, sb_response.session.refresh_token)
-        return _build_session_response(sb_response)
-    if sb_response.user:
-        pending = AuthSignupPendingResponse(
-            message="Check your email to confirm your account, then log in."
-        )
-        return JSONResponse(status_code=202, content=pending.model_dump())
-    raise HTTPException(status_code=400, detail="Signup failed")
+        if getattr(exc, "sqlstate", None) == "23505":
+            raise HTTPException(
+                status_code=409, detail="An account with this email already exists"
+            ) from exc
+        raise HTTPException(status_code=500, detail="Signup failed") from exc
+    user = AuthUserInfo(id=str(row["id"]), email=row["email"])
+    _set_refresh_cookie(response, refresh_token)
+    return _response(user)
 
 
 @router.post("/login", response_model=AuthSessionResponse)
-def login(body: AuthLoginRequest, response: Response):
-    """
-    Sign in with email and password. Returns access_token in the body;
-    refresh_token is set as an HttpOnly cookie.
-    """
-    supabase = require_supabase_client()
-    try:
-        sb_response = supabase.auth.sign_in_with_password(
-            {"email": body.email, "password": body.password}
+def login(body: AuthLoginRequest, response: Response) -> AuthSessionResponse:
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, email, password_hash FROM users WHERE email = %s",
+            (str(body.email).strip().lower(),),
         )
-    except Exception as exc:
-        logger.warning("Supabase sign_in_with_password failed: %s", exc)
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    if not sb_response.session or not sb_response.user:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    _set_refresh_cookie(response, sb_response.session.refresh_token)
-    return _build_session_response(sb_response)
+        row = cur.fetchone()
+        try:
+            if not row:
+                raise VerifyMismatchError()
+            _passwords.verify(row["password_hash"], body.password)
+        except VerifyMismatchError as exc:
+            raise HTTPException(
+                status_code=401, detail="Invalid email or password"
+            ) from exc
+        refresh_token = _new_session(cur, str(row["id"]))
+    user = AuthUserInfo(id=str(row["id"]), email=row["email"])
+    _set_refresh_cookie(response, refresh_token)
+    return _response(user)
 
 
 @router.post("/refresh", response_model=AuthSessionResponse)
-def refresh(request: Request, response: Response):
-    """
-    Exchange the refresh_token cookie for a new access_token.
-    Also rotates the refresh_token cookie.
-    """
+def refresh(request: Request, response: Response) -> AuthSessionResponse:
     token = request.cookies.get(REFRESH_COOKIE_NAME)
     if not token:
         raise HTTPException(status_code=401, detail="No refresh token")
-    supabase = require_supabase_client()
-    try:
-        sb_response = supabase.auth.refresh_session(token)
-    except Exception as exc:
-        logger.warning("Supabase refresh_session failed: %s", exc)
-        _clear_refresh_cookie(response)
-        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
-    if not sb_response.session or not sb_response.user:
-        _clear_refresh_cookie(response)
-        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
-    _set_refresh_cookie(response, sb_response.session.refresh_token)
-    return _build_session_response(sb_response)
+    with connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM refresh_sessions s USING users u WHERE s.token_hash = %s AND s.user_id = u.id AND s.expires_at > now() RETURNING u.id, u.email",
+            (_token_hash(token),),
+        )
+        row = cur.fetchone()
+        if not row:
+            _clear_refresh_cookie(response)
+            raise HTTPException(
+                status_code=401, detail="Invalid or expired refresh token"
+            )
+        refresh_token = _new_session(cur, str(row["id"]))
+    user = AuthUserInfo(id=str(row["id"]), email=row["email"])
+    _set_refresh_cookie(response, refresh_token)
+    return _response(user)
 
 
 @router.post("/logout")
@@ -155,25 +166,17 @@ def logout(
     response: Response,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ):
-    """
-    Revoke the current session in Supabase, clear the refresh_token cookie,
-    and instruct the client to discard the in-memory access token.
-    """
-    if credentials:
-        supabase = get_supabase_client()
-        if supabase:
-            try:
-                supabase.auth.admin.sign_out(credentials.credentials)
-            except Exception as exc:
-                logger.warning("Supabase sign-out failed: %s", exc)
+    token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if token:
+        with connection() as conn, conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM refresh_sessions WHERE token_hash = %s",
+                (_token_hash(token),),
+            )
     _clear_refresh_cookie(response)
     return {"message": "Logged out"}
 
 
 @router.get("/session", response_model=AuthSessionUserResponse)
 def get_session(user: AuthUserInfo = Depends(get_current_user)):
-    """
-    Return the current user if the Bearer token is valid.
-    Requires Authorization: Bearer <access_token>.
-    """
     return AuthSessionUserResponse(user=user)

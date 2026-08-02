@@ -12,7 +12,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.core.auth_deps import get_current_user
-from backend.core.supabase_client import get_service_postgrest
+from backend.core.database import get_database
 from backend.models.auth_models import AuthUserInfo
 from backend.models.strategy_models import (
     StrategyCreateRequest,
@@ -45,7 +45,7 @@ def _row_to_info(row: dict) -> StrategyInfo:
 def list_strategies(
     user: AuthUserInfo = Depends(get_current_user),
 ) -> StrategyListResponse:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_(_TABLE)
@@ -64,7 +64,7 @@ def create_strategy(
     body: StrategyCreateRequest,
     user: AuthUserInfo = Depends(get_current_user),
 ) -> StrategyInfo:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_(_TABLE)
@@ -93,7 +93,7 @@ def get_strategy(
     strategy_id: str,
     user: AuthUserInfo = Depends(get_current_user),
 ) -> StrategyInfo:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_(_TABLE)
@@ -131,7 +131,7 @@ def update_strategy(
             detail="At least one of 'name' or 'code' must be provided.",
         )
 
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_(_TABLE)
@@ -156,7 +156,7 @@ def delete_strategy(
     strategy_id: str,
     user: AuthUserInfo = Depends(get_current_user),
 ) -> None:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_(_TABLE)

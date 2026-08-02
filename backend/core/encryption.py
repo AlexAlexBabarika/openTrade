@@ -1,5 +1,5 @@
 """
-AES-256-GCM encryption for API keys stored in Supabase.
+AES-256-GCM encryption for API keys stored in PostgreSQL.
 
 The 32-byte key is read from the API_KEYS_ENCRYPTION_KEY env var (hex-encoded).
 Generate one with: python -c "import secrets; print(secrets.token_hex(32))"

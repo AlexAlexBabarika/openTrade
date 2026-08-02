@@ -27,7 +27,7 @@ A fully functional trading charter web-app created for financial instrument anal
 
   ├── WebSocket for direct streaming
 
-  ├── Authentication via Supabase
+  ├── Local email/password authentication with rotating sessions
 
   ├── API key encryption
 
@@ -67,11 +67,11 @@ A fully functional trading charter web-app created for financial instrument anal
 
       └── chart.ts — chart configuration
 
-### **Database** (Supabase/PostgreSQL)
+### **Database** (PostgreSQL 16)
 
   Tables:
 
-  ├── auth.users — built-in Supabase authentication
+  ├── users and refresh_sessions — local authentication
 
   ├── profiles — user profiles (auto-created)
 
@@ -85,9 +85,9 @@ A fully functional trading charter web-app created for financial instrument anal
 
 ## Requirements for full functionality
 
-1. *Supabase account*
+1. *Docker with PostgreSQL*
 
-   - database, auth and key encryption.
+   - Included in `docker-compose.yml`; no hosted account is required.
 
 2. *API keys*
 
@@ -100,7 +100,7 @@ A fully functional trading charter web-app created for financial instrument anal
 
 1. **Redis/External Cache** — Replace in-memory cache with Redis for multi-worker support. Current cache is per-process; if running multiple uvicorn workers, each has its own cache causing redundant API calls and inconsistent data.
 
-2. **Persistent Data Storage** — Store historical OHLCV data in Supabase/PostgreSQL with TimescaleDB extension. Currently all market data is fetched fresh every time and only cached in memory (lost on restart).
+2. **Persistent Data Storage** — Store historical OHLCV data in PostgreSQL with TimescaleDB. Currently all market data is fetched fresh every time and only cached in memory (lost on restart).
 
 3. **Distributed Rate Limiting** — Current rate limiter is per-process. Use Redis-based sliding window (or token bucket) for accurate rate limiting across multiple workers/containers.
 
@@ -112,7 +112,7 @@ A fully functional trading charter web-app created for financial instrument anal
 
 7. **Structured Logging** — Add JSON structured logging with correlation IDs for request tracing.
 
-8. **Health Check Enhancement** — The `/health` endpoint should check Supabase connectivity, not just return `{"status": "ok"}`.
+8. **Health Check Enhancement** — The `/health` endpoint should report PostgreSQL connectivity, not just return `{"status": "ok"}`.
 
 ### Security
 
@@ -136,13 +136,13 @@ A fully functional trading charter web-app created for financial instrument anal
 
 17. **Drawing Tools** — Add trendlines, horizontal lines, Fibonacci retracement, support/resistance zones on the chart using lightweight-charts markers and lines.
 
-18. **Watchlists** — Let users save favorite symbols as watchlists, persisted in Supabase. The seed data already has 50 symbols ready to use.
+18. **Watchlists** — Let users save favorite symbols as watchlists in PostgreSQL.
 
 19. **Symbol Search / Autocomplete** — The `symbol` table from seed.sql isn't currently used. Build a search endpoint that queries it for symbol lookup with autocomplete.
 
 20. **Asset Type Filtering** — Use the `asset_type` enum to let users filter symbols by category (stocks, crypto, forex, etc.).
 
-21. **Chart Annotations / Notes** — Allow users to add text annotations at specific timestamps, persisted in Supabase.
+21. **Chart Annotations / Notes** — Allow users to add text annotations at specific timestamps in PostgreSQL.
 
 22. **Price Alerts** — Let users set price alerts (above/below threshold). Could use WebSocket or push notifications.
 
@@ -166,7 +166,7 @@ A fully functional trading charter web-app created for financial instrument anal
 
 31. **Toast Notifications** — Replace the full-screen error modal with less intrusive toast notifications for non-critical errors. Keep the modal for critical/blocking errors only.
 
-32. **Persistent Settings** — Save user preferences (default symbol, period, interval, provider, autoRefresh) to localStorage or Supabase profiles.
+32. **Persistent Settings** — Save user preferences (default symbol, period, interval, provider, autoRefresh) to localStorage or user profiles.
 
 33. **Chart Timezone Selection** — Everything is UTC. Add option to display in user's local timezone.
 
@@ -196,11 +196,11 @@ A fully functional trading charter web-app created for financial instrument anal
 
 40. **Monitoring / Observability** — Add Prometheus metrics (request latency, cache hit rate, provider error rate) and Grafana dashboards.
 
-41. **Docker Compose Enhancement** — Add Redis, Supabase, and optional PgAdmin services to docker-compose for full local development.
+41. **Docker Compose Enhancement** — Add Redis and optional PgAdmin services for full local development.
 
 42. **CD Pipeline** — Add automated deployment workflow (e.g., to Railway, Fly.io, or AWS).
 
-43. **Database Migrations CI** — Run Supabase migrations in CI to catch schema issues early.
+43. **Database Migrations CI** — Apply the PostgreSQL schema in CI to catch migration issues early.
 
 ### Performance
 

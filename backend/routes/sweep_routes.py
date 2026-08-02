@@ -15,7 +15,7 @@ import logging
 import polars as pl
 import requests
 from fastapi import APIRouter, HTTPException, status
-from postgrest.exceptions import APIError
+from backend.core.database import DatabaseError
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
@@ -96,7 +96,7 @@ async def _load_frame(body: _DataRequest) -> tuple[pl.DataFrame, str]:
             )
         except ValueError as e:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
-        except (requests.HTTPError, APIError, RuntimeError) as e:
+        except (requests.HTTPError, DatabaseError, RuntimeError) as e:
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(e)) from e
         candles = cap_candles(candles)
         cache.set_cached(

@@ -5,7 +5,7 @@ Usage:
     python -m backend.scripts.seed_symbols
     python -m backend.scripts.seed_symbols --providers twelvedata,binance
 
-Requires ``SUPABASE_URL`` + ``SUPABASE_SERVICE_ROLE_KEY`` in the environment.
+Requires ``DATABASE_URL`` in the environment.
 Twelve Data additionally requires ``TWELVEDATA_API_KEY``.
 
 Idempotent: upserts by ``symbol``, setting the per-provider boolean to ``true``
@@ -22,10 +22,7 @@ import sys
 from pathlib import Path
 from typing import Callable
 
-from backend.core.supabase_client import (
-    get_service_postgrest,
-    is_supabase_configured,
-)
+from backend.core.database import get_database
 from backend.market.data_sources.binance_loader import BinanceProvider
 from backend.market.data_sources.twelvedataprovider import (
     TwelveDataProvider,
@@ -58,8 +55,7 @@ _load_dotenv()
 
 logger = logging.getLogger("seed_symbols")
 
-# Upsert in chunks — PostgREST tolerates large payloads, but smaller batches
-# give clearer per-batch progress on ~100k-row Twelve Data dumps.
+# Upsert in chunks to give clear progress on large provider dumps.
 _BATCH_SIZE = 2000
 
 ProviderLoader = Callable[[], list[SymbolRecord]]
@@ -96,7 +92,7 @@ def _row(record: SymbolRecord, provider: str, exchange_id: int | None) -> dict:
 
 
 def _upsert_batch(rows: list[dict]) -> int:
-    db = get_service_postgrest()
+    db = get_database()
     # ``on_conflict=symbol`` + default Prefer: resolution=merge-duplicates means
     # unspecified columns (other provider flags) are preserved on conflict.
     resp = db.from_("symbols").upsert(rows, on_conflict="symbol").execute()
@@ -111,7 +107,7 @@ def _resolve_exchanges(codes: set[str]) -> dict[str, int]:
     """
     if not codes:
         return {}
-    db = get_service_postgrest()
+    db = get_database()
 
     existing = db.from_("exchanges").select("id,code").execute()
     mapping = {row["code"]: row["id"] for row in (existing.data or [])}
@@ -128,7 +124,7 @@ def _resolve_exchanges(codes: set[str]) -> dict[str, int]:
         )
         for row in inserted.data or []:
             mapping[row["code"]] = row["id"]
-        # Upsert may not return rows for unchanged conflicts on older PostgREST;
+        # A do-nothing conflict does not return a row;
         # re-read any still-missing codes to be safe.
         still_missing = [c for c in missing if c not in mapping]
         if still_missing:
@@ -198,12 +194,6 @@ def main(argv: list[str] | None = None) -> int:
         help=f"Comma-separated subset of {sorted(_LOADERS.keys())}",
     )
     args = parser.parse_args(argv)
-
-    if not is_supabase_configured():
-        logger.error(
-            "Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
-        )
-        return 2
 
     providers = [p.strip() for p in args.providers.split(",") if p.strip()]
     unknown = [p for p in providers if p not in _LOADERS]

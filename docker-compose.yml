@@ -1,12 +1,34 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-opentrade}
+      POSTGRES_USER: ${POSTGRES_USER:-opentrade}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opentrade}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   opentrade:
     build: .
     ports:
       - "8000:8000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       - PYTHONUNBUFFERED=1
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opentrade}:${POSTGRES_PASSWORD:-opentrade}@postgres:5432/${POSTGRES_DB:-opentrade}
+      - JWT_SECRET=${JWT_SECRET}
       - API_KEYS_ENCRYPTION_KEY=${API_KEYS_ENCRYPTION_KEY}
+
+volumes:
+  postgres_data:

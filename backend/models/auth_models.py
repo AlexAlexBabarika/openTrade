@@ -49,7 +49,7 @@ class AuthSessionUserResponse(BaseModel):
 
 
 class UserProfile(BaseModel):
-    """User profile stored in Supabase public.profiles."""
+    """User profile stored in PostgreSQL."""
 
     id: str
     email: str | None = None

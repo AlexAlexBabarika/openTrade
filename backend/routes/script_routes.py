@@ -8,13 +8,12 @@ from datetime import timezone
 import polars as pl
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from postgrest.exceptions import APIError
+from backend.core.database import DatabaseError, get_database
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from backend.core.auth_deps import get_current_user, optional_current_user
 from backend.core.rate_limit import allow, client_key, retry_after_seconds
-from backend.core.supabase_client import get_service_postgrest
 from backend.market import cache
 from backend.market.ohlcv_limits import cap_candles
 from backend.market.shared_config import validate_interval, validate_period
@@ -92,7 +91,7 @@ def _row_to_info(row: dict) -> ScriptInfo:
 
 
 def _load_script_code(user_id: str, script_id: str) -> str:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("user_scripts")
@@ -175,7 +174,7 @@ async def execute(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
             ) from e
-        except (requests.HTTPError, APIError, RuntimeError) as e:
+        except (requests.HTTPError, DatabaseError, RuntimeError) as e:
             logger.warning("Script: provider error: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)
@@ -215,7 +214,7 @@ async def execute(
 def list_scripts(
     user: AuthUserInfo = Depends(get_current_user),
 ) -> ScriptListResponse:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("user_scripts")
@@ -234,7 +233,7 @@ def create_script(
     body: ScriptCreateRequest,
     user: AuthUserInfo = Depends(get_current_user),
 ) -> ScriptInfo:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("user_scripts")
@@ -263,7 +262,7 @@ def get_script(
     script_id: str,
     user: AuthUserInfo = Depends(get_current_user),
 ) -> ScriptInfo:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("user_scripts")
@@ -301,7 +300,7 @@ def update_script(
             detail="At least one of 'name' or 'code' must be provided.",
         )
 
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("user_scripts")
@@ -326,7 +325,7 @@ def delete_script(
     script_id: str,
     user: AuthUserInfo = Depends(get_current_user),
 ) -> None:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("user_scripts")

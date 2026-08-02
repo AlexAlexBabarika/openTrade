@@ -1,11 +1,11 @@
 from backend.core.db_error_handler import DBErrorHandler
 from fastapi import HTTPException, status
-from postgrest.exceptions import APIError
+from backend.core.database import DatabaseError
 
 
 class ScriptDBErrorHandler(DBErrorHandler):
     def handle_db_error(self, exc: Exception, operation: str) -> HTTPException:
-        if isinstance(exc, APIError):
+        if isinstance(exc, DatabaseError):
             code = getattr(exc, "code", None) or "unknown"
             msg = getattr(exc, "message", None) or str(exc)
             self.logger.exception(

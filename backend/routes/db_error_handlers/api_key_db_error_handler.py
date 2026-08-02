@@ -1,15 +1,15 @@
 from backend.core.db_error_handler import DBErrorHandler
 from fastapi import HTTPException, status
-from postgrest.exceptions import APIError
+from backend.core.database import DatabaseError
 
 
 class ApiKeyDBErrorHandler(DBErrorHandler):
     def handle_db_error(self, exc: Exception, operation: str) -> HTTPException:
         """
-        Map PostgREST/encryption errors to HTTPException with actionable detail.
+        Map database/encryption errors to HTTPException with actionable detail.
         Logs full error for debugging.
         """
-        if isinstance(exc, APIError):
+        if isinstance(exc, DatabaseError):
             code = getattr(exc, "code", None) or "unknown"
             msg = getattr(exc, "message", None) or str(exc)
             hint = getattr(exc, "hint", None)
@@ -22,7 +22,7 @@ class ApiKeyDBErrorHandler(DBErrorHandler):
                 hint,
                 details,
             )
-            # Map known Postgres/PostgREST codes to user-facing messages (include code for debugging)
+            # Map known PostgreSQL codes to user-facing messages.
             code_suffix = f" [code {code}]" if code else ""
             if code == "42501":
                 detail = f"Permission denied: {msg}. Ensure your session is valid and try again.{code_suffix}"

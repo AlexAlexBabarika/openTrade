@@ -1,6 +1,6 @@
 """CRUD round-trip tests for /strategies (saved backtest strategies).
 
-Reuses the in-memory postgrest shim from test_script_crud; only the route
+Reuses the in-memory database shim from test_script_crud; only the route
 module and table differ.
 """
 
@@ -25,7 +25,7 @@ CODE = "params = {}\n\ndef on_bar(ctx):\n    pass\n"
 @pytest.fixture
 def fake_db(monkeypatch):
     db = _FakeDB()
-    monkeypatch.setattr(strategy_routes, "get_service_postgrest", lambda: db)
+    monkeypatch.setattr(strategy_routes, "get_database", lambda: db)
     return db
 
 

@@ -7,7 +7,6 @@ files by mounting it on "/" — see the startup event below.
 """
 
 import logging
-import os
 import tempfile
 from pathlib import Path
 
@@ -45,7 +44,7 @@ from backend.streaming.protocol import (
     UnsubscribeMessage,
     UnsubscribeQuoteMessage,
 )
-from backend.core.supabase_client import get_supabase_client, is_supabase_configured
+from backend.core.database import check_database
 from backend.routes.auth_routes import router as auth_router
 from backend.routes.user_routes import router as user_router
 from backend.routes.ticker_workspace_routes import router as ticker_workspace_router
@@ -75,22 +74,8 @@ _WS_PROVIDERS = frozenset({"yfinance", "binance", "twelvedata", "csv"})
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if is_supabase_configured():
-        client = get_supabase_client()
-        if client:
-            logger.info("Supabase client initialized successfully.")
-        else:
-            logger.warning("Supabase credentials set but client creation failed.")
-    else:
-        if os.environ.get("SUPABASE_REQUIRED") == "1":
-            raise RuntimeError(
-                "SUPABASE_REQUIRED=1 but Supabase is not configured. "
-                "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
-            )
-        logger.warning(
-            "Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY "
-            "for auth and user data. Auth features will be unavailable."
-        )
+    await run_in_threadpool(check_database)
+    logger.info("PostgreSQL connection verified.")
 
     hub = get_hub()
     await hub.start()

@@ -1,6 +1,6 @@
 """
 GET/PUT for per-user ticker groups and sidebar filters (public.ticker_workspaces).
-User scoping is enforced in Python; PostgREST uses the service role client.
+User scoping is enforced in Python.
 """
 
 import logging
@@ -9,7 +9,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 
 from backend.core.auth_deps import get_current_user
-from backend.core.supabase_client import get_service_postgrest
+from backend.core.database import get_database
 from backend.models.auth_models import AuthUserInfo
 from backend.models.ticker_workspace_models import (
     TickerWorkspaceBody,
@@ -40,7 +40,7 @@ def _parse_workspace_payload(raw: object) -> TickerWorkspaceBody | None:
 def get_ticker_workspace(
     user: AuthUserInfo = Depends(get_current_user),
 ):
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("ticker_workspaces")
@@ -91,7 +91,7 @@ def put_ticker_workspace(
     body: TickerWorkspaceBody,
     user: AuthUserInfo = Depends(get_current_user),
 ):
-    db = get_service_postgrest()
+    db = get_database()
     payload = body.model_dump(mode="json", by_alias=True)
     try:
         (
