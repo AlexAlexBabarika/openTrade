@@ -14,27 +14,26 @@ Definitions used below:
 
 ## P0 — prove the one-command installation
 
-- [ ] Make `docker compose up -d` work when no `.env` file exists. At present,
-  `JWT_SECRET` and `API_KEYS_ENCRYPTION_KEY` resolve to empty values, so auth and
-  saved provider keys are not functional out of the box.
-- [ ] Generate and persist application secrets automatically on first boot, or
+- [x] Make `docker compose up -d` work when no `.env` file exists; auth and saved
+  provider keys must be functional out of the box.
+- [x] Generate and persist application secrets automatically on first boot, or
   provide another secure zero-input mechanism. Do not ship a shared hard-coded
   secret. Preserve the encryption key across upgrades so stored API keys remain
   decryptable.
-- [ ] Pass every supported runtime setting through Compose. In particular,
+- [x] Pass every supported runtime setting through Compose, including
   `COOKIE_SECURE`, `MAX_MARKET_OHLCV_CANDLES`, and the documented rate-limit
-  settings currently appear in `env.example` but are not passed to the app.
-- [ ] Do not publish PostgreSQL port `5432` in the default Compose file. Keep it
+  settings.
+- [x] Do not publish PostgreSQL port `5432` in the default Compose file. Keep it
   on the internal Compose network; provide a development override if direct DB
   access is useful.
-- [ ] Add a health check for the `opentrade` service and make `/health` verify a
+- [x] Add a health check for the `opentrade` service and make `/health` verify a
   database query. The container and database should both become `healthy`.
-- [ ] Add a restart policy to the application service and verify recovery after
+- [x] Add a restart policy to the application service and verify recovery after
   restarting Docker and after PostgreSQL temporarily becomes unavailable.
-- [ ] Add a `.dockerignore` that excludes `.git`, `.env`, virtual environments,
+- [x] Add a `.dockerignore` that excludes `.git`, `.env`, virtual environments,
   `node_modules`, caches, logs, local datastore contents, editor metadata, and
   test artifacts from the build context.
-- [ ] Pin base images to maintained patch versions or digests and constrain
+- [x] Pin base images to maintained patch versions or digests and constrain
   Python dependencies with a reproducible lock/constraints file. Document the
   update process.
 - [ ] Test the image and Compose stack on both `linux/amd64` and `linux/arm64`
@@ -43,7 +42,7 @@ Definitions used below:
   clone/download, `docker compose up -d`, wait for health, open the app, load a
   chart using a provider that needs no API key, create an account, sign out and
   in, restart the stack, and confirm data/account persistence.
-- [ ] Test the destructive path and document it explicitly: stopping containers
+- [x] Test the destructive path and document it explicitly: stopping containers
   must preserve data; deleting the named volume must be clearly labeled as the
   action that permanently resets OpenTrade.
 

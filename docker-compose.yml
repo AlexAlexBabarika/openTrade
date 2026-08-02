@@ -1,9 +1,7 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine3.23
     restart: unless-stopped
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-opentrade}
       POSTGRES_USER: ${POSTGRES_USER:-opentrade}
@@ -19,16 +17,31 @@ services:
 
   opentrade:
     build: .
+    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${OPENTRADE_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-opentrade}:${POSTGRES_PASSWORD:-opentrade}@postgres:5432/${POSTGRES_DB:-opentrade}
-      - JWT_SECRET=${JWT_SECRET}
-      - API_KEYS_ENCRYPTION_KEY=${API_KEYS_ENCRYPTION_KEY}
+      PYTHONUNBUFFERED: "1"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-opentrade}:${POSTGRES_PASSWORD:-opentrade}@postgres:5432/${POSTGRES_DB:-opentrade}
+      OPENTRADE_SECRETS_FILE: /app/data/secrets.json
+      JWT_SECRET: ${JWT_SECRET:-}
+      API_KEYS_ENCRYPTION_KEY: ${API_KEYS_ENCRYPTION_KEY:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      MAX_MARKET_OHLCV_CANDLES: ${MAX_MARKET_OHLCV_CANDLES:-8000}
+      MARKET_RATE_LIMIT_MAX: ${MARKET_RATE_LIMIT_MAX:-120}
+      MARKET_RATE_LIMIT_WINDOW_SEC: ${MARKET_RATE_LIMIT_WINDOW_SEC:-60}
+    volumes:
+      - app_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   postgres_data:
+  app_data:

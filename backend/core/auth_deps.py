@@ -1,25 +1,18 @@
 """FastAPI dependencies for locally issued access tokens."""
 
-import os
-
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.models.auth_models import AuthUserInfo
+from backend.core.runtime_secrets import runtime_secret
 
 _bearer_scheme = HTTPBearer(auto_error=False)
-JWT_SECRET = os.environ.get("JWT_SECRET", "").strip()
 JWT_ALGORITHM = "HS256"
 
 
 def _secret() -> str:
-    if not JWT_SECRET:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Auth is not configured on this server. Set JWT_SECRET.",
-        )
-    return JWT_SECRET
+    return runtime_secret("JWT_SECRET")
 
 
 def _user_from_token(token: str) -> AuthUserInfo:

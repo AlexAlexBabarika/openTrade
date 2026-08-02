@@ -45,6 +45,7 @@ from backend.streaming.protocol import (
     UnsubscribeQuoteMessage,
 )
 from backend.core.database import check_database
+from backend.core.runtime_secrets import load_runtime_secrets
 from backend.routes.auth_routes import router as auth_router
 from backend.routes.user_routes import router as user_router
 from backend.routes.ticker_workspace_routes import router as ticker_workspace_router
@@ -74,6 +75,7 @@ _WS_PROVIDERS = frozenset({"yfinance", "binance", "twelvedata", "csv"})
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    load_runtime_secrets()
     await run_in_threadpool(check_database)
     logger.info("PostgreSQL connection verified.")
 
@@ -122,6 +124,7 @@ app.include_router(strategy_router)
 
 @app.get("/health")
 async def health() -> dict[str, str]:
+    await run_in_threadpool(check_database)
     return {"status": "ok"}
 
 

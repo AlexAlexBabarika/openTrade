@@ -31,6 +31,34 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  compose-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose --env-file /dev/null up --build --wait --wait-timeout 180
+      - name: Verify UI, auth, persistence, and restart
+        run: |
+          curl --fail --retry 5 http://127.0.0.1:8000/
+          curl --fail --cookie-jar /tmp/opentrade-cookies \
+            --header 'Content-Type: application/json' \
+            --data '{"email":"compose-smoke@example.com","password":"smoke-test-password"}' \
+            http://127.0.0.1:8000/auth/signup
+          curl --fail --retry 3 --retry-all-errors \
+            'http://127.0.0.1:8000/data/market?symbol=AAPL&provider=yfinance&period=5d&interval=1d'
+          docker compose restart opentrade
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/health; then break; fi
+            sleep 2
+          done
+          curl --fail --cookie /tmp/opentrade-cookies \
+            --request POST http://127.0.0.1:8000/auth/refresh
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down --volumes
