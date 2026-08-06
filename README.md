@@ -1,236 +1,202 @@
-# openTrade
+# OpenTrade
 
-A fully functional trading charter web-app created for financial instrument analysis, including: shares, crypto, ETFs, etc. using multiple data-sources.
+OpenTrade is a self-hosted research workspace for charting market data, exploring indicators and analytics, and running reproducible backtests and portfolio simulations.
+
+![OpenTrade dashboard](docs/images/opentrade-dashboard.png)
+
+> [!IMPORTANT]
+> **Project status: pre-release alpha.** OpenTrade is under active development. Expect breaking changes, incomplete workflows, and no guaranteed upgrade path until the first tagged release. The `amd64` and `arm64` acceptance tests are still release blockers.
+
+Use OpenTrade to:
+
+- chart OHLCV data from Yahoo Finance, Binance, Twelve Data, or your own CSV files;
+- compare instruments and explore technical indicators, risk, and distribution analytics;
+- write and run research scripts and backtests; and
+- save accounts, provider credentials, strategies, and run history locally.
 
 > [!WARNING]
-> OpenTrade is educational and research software, not investment advice or a
-> brokerage. Backtests and simulated results do not guarantee future
-> performance. Market data may be delayed, incomplete, or inaccurate. Verify
-> important information with an authoritative source before making financial
-> decisions.
+> OpenTrade is educational and research software, not investment advice or a brokerage. It does not place trades. Backtests and simulated results do not guarantee future performance. Market data may be delayed, incomplete, or inaccurate; verify important information with an authoritative source before making financial decisions.
 
-## Core functionality
+## Quick start
 
-   1. Load OHLCV data (Open, High, Low, Close, Volume) from different sources:
-      - YFinance — Yahoo Finance (stocks, ETFs, cryptocurrencies)
-      - Binance — cryptocurrency pairs from Binance exchange
-      - Twelve Data API — professional financial data
-      - CSV files — upload custom data
-   2. Display interactive charts:
-      - Candlestick (Japanese candles)
-      - Line charts
-      - Volume histograms
-      - Legend with price, date, and volume
+1. Install [Docker Desktop](https://docs.docker.com/desktop/) (or Docker Engine with the Compose plugin on Linux).
+2. [Download this repository](https://github.com/AlexAlexBabarika/openTrade/archive/refs/heads/main.zip) and extract it, or clone it:
 
----
+   ```bash
+   git clone https://github.com/AlexAlexBabarika/openTrade.git
+   cd openTrade
+   ```
 
-## Architecture and Technologies
+3. Start OpenTrade from the project directory:
 
-### **Backend** (Python/FastAPI)
+   ```bash
+   docker compose up -d
+   ```
 
-  FastAPI server (asynchronous)
+4. Wait until both services are healthy, then open [http://localhost:8000](http://localhost:8000):
 
-  ├── REST API for data loading
+   ```bash
+   docker compose ps
+   ```
 
-  ├── WebSocket for direct streaming
+No `.env` file, provider key, or PostgreSQL administration is needed for the default experience. OpenTrade generates unique application secrets on first boot and keeps them across restarts.
 
-  ├── Local email/password authentication with rotating sessions
+## What you need
 
-  ├── API key encryption
+| Requirement | Support |
+| --- | --- |
+| Operating system | Current macOS or Windows with Docker Desktop; Linux with Docker Engine and Compose v2 |
+| CPU architecture | `linux/amd64` and `linux/arm64` are intended targets; formal clean-machine validation is still pending |
+| Memory | 4 GB available to Docker recommended; a formal minimum has not been benchmarked |
+| Disk | 2 GB free recommended for images and initial data, plus space for uploaded and generated datasets |
+| Browser | A current desktop browser |
+| Network | Required to download/build the containers and for Yahoo Finance, Binance, and Twelve Data; not required after startup when working only with local CSV data |
 
-  ├── In-memory data caching
+Docker support ultimately depends on the [platforms supported by Docker](https://docs.docker.com/desktop/setup/install/). OpenTrade currently binds to `127.0.0.1`, so other devices on your network cannot connect by default.
 
-  └── Data providers:
+## Data providers
 
-      ├── yfinance (Python library)
+| Provider | Credentials | Internet | Notes |
+| --- | --- | --- | --- |
+| Yahoo Finance (through `yfinance`) | None | Required | Stocks, ETFs, currencies, and crypto. This is an unofficial integration intended for research/personal use; review [Yahoo's terms](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html). Yahoo does not publish a stable API quota, so requests may be throttled. |
+| Binance | None for public market data; a user-owned key is optional | Required | Crypto pairs and live public streams. Limits are IP- and request-weight-based; see the [official API limits](https://developers.binance.com/docs/binance-spot-api-docs/rest-api/limits) and [terms](https://www.binance.com/en/terms). Availability varies by jurisdiction. |
+| Twelve Data | User-owned API key and an OpenTrade account | Required | Add the key inside OpenTrade's API key settings. Allowances depend on the subscription; see [pricing/rate limits](https://twelvedata.com/pricing) and [terms](https://twelvedata.com/terms). |
+| CSV | None | No | The file is uploaded to your local OpenTrade server. CSV uploads default to a 10 MiB maximum. |
 
-      ├── python-binance (Binance API client)
+OpenTrade also enforces its own shared market-data limit of 120 requests per 60 seconds by default. Provider limits still apply independently.
 
-      ├── requests (HTTP for Twelve Data)
+## Everyday operations
 
-      └── pandas (CSV parsing)
+Run these commands from the repository directory.
 
-### **Frontend** (Svelte 5 / TypeScript)
+### Start, stop, and inspect
 
-  Svelte 5 components (SPA)
+```bash
+docker compose up -d
+docker compose stop
+docker compose start
+docker compose ps
+docker compose logs -f opentrade
+```
 
-  ├── App.svelte — main container
+`stop`, `start`, and `docker compose down` preserve accounts, saved keys, generated secrets, and database data in Docker volumes. Press `Ctrl+C` to stop following logs.
 
-  ├── Header.svelte — control panel
+### Update
 
-  ├── Chart.svelte — interactive chart (lightweight-charts)
+The project is currently pre-release and does not yet guarantee database migrations or rollback compatibility. Back up first, review the [release notes](https://github.com/AlexAlexBabarika/openTrade/releases), then rebuild from the checked-out revision:
 
-  ├── AuthDialog.svelte — login/signup
+```bash
+git pull --ff-only
+docker compose up -d --build
+```
 
-  ├── ApiKeysModal.svelte — key management
+### Back up
 
-  └── lib/ — utilities
+This creates a PostgreSQL dump and copies the application data (including the encryption secrets needed by saved provider keys) into `backup/`:
 
-      ├── api.ts — HTTP client
+```bash
+mkdir -p backup/app-data
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' > backup/opentrade.sql
+docker compose cp opentrade:/app/data/. backup/app-data
+```
 
-      ├── auth.ts — authentication state management
+Protect the backup: it contains account data and the key material that protects saved provider credentials.
 
-      ├── ws.ts — WebSocket client with auto-reconnect
+### Restore
 
-      └── chart.ts — chart configuration
+Restore only into a compatible OpenTrade revision. These commands replace the current database contents with the dump:
 
-### **Database** (PostgreSQL 16)
+```bash
+docker compose up -d
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backup/opentrade.sql
+docker compose cp backup/app-data/. opentrade:/app/data
+docker compose restart opentrade
+```
 
-  Tables:
+### Reset all data
 
-  ├── users and refresh_sessions — local authentication
+> [!CAUTION]
+> This permanently deletes all OpenTrade accounts, saved API keys, generated secrets, PostgreSQL data, and application data. It cannot be undone without a backup.
 
-  ├── profiles — user profiles (auto-created)
+```bash
+docker compose down --volumes
+```
 
-  ├── api_keys — encrypted API keys
+### Uninstall
 
-  ├── api_key_audit_log — operation history with keys
+To remove the containers and locally built image while preserving data:
 
-  ├── symbol — 50 samples of stocks, crypto, forex
+```bash
+docker compose down --rmi local
+```
 
-  └── asset_type — enum of asset types
+To uninstall OpenTrade **and permanently delete its data**:
 
-## Requirements for full functionality
+```bash
+docker compose down --volumes --rmi local
+```
 
-1. *Docker with PostgreSQL*
+You can then delete the downloaded repository directory.
 
-   - Included in `docker-compose.yml`; no hosted account is required.
+## Configuration
 
-2. *API keys*
+Configuration is optional for local use. Copy `env.example` to `.env` only when overriding a default. Byte values are positive integers; comma-separated lists must not contain `*`.
 
-   - Twelve data for professional data.
-   - Binance for crypto.
+| Variable | Purpose | Default | Allowed format | Secret? | Required when |
+| --- | --- | --- | --- | --- | --- |
+| `OPENTRADE_PORT` | Local browser port | `8000` | TCP port | No | Only to change the port |
+| `POSTGRES_DB` | Database name | `opentrade` | PostgreSQL identifier | No | Never |
+| `POSTGRES_USER` | Database user | `opentrade` | PostgreSQL identifier | No | Never |
+| `POSTGRES_PASSWORD` | Database password | `opentrade` | String | Yes | Only when overriding the local default |
+| `JWT_SECRET` | Signs authentication tokens | Generated and persisted | At least 32 characters | Yes | Only for externally managed secrets |
+| `API_KEYS_ENCRYPTION_KEY` | Encrypts saved provider keys | Generated and persisted | Exactly 64 hexadecimal characters | Yes | Only for externally managed secrets; retain across restore/upgrade |
+| `COOKIE_SECURE` | Adds the cookie `Secure` flag | `0` | `0` or `1` | No | Set to `1` for HTTPS/internet exposure |
+| `COOKIE_SAMESITE` | Refresh-cookie cross-site policy | `lax` | `lax`, `strict`, or `none` | No | `none` requires `COOKIE_SECURE=1` |
+| `CORS_ORIGINS` | Permitted separate frontend origins | Empty (same-origin only) | Comma-separated origins | No | Only for a separate frontend |
+| `ALLOWED_HOSTS` | Accepted HTTP hostnames | `localhost,127.0.0.1` | Comma-separated hostnames | No | Add every reverse-proxy/public hostname |
+| `MAX_UPLOAD_BYTES` | Maximum CSV upload | `10485760` | Positive bytes | No | Never |
+| `MAX_REQUEST_BYTES` | Maximum HTTP request body | `12582912` | Positive bytes, at least upload limit | No | Never |
+| `WS_MAX_MESSAGE_BYTES` | Maximum WebSocket message | `65536` | Positive bytes | No | Never |
+| `WS_MAX_CONNECTIONS_PER_IP` | WebSocket connection cap per address | `20` | Positive integer | No | Never |
+| `WS_MAX_MESSAGES_PER_MINUTE` | WebSocket message cap per connection | `120` | Positive integer | No | Never |
+| `WS_MAX_SUBSCRIPTIONS` | Active subscriptions per socket | `20` | Positive integer | No | Never |
+| `MAX_CONCURRENT_SWEEPS` | Concurrent optimization sweeps | `2` | Positive integer | No | Never |
+| `MAX_MARKET_OHLCV_CANDLES` | Maximum candles per market response | `8000` | Integer of at least `100` | No | Never |
+| `MARKET_RATE_LIMIT_MAX` | Market requests allowed per window | `120` | Positive integer | No | Never |
+| `MARKET_RATE_LIMIT_WINDOW_SEC` | Market rate-limit window | `60` | Positive number of seconds | No | Never |
 
-## TODO'S
+`DATABASE_URL` and `OPENTRADE_SECRETS_FILE` are wired internally by Compose and normally should not be overridden. For an internet-facing deployment, use an HTTPS reverse proxy, enable secure cookies, set explicit allowed hosts, and review the [security policy](SECURITY.md).
 
-### Architecture & Infrastructure
+## Data and privacy
 
-1. **Redis/External Cache** — Replace in-memory cache with Redis for multi-worker support. Current cache is per-process; if running multiple uvicorn workers, each has its own cache causing redundant API calls and inconsistent data.
+OpenTrade has no documented telemetry. Local accounts, password hashes, refresh sessions, encrypted provider keys, preferences, and metadata live in the `postgres_data` Docker volume. Generated encryption secrets and application datasets live in `app_data`. Uploaded CSV contents and in-memory market-data caches are not sent to OpenTrade maintainers.
 
-2. **Persistent Data Storage** — Store historical OHLCV data in PostgreSQL with TimescaleDB. Currently all market data is fetched fresh every time and only cached in memory (lost on restart).
+When you request market data, the OpenTrade backend sends the requested symbol, interval, period/time range, and ordinary network metadata such as your public IP address to the selected provider:
 
-3. **Distributed Rate Limiting** — Current rate limiter is per-process. Use Redis-based sliding window (or token bucket) for accurate rate limiting across multiple workers/containers.
+- Yahoo Finance receives Yahoo/yfinance market-data requests.
+- Binance receives public REST or WebSocket market-data requests and, if configured, your Binance API credentials.
+- Twelve Data receives market-data requests and your Twelve Data API key.
+- CSV data stays between your browser and your self-hosted OpenTrade instance unless you explicitly use it in another workflow.
 
-4. **Background Task Queue** — Add Celery/ARQ for long-running data fetches. Currently all provider calls block a thread pool thread; heavy loads could exhaust the pool.
+Each provider handles received data under its own privacy policy and terms. OpenTrade does not submit brokerage orders.
 
-5. **API Versioning** — Add `/api/v1/` prefix for proper versioning. The deprecated `/data/yfinance/{symbol}` endpoint shows versioning is already a concern.
+## Troubleshooting
 
-6. **Environment Configuration** — Use pydantic-settings for validated, typed configuration instead of scattered `os.environ.get()` calls.
+- **The page does not open:** run `docker compose ps`; wait for both services to report `healthy`, then inspect `docker compose logs opentrade postgres`.
+- **Port 8000 is occupied:** set `OPENTRADE_PORT=8001` in `.env`, restart with `docker compose up -d`, and open `http://localhost:8001`.
+- **A provider fails or throttles:** check internet access, symbol/interval support, provider availability, and the provider's rate limit. Twelve Data also requires signing in and saving a valid key.
+- **Saved provider keys no longer decrypt:** restore the matching `app_data` backup or the original `API_KEYS_ENCRYPTION_KEY`. Do not generate a replacement for existing encrypted keys.
+- **The database is unhealthy after an update:** restore a compatible backup. Automatic schema upgrades are not yet supported in this alpha release.
 
-7. **Structured Logging** — Add JSON structured logging with correlation IDs for request tracing.
+For unresolved problems, [open a bug report](https://github.com/AlexAlexBabarika/openTrade/issues/new/choose). Report suspected vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
-8. **Health Check Enhancement** — The `/health` endpoint should report PostgreSQL connectivity, not just return `{"status": "ok"}`.
+## Project links
 
-### Security
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [API documentation](http://localhost:8000/docs) (available while OpenTrade is running)
+- [Releases and changelog](https://github.com/AlexAlexBabarika/openTrade/releases)
+- [Issue tracker and roadmap](https://github.com/AlexAlexBabarika/openTrade/issues)
+- [Apache License 2.0](LICENSE), [NOTICE](NOTICE), and [third-party notices](THIRD_PARTY_NOTICES.md)
 
-9. **CORS Restriction** — `allow_origins=["*"]` is too permissive for production. Should be configurable via env var with specific allowed origins.
-
-10. **WebSocket Authentication** — WebSocket endpoints have no auth. Anyone can connect and replay cached data. Add token-based auth on WS handshake.
-
-11. **CSRF Protection** — The refresh token cookie uses `SameSite=lax` which helps, but explicit CSRF tokens would add defense-in-depth for state-changing operations.
-
-12. **Input Sanitization** — Symbol inputs are `.strip()`ped but not validated against injection patterns. Add regex validation for symbol format.
-
-13. **API Key Rotation Reminders** — Track key age and warn users when keys are old (e.g., >90 days).
-
-### Data & Market Features
-
-14. **Technical Indicators** — Add SMA, EMA, RSI, MACD, Bollinger Bands. The frontend already has `smaUrl()` in config.ts suggesting this was planned. Could be computed server-side or client-side using lightweight libraries.
-
-15. **Real-Time Streaming** — Current WebSocket only replays cached data. Implement true real-time streaming using Binance WebSocket API (`wss://stream.binance.com`) or Twelve Data WebSocket for live price updates.
-
-16. **Multi-Chart / Comparison** — Allow viewing multiple symbols side-by-side or overlaid on the same chart for comparison.
-
-17. **Drawing Tools** — Add trendlines, horizontal lines, Fibonacci retracement, support/resistance zones on the chart using lightweight-charts markers and lines.
-
-18. **Watchlists** — Let users save favorite symbols as watchlists in PostgreSQL.
-
-19. **Symbol Search / Autocomplete** — The `symbol` table from seed.sql isn't currently used. Build a search endpoint that queries it for symbol lookup with autocomplete.
-
-20. **Asset Type Filtering** — Use the `asset_type` enum to let users filter symbols by category (stocks, crypto, forex, etc.).
-
-21. **Chart Annotations / Notes** — Allow users to add text annotations at specific timestamps in PostgreSQL.
-
-22. **Price Alerts** — Let users set price alerts (above/below threshold). Could use WebSocket or push notifications.
-
-23. **Export Data** — Add CSV/JSON export of displayed chart data.
-
-24. **More Data Providers** — Add Alpha Vantage (already in API key enum but no loader), CoinGecko, Polygon.io, Interactive Brokers.
-
-### Frontend UI/UX
-
-25. **Dark/Light Theme Toggle** — The chart already syncs themes via MutationObserver, but there's no visible toggle button. Add one to the Header.
-
-26. **Responsive / Mobile Layout** — The Header wraps on small screens but isn't optimized for mobile. Add a hamburger menu or collapsible toolbar.
-
-27. **Chart Type Selector** — Allow switching between candlestick, line, area, and bar chart types.
-
-28. **Fullscreen Chart Mode** — Toggle to hide the header and maximize chart area.
-
-29. **Keyboard Shortcuts** — Add hotkeys for common actions (e.g., R to reload, S to stream, number keys for periods).
-
-30. **Loading Skeleton** — Replace the simple spinner with skeleton/shimmer loading states for better perceived performance.
-
-31. **Toast Notifications** — Replace the full-screen error modal with less intrusive toast notifications for non-critical errors. Keep the modal for critical/blocking errors only.
-
-32. **Persistent Settings** — Save user preferences (default symbol, period, interval, provider, autoRefresh) to localStorage or user profiles.
-
-33. **Chart Timezone Selection** — Everything is UTC. Add option to display in user's local timezone.
-
-34. **Volume Profile** — Add volume-at-price histogram on the price axis.
-
-35. **Minimap/Overview** — Add a small overview chart below the main chart for quick navigation of long time ranges.
-
-### Testing & Quality
-
-36. **Backend Tests** — No Python tests exist. Add pytest tests for:
-    - Normalizer edge cases (various date formats, missing columns)
-    - Encryption round-trip
-    - Rate limiter behavior
-    - Route integration tests with TestClient
-
-37. **Frontend Tests** — vitest is configured but no test files exist. Add tests for:
-    - `api.ts` (URL resolution, error parsing)
-    - `auth.ts` (login/logout flow)
-    - `chartAdapters.ts` (data conversion)
-    - Component smoke tests
-
-38. **E2E Tests** — Add Playwright tests for critical user flows (load chart, sign in, manage API keys).
-
-39. **API Documentation** — FastAPI auto-generates OpenAPI docs but they could be enhanced with more examples and response schemas.
-
-### DevOps & Operations
-
-40. **Monitoring / Observability** — Add Prometheus metrics (request latency, cache hit rate, provider error rate) and Grafana dashboards.
-
-41. **Docker Compose Enhancement** — Add Redis and optional PgAdmin services for full local development.
-
-42. **CD Pipeline** — Add automated deployment workflow (e.g., to Railway, Fly.io, or AWS).
-
-43. **Database Migrations CI** — Apply the PostgreSQL schema in CI to catch migration issues early.
-
-### Performance
-
-44. **Response Compression** — Add gzip/brotli middleware for API responses (large candle arrays can be significantly compressed).
-
-45. **Candle Data Pagination** — For very long periods, return paginated candle data instead of one large payload.
-
-46. **WebSocket Binary Protocol** — Use MessagePack or Protocol Buffers instead of JSON for WebSocket messages to reduce bandwidth.
-
-47. **Frontend Code Splitting** — Lazy-load the chart library and auth dialogs to reduce initial bundle size.
-
-48. **Service Worker / PWA** — Cache static assets and enable offline viewing of previously loaded charts.
-
-### Business Features
-
-49. **Portfolio Tracking** — Let users add holdings (symbol + quantity + cost basis) and track portfolio value over time.
-
-50. **Paper Trading** — Simulated trading with virtual funds using real-time data.
-
-51. **Backtesting Engine** — Let users define simple trading strategies (e.g., moving average crossover) and backtest them against historical data.
-
-52. **News Integration** — Show relevant news headlines alongside chart data (via NewsAPI or similar).
-
-53. **Social Features** — Share chart snapshots or trade ideas with other users.
-
-54. **Multi-Language Support** — i18n for the frontend to support non-English users.
+By contributing, you agree to the [Developer Certificate of Origin process](CONTRIBUTING.md). The OpenTrade name is covered by the repository's [trademark guidance](TRADEMARKS.md).

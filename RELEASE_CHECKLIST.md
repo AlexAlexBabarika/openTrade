@@ -109,30 +109,30 @@ Open follow-up from this section:
 
 ## P0 — replace the README with a user-facing landing page
 
-- [ ] Begin with a one-sentence description, a current screenshot/GIF, supported
+- [x] Begin with a one-sentence description, a current screenshot/GIF, supported
   use cases, and the project maturity/status.
-- [ ] Put a **Quick start** near the top: install Docker Desktop, download/clone,
+- [x] Put a **Quick start** near the top: install Docker Desktop, download/clone,
   run `docker compose up -d`, and open `http://localhost:8000`. Configuration
   should be optional for the default experience.
-- [ ] State supported operating systems, architectures, minimum RAM/disk, and
+- [x] State supported operating systems, architectures, minimum RAM/disk, and
   whether an internet connection is required for each data provider.
-- [ ] Clearly distinguish providers that work without credentials from optional
+- [x] Clearly distinguish providers that work without credentials from optional
   providers that require user-owned API keys, including links to their terms and
   rate limits.
-- [ ] Document start, stop, update, backup, restore, reset, logs, and uninstall.
+- [x] Document start, stop, update, backup, restore, reset, logs, and uninstall.
   Keep commands copy/pasteable and explain which operations preserve or delete
   data.
-- [ ] Document configuration in a compact table: variable, purpose, default,
+- [x] Document configuration in a compact table: variable, purpose, default,
   allowed format, whether it is secret, and when it is required.
-- [ ] Explain where user data is stored and what is sent to Yahoo Finance,
+- [x] Explain where user data is stored and what is sent to Yahoo Finance,
   Binance, Twelve Data, or other third parties.
 - [ ] Move the current 54-item internal TODO list to the issue tracker or roadmap.
   Several entries are stale (for example, the repository now contains extensive
   backend tests and implementations for indicators, comparisons, portfolios,
   and backtesting).
-- [ ] Merge or remove `installation guide.md` so setup instructions have one
+- [x] Merge or remove `installation guide.md` so setup instructions have one
   canonical source.
-- [ ] Link the license, contribution guide, security policy, changelog/releases,
+- [x] Link the license, contribution guide, security policy, changelog/releases,
   API docs, troubleshooting, and financial disclaimer.
 
 ## P1 — operations and upgrades
