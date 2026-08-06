@@ -78,19 +78,34 @@ Definitions used below:
 
 ## P0 — legal and repository essentials
 
-- [ ] Choose and add an OSI-approved `LICENSE` file. The repository currently has
+- [x] Choose and add an OSI-approved `LICENSE` file. The repository currently has
   no project license, so others do not have permission to reuse or contribute to
-  the code.
-- [ ] Audit all runtime dependencies, bundled fonts, icons, fixtures, sample
+  the code. *(Apache-2.0, plus a `NOTICE` file.)*
+- [x] Audit all runtime dependencies, bundled fonts, icons, fixtures, sample
   market data, and branding for redistribution compatibility. Retain required
-  notices in a `THIRD_PARTY_NOTICES` file.
-- [ ] Confirm that the project name and logo can be used and document trademark
-  expectations if necessary.
-- [ ] Add `CONTRIBUTING.md` with local setup, tests, formatting, issue/PR flow,
-  and certificate-of-origin or CLA policy.
-- [ ] Add `CODE_OF_CONDUCT.md` and maintainer contact/enforcement details.
-- [ ] Create issue and pull-request templates, including a security-reporting
-  redirect that does not encourage public vulnerability reports.
+  notices in a `THIRD_PARTY_NOTICES` file. *(63 backend and 140 frontend
+  packages resolved; the missing SIL OFL texts for Lato and Space Mono are now
+  bundled beside the fonts.)*
+- [x] Confirm that the project name and logo can be used and document trademark
+  expectations if necessary. *(`TRADEMARKS.md`. There is no logo, so nothing to
+  clear. The name is documented with the third-party OPENTRADE registrations
+  found — see the open item below.)*
+- [x] Add `CONTRIBUTING.md` with local setup, tests, formatting, issue/PR flow,
+  and certificate-of-origin or CLA policy. *(DCO sign-off; every documented
+  command was executed and verified.)*
+- [x] Add `CODE_OF_CONDUCT.md` and maintainer contact/enforcement details.
+  *(Contributor Covenant 2.1 with a reporting process and response targets.)*
+- [x] Create issue and pull-request templates, including a security-reporting
+  redirect that does not encourage public vulnerability reports. *(Blank issues
+  disabled; the security advisory link is the first contact route.)*
+
+Open follow-up from this section:
+
+- [ ] Verify at <https://tsdr.uspto.gov/> whether OPENTRADE serial 78930882
+  (Reg. 3244739, Complex Systems, Inc. — financial trade software) is live or
+  dead, and update `TRADEMARKS.md`. USPTO's API now requires a key, so this
+  could not be confirmed automatically. Low risk for a non-commercial project;
+  resolve before any commercial use of the name.
 
 ## P0 — replace the README with a user-facing landing page
 

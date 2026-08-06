@@ -1,0 +1,80 @@
+name: Feature request
+description: Suggest a capability or improvement
+labels: ['enhancement', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposals that describe a concrete problem are much easier to act on than
+        proposals that describe a solution in isolation.
+
+        If you are unsure whether an idea fits the project, start a
+        [discussion](https://github.com/AlexAlexBabarika/openTrade/discussions)
+        instead — that is cheaper for everyone than a rejected issue.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before requesting
+      options:
+        - label: I searched existing issues and discussions and did not find a duplicate.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: >-
+        Describe the situation you are actually in, not the feature you want.
+        What are you trying to accomplish, and where does OpenTrade get in the way?
+      placeholder: >-
+        I compare the same strategy across several symbols, and I have to
+        re-enter the parameters each time because there is no way to save a
+        parameter set.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like to happen. Rough ideas are fine.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: >-
+        Including workarounds you currently use, and why they are not enough.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Charting and drawing tools
+        - Indicators and scripting
+        - Backtesting and sweeps
+        - Portfolio and analytics
+        - Data providers and ingestion
+        - Deployment, Docker, or configuration
+        - Documentation
+        - Other
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Would you be willing to work on this?
+      description: Entirely optional, and not a condition for the request being accepted.
+      options:
+        - label: I would be willing to open a pull request for this.
+
+  - type: markdown
+    attributes:
+      value: |
+        Note: OpenTrade is educational and research software. It does not place
+        real orders and does not connect to brokerages for live trading, so
+        requests for live order execution are out of scope.

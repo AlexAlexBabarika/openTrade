@@ -1,0 +1,114 @@
+name: Bug report
+description: Something in OpenTrade behaves incorrectly
+labels: ['bug', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a report.
+
+        **Do not use this form for security vulnerabilities.** Report those
+        privately via [a security advisory](https://github.com/AlexAlexBabarika/openTrade/security/advisories/new).
+
+        **Never paste API keys, passwords, session cookies, tokens, database
+        URLs, or real account data** into this issue. Redact them first.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before reporting
+      options:
+        - label: This is not a security vulnerability.
+          required: true
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I am on the latest release or `main`, or I have stated the version below.
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the actual behaviour, and what you expected instead.
+      placeholder: |
+        Expected: the chart reloads with the new interval.
+        Actual: the chart goes blank and the console logs a null series error.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Give the shortest reliable path to the problem.
+      placeholder: |
+        1. Start with `docker compose up -d`
+        2. Load AAPL from the yfinance provider
+        3. Switch the interval from 1d to 1h
+        4. Chart goes blank
+    validations:
+      required: true
+
+  - type: dropdown
+    id: how-running
+    attributes:
+      label: How are you running OpenTrade?
+      options:
+        - Docker Compose (default)
+        - Docker Compose with custom configuration
+        - Local development (./run.sh or manual)
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Release tag, or `git rev-parse --short HEAD`.
+      placeholder: v0.1.0 or d7d34d0b
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: OS and architecture
+      placeholder: macOS 15.5 arm64 / Ubuntu 24.04 amd64 / Windows 11 + WSL2
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Data provider involved
+      description: Leave blank if the problem is unrelated to market data.
+      multiple: true
+      options:
+        - yfinance (Yahoo Finance)
+        - Binance
+        - Twelve Data
+        - CSV upload
+        - Not provider related
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: Only if the problem is in the UI.
+      placeholder: Chrome 140 / Firefox 141 / Safari 18
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: >-
+        Output from `docker compose logs opentrade` and/or the browser console.
+        Redact secrets before pasting. This is rendered as a code block.
+      render: shell
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, a recording, or context that might help.

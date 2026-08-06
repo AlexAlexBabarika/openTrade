@@ -1,0 +1,17 @@
+OpenTrade
+Copyright 2026 Aleksandr Babarika and the OpenTrade contributors
+
+This product is licensed under the Apache License, Version 2.0. A copy of the
+license is distributed with this software in the file LICENSE.
+
+This product bundles and depends on third-party software distributed under
+their own licenses, including the SIL Open Font License, the GNU Lesser General
+Public License, and the Mozilla Public License. Full attribution, license
+identifiers, and redistribution obligations are recorded in
+THIRD_PARTY_NOTICES.md.
+
+Charting is provided by TradingView Lightweight Charts™
+Copyright (c) 2025 TradingView, Inc. https://www.tradingview.com/
+
+OpenTrade is educational and research software. It is not investment advice,
+not a brokerage, and does not submit real trades.
