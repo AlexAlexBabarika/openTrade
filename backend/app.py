@@ -6,8 +6,10 @@ In production the built frontend (frontend/dist/) can be served as static
 files by mounting it on "/" — see the startup event below.
 """
 
+import asyncio
 import logging
 import json
+import os
 import tempfile
 import time
 from collections import defaultdict, deque
@@ -31,6 +33,7 @@ from starlette.responses import JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from backend.market import cache
+from backend.core.migrations import apply_migrations
 from backend.market.data_sources import load_csv, load_yfinance
 from backend.market.data_sources.csv_loader import csv_preview
 from backend.market.models import OHLCVCandleList
@@ -38,6 +41,7 @@ from backend.market.ohlcv_limits import cap_candles
 from backend.market.shared_config import validate_interval, validate_period
 from backend.websocket import stream_candles
 from backend.streaming.hub import ClientSession, get_hub
+from backend.scripts.seed_symbols import seed_providers
 from backend.streaming.protocol import (
     ClientMessage,
     ErrorMessage,
@@ -131,13 +135,37 @@ async def lifespan(app: FastAPI):
     load_runtime_secrets()
     install_secret_redaction()
     await run_in_threadpool(check_database)
-    logger.info("PostgreSQL connection verified.")
+    applied = await run_in_threadpool(apply_migrations)
+    logger.info("PostgreSQL ready; applied migrations: %s", applied or "none")
 
     hub = get_hub()
     await hub.start()
+    seed_task = None
+    if os.environ.get("SEED_SYMBOLS_ON_STARTUP", "0").strip() == "1":
+        providers = [
+            provider.strip()
+            for provider in os.environ.get("SYMBOL_SEED_PROVIDERS", "binance").split(
+                ","
+            )
+            if provider.strip()
+        ]
+
+        async def seed_symbols() -> None:
+            try:
+                failed = await run_in_threadpool(seed_providers, providers)
+                if failed:
+                    logger.warning(
+                        "Startup symbol seed failed for: %s", ", ".join(failed)
+                    )
+            except Exception:
+                logger.exception("Startup symbol seed could not run")
+
+        seed_task = asyncio.create_task(seed_symbols())
     try:
         yield
     finally:
+        if seed_task is not None and not seed_task.done():
+            seed_task.cancel()
         await hub.stop()
 
 

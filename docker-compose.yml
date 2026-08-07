@@ -8,7 +8,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opentrade}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -43,6 +42,9 @@ services:
       MAX_MARKET_OHLCV_CANDLES: ${MAX_MARKET_OHLCV_CANDLES:-8000}
       MARKET_RATE_LIMIT_MAX: ${MARKET_RATE_LIMIT_MAX:-120}
       MARKET_RATE_LIMIT_WINDOW_SEC: ${MARKET_RATE_LIMIT_WINDOW_SEC:-60}
+      SEED_SYMBOLS_ON_STARTUP: ${SEED_SYMBOLS_ON_STARTUP:-1}
+      SYMBOL_SEED_PROVIDERS: ${SYMBOL_SEED_PROVIDERS:-binance}
+      TWELVEDATA_API_KEY: ${TWELVEDATA_API_KEY:-}
     volumes:
       - app_data:/app/data
     healthcheck:

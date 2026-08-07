@@ -181,6 +181,24 @@ def _seed_provider(provider: str) -> None:
     logger.info("%s: done (%d rows)", provider, total)
 
 
+def seed_providers(providers: list[str]) -> list[str]:
+    """Seed provider catalogs and return the providers that failed."""
+    unknown = [p for p in providers if p not in _LOADERS]
+    if unknown:
+        raise ValueError(f"Unknown provider(s): {', '.join(unknown)}")
+
+    failed: list[str] = []
+    for provider in providers:
+        try:
+            _seed_provider(provider)
+        except Exception as e:
+            logger.exception("Failed seeding %s: %s", provider, e)
+            failed.append(provider)
+    if failed:
+        logger.error("Seed failed for: %s", ", ".join(failed))
+    return failed
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO,
@@ -196,22 +214,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     providers = [p.strip() for p in args.providers.split(",") if p.strip()]
-    unknown = [p for p in providers if p not in _LOADERS]
-    if unknown:
-        logger.error("Unknown provider(s): %s", ", ".join(unknown))
+    try:
+        failed = seed_providers(providers)
+    except ValueError as exc:
+        logger.error("%s", exc)
         return 2
-
-    failed: list[str] = []
-    for provider in providers:
-        try:
-            _seed_provider(provider)
-        except Exception as e:
-            logger.exception("Failed seeding %s: %s", provider, e)
-            failed.append(provider)
-    if failed:
-        logger.error("Seed failed for: %s", ", ".join(failed))
-        return 1
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

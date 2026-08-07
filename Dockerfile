@@ -15,6 +15,7 @@ FROM python:3.12.13-slim
 WORKDIR /app
 COPY shared/ shared/
 COPY backend/ backend/
+COPY database/migrations/ database/migrations/
 COPY run_backend.py .
 COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt

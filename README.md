@@ -83,7 +83,7 @@ docker compose logs -f opentrade
 
 ### Update
 
-The project is currently pre-release and does not yet guarantee database migrations or rollback compatibility. Back up first, review the [release notes](https://github.com/AlexAlexBabarika/openTrade/releases), then rebuild from the checked-out revision:
+The project is currently pre-release. Ordered database migrations run automatically when the updated app starts, but rollback compatibility is not yet guaranteed. Back up first, review the [release notes](https://github.com/AlexAlexBabarika/openTrade/releases), then rebuild from the checked-out revision:
 
 ```bash
 git pull --ff-only
@@ -164,6 +164,9 @@ Configuration is optional for local use. Copy `env.example` to `.env` only when 
 | `MAX_MARKET_OHLCV_CANDLES` | Maximum candles per market response | `8000` | Integer of at least `100` | No | Never |
 | `MARKET_RATE_LIMIT_MAX` | Market requests allowed per window | `120` | Positive integer | No | Never |
 | `MARKET_RATE_LIMIT_WINDOW_SEC` | Market rate-limit window | `60` | Positive number of seconds | No | Never |
+| `SEED_SYMBOLS_ON_STARTUP` | Refresh provider symbol catalogs after startup | `1` in Compose | `0` or `1` | No | Set to `0` to disable |
+| `SYMBOL_SEED_PROVIDERS` | Catalogs refreshed at startup | `binance` | Comma-separated `binance`, `twelvedata` | No | Twelve Data also needs `TWELVEDATA_API_KEY` |
+| `TWELVEDATA_API_KEY` | Operator key used only by the startup catalog seeder | Empty | Twelve Data API key | Yes | Only when startup seeding includes `twelvedata` |
 
 `DATABASE_URL` and `OPENTRADE_SECRETS_FILE` are wired internally by Compose and normally should not be overridden. For an internet-facing deployment, use an HTTPS reverse proxy, enable secure cookies, set explicit allowed hosts, and review the [security policy](SECURITY.md).
 
@@ -186,7 +189,7 @@ Each provider handles received data under its own privacy policy and terms. Open
 - **Port 8000 is occupied:** set `OPENTRADE_PORT=8001` in `.env`, restart with `docker compose up -d`, and open `http://localhost:8001`.
 - **A provider fails or throttles:** check internet access, symbol/interval support, provider availability, and the provider's rate limit. Twelve Data also requires signing in and saving a valid key.
 - **Saved provider keys no longer decrypt:** restore the matching `app_data` backup or the original `API_KEYS_ENCRYPTION_KEY`. Do not generate a replacement for existing encrypted keys.
-- **The database is unhealthy after an update:** restore a compatible backup. Automatic schema upgrades are not yet supported in this alpha release.
+- **The database is unhealthy after an update:** inspect `docker compose logs opentrade`. Migrations are transactional, but restoring a compatible backup is the safest recovery path; automatic rollback is not yet supported.
 
 For unresolved problems, [open a bug report](https://github.com/AlexAlexBabarika/openTrade/issues/new/choose). Report suspected vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 

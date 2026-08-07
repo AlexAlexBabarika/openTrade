@@ -137,7 +137,7 @@ Open follow-up from this section:
 
 ## P1 — operations and upgrades
 
-- [ ] Introduce real, ordered database migrations. Files in
+- [x] Introduce real, ordered database migrations. Files in
   `docker-entrypoint-initdb.d` run only when PostgreSQL initializes an empty
   volume and therefore do not upgrade existing installations.
 - [ ] Define and test the supported upgrade path for both images and database
@@ -155,8 +155,6 @@ Open follow-up from this section:
   provider failures, and corrupted/old volumes.
 - [ ] Document resource expectations and add conservative CPU/memory/job limits
   so a large backtest cannot make a typical desktop unusable.
-- [ ] Decide and document telemetry policy. Prefer no telemetry by default; if
-  added, make it transparent and opt-in.
 
 ## P1 — CI and release engineering
 
