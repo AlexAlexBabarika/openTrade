@@ -2,6 +2,11 @@ services:
   postgres:
     image: postgres:16.14-alpine3.23
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-opentrade}
       POSTGRES_USER: ${POSTGRES_USER:-opentrade}
@@ -17,6 +22,11 @@ services:
   opentrade:
     build: .
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "127.0.0.1:${OPENTRADE_PORT:-8000}:8000"
     depends_on:

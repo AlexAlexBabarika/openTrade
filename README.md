@@ -80,6 +80,8 @@ docker compose logs -f opentrade
 ```
 
 `stop`, `start`, and `docker compose down` preserve accounts, saved keys, generated secrets, and database data in Docker volumes. Press `Ctrl+C` to stop following logs.
+Compose rotates each service's local logs at 10 MiB and retains three files, so
+routine access and health-check logs cannot grow without bound.
 
 ### Update
 
@@ -186,10 +188,12 @@ Each provider handles received data under its own privacy policy and terms. Open
 ## Troubleshooting
 
 - **The page does not open:** run `docker compose ps`; wait for both services to report `healthy`, then inspect `docker compose logs opentrade postgres`.
+- **A container is unhealthy:** inspect the service's recent output with `docker compose logs --tail=200 opentrade postgres`. Configuration and migration failures are reported in the `opentrade` log; PostgreSQL storage and startup failures appear in the `postgres` log.
 - **Port 8000 is occupied:** set `OPENTRADE_PORT=8001` in `.env`, restart with `docker compose up -d`, and open `http://localhost:8001`.
 - **A provider fails or throttles:** check internet access, symbol/interval support, provider availability, and the provider's rate limit. Twelve Data also requires signing in and saving a valid key.
 - **Saved provider keys no longer decrypt:** restore the matching `app_data` backup or the original `API_KEYS_ENCRYPTION_KEY`. Do not generate a replacement for existing encrypted keys.
-- **The database is unhealthy after an update:** inspect `docker compose logs opentrade`. Migrations are transactional, but restoring a compatible backup is the safest recovery path; automatic rollback is not yet supported.
+- **The database is unhealthy after an update:** inspect `docker compose logs opentrade postgres`. Migrations are transactional, but restoring a compatible backup is the safest recovery path; automatic rollback is not yet supported.
+- **A volume is old or corrupted:** restore a backup made from a compatible OpenTrade revision. If no data must be retained, use the destructive reset command above to recreate clean volumes. Never delete volumes as a troubleshooting step when their data is still needed.
 
 For unresolved problems, [open a bug report](https://github.com/AlexAlexBabarika/openTrade/issues/new/choose). Report suspected vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 

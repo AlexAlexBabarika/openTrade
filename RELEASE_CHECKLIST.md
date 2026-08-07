@@ -150,7 +150,7 @@ Open follow-up from this section:
   path.
 - [ ] Add graceful shutdown and verify in-flight jobs are not corrupted when the
   app is updated or stopped.
-- [ ] Set log rotation/size limits and document basic diagnostics (`docker compose
+- [x] Set log rotation/size limits and document basic diagnostics (`docker compose
   ps` and logs) plus common fixes for occupied ports, unhealthy containers,
   provider failures, and corrupted/old volumes.
 - [ ] Document resource expectations and add conservative CPU/memory/job limits
