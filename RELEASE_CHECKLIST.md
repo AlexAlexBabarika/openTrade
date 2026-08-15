@@ -37,11 +37,15 @@ Definitions used below:
   Python dependencies with a reproducible lock/constraints file. Document the
   update process.
 - [ ] Test the image and Compose stack on both `linux/amd64` and `linux/arm64`
-  (including Apple Silicon).
+  (including Apple Silicon). *(Native Apple Silicon passed 15 August 2026;
+  Compose CI now has `amd64` and `arm64` smoke-test legs. Check this item after
+  both CI legs pass.)*
 - [ ] Perform a clean-machine acceptance test using only the public repository:
   clone/download, `docker compose up -d`, wait for health, open the app, load a
   chart using a provider that needs no API key, create an account, sign out and
   in, restart the stack, and confirm data/account persistence.
+  *(The equivalent isolated working-tree flow passed natively on Apple Silicon
+  on 15 August 2026; a public-repository clone/download remains required.)*
 - [x] Test the destructive path and document it explicitly: stopping containers
   must preserve data; deleting the named volume must be clearly labeled as the
   action that permanently resets OpenTrade.
@@ -101,11 +105,10 @@ Definitions used below:
 
 Open follow-up from this section:
 
-- [ ] Verify at <https://tsdr.uspto.gov/> whether OPENTRADE serial 78930882
-  (Reg. 3244739, Complex Systems, Inc. — financial trade software) is live or
-  dead, and update `TRADEMARKS.md`. USPTO's API now requires a key, so this
-  could not be confirmed automatically. Low risk for a non-commercial project;
-  resolve before any commercial use of the name.
+- [x] Verify at <https://tsdr.uspto.gov/> whether OPENTRADE serial 78930882
+  (Reg. 3244739, originally Complex Systems, Inc. — financial trade software)
+  is live or dead, and update `TRADEMARKS.md`. *(Checked 15 August 2026: live,
+  Registered and Renewed, now owned by BT Systems, LLC.)*
 
 ## P0 — replace the README with a user-facing landing page
 
@@ -126,10 +129,11 @@ Open follow-up from this section:
   allowed format, whether it is secret, and when it is required.
 - [x] Explain where user data is stored and what is sent to Yahoo Finance,
   Binance, Twelve Data, or other third parties.
-- [ ] Move the current 54-item internal TODO list to the issue tracker or roadmap.
+- [x] Move the current 54-item internal TODO list to the issue tracker or roadmap.
   Several entries are stale (for example, the repository now contains extensive
   backend tests and implementations for indicators, comparisons, portfolios,
-  and backtesting).
+  and backtesting). *(Triaged into `ROADMAP.md`; completed and superseded items
+  are retained there for traceability.)*
 - [x] Merge or remove `installation guide.md` so setup instructions have one
   canonical source.
 - [x] Link the license, contribution guide, security policy, changelog/releases,
@@ -161,7 +165,7 @@ Open follow-up from this section:
 - [ ] Add backend test execution to CI. The current backend workflow formats,
   lints, and type-checks but does not run the existing pytest suite.
 - [ ] Add frontend unit tests and a non-watch CI command (`vitest run`).
-- [ ] Extend Docker CI from image build-only to an actual Compose smoke test:
+- [x] Extend Docker CI from image build-only to an actual Compose smoke test:
   start the clean stack, wait for health, exercise the UI/API, restart it, and
   inspect container logs before teardown.
 - [ ] Validate the database schema/migrations against a fresh PostgreSQL instance

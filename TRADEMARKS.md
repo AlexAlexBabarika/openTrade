@@ -15,15 +15,16 @@ records found at least these marks, which are unrelated to this project:
 
 | Serial | Owner | Goods / services | Notes |
 | --- | --- | --- | --- |
-| 78930882 (Reg. 3244739) | Complex Systems, Inc. | Online non-downloadable software automating the financial supply chain and end-to-end trade processes | Closest field of use. Current live/dead status **not verified** — see below. |
+| 78930882 (Reg. 3244739) | BT Systems, LLC (original registrant: Complex Systems, Inc.) | Online non-downloadable software automating the financial supply chain and end-to-end trade processes | **Live — Registered and Renewed.** Closest field of use. |
 | 88886786 | Kevin Azzouz | Online auction technology for locating buyers of physical goods | Reported as abandoned |
 | 88843009 | — | — | Reported as abandoned |
 
-The status of serial 78930882 could not be confirmed from public sources at the
-time of writing: USPTO's TSDR API now requires a registered API key, and the
-third-party mirrors block automated access. **Anyone relying on this section
-should re-check it directly at <https://tsdr.uspto.gov/> before making a
-decision that depends on the answer.**
+Serial 78930882 was checked on 15 August 2026. The record reports **Registered
+and Renewed**, registration date 22 May 2007, first renewal accepted 20 August
+2016, and a 2018 assignment from Complex Systems, Inc. to BT Systems, LLC. See
+the [USPTO TSDR record](https://tsdr.uspto.gov/#caseNumber=78930882&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch).
+Trademark status can change, so anyone making a commercial naming decision
+should obtain a current clearance search and legal advice.
 
 What this means in practice:
 

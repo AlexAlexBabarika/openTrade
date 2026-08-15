@@ -38,10 +38,17 @@ jobs:
 
   compose-smoke:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+    env:
+      DOCKER_DEFAULT_PLATFORM: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
       - run: docker compose --env-file /dev/null up --build --wait --wait-timeout 180
-      - name: Verify UI, auth, persistence, and restart
+      - name: Verify UI, chart data, account lifecycle, and persistence
         run: |
           curl --fail --retry 5 http://127.0.0.1:8000/
           curl --fail --cookie-jar /tmp/opentrade-cookies \
@@ -50,13 +57,18 @@ jobs:
             http://127.0.0.1:8000/auth/signup
           curl --fail --retry 3 --retry-all-errors \
             'http://127.0.0.1:8000/data/market?symbol=AAPL&provider=yfinance&period=5d&interval=1d'
-          docker compose restart opentrade
-          for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:8000/health; then break; fi
-            sleep 2
-          done
           curl --fail --cookie /tmp/opentrade-cookies \
-            --request POST http://127.0.0.1:8000/auth/refresh
+            --request POST http://127.0.0.1:8000/auth/logout
+          curl --fail --cookie-jar /tmp/opentrade-cookies \
+            --header 'Content-Type: application/json' \
+            --data '{"email":"compose-smoke@example.com","password":"smoke-test-password"}' \
+            http://127.0.0.1:8000/auth/login
+          docker compose down
+          docker compose up --wait --wait-timeout 180
+          curl --fail --cookie-jar /tmp/opentrade-cookies \
+            --header 'Content-Type: application/json' \
+            --data '{"email":"compose-smoke@example.com","password":"smoke-test-password"}' \
+            http://127.0.0.1:8000/auth/login
       - name: Show logs on failure
         if: failure()
         run: docker compose logs
