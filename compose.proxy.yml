@@ -1,0 +1,5 @@
+services:
+  opentrade:
+    environment:
+      COOKIE_SECURE: "1"
+      ALLOWED_HOSTS: "${PUBLIC_HOST:?Set PUBLIC_HOST to the external hostname}"

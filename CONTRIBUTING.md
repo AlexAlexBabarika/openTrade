@@ -96,14 +96,11 @@ pip install pre-commit && pre-commit install
 
 ### What CI enforces today
 
-The backend workflow runs `ruff format --check`, `ruff check`, and `mypy`. The
-frontend workflow runs `svelte-check`, `prettier --check`, and `build`. A Docker
-workflow builds the image for `linux/amd64` and `linux/arm64` and runs a Compose
-smoke test. A weekly security workflow runs `npm audit`, `pip-audit`, gitleaks,
-and a Trivy image scan.
-
-Note that CI does not yet execute `pytest` or `vitest run`. Both suites are
-expected to pass, so run them locally before opening a pull request.
+The backend workflow runs formatting, linting, typing, `pytest`, and a fresh
+PostgreSQL migration check. The frontend workflow runs `svelte-check`, Prettier,
+the production build, and `vitest run`. A Docker workflow builds and smoke-tests
+`linux/amd64` and `linux/arm64`. A weekly security workflow runs dependency,
+secret, and image scans.
 
 ## Code style
 

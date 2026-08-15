@@ -16,4 +16,5 @@ if __name__ == "__main__":
         port=8000,
         log_level="info",
         ws_max_size=settings.ws_max_message_bytes,
+        timeout_graceful_shutdown=30,
     )

@@ -55,8 +55,7 @@ class BarSeries:
         index = key + revealed if key < 0 else key
         if index > self._cursor:
             raise LookAheadError(
-                f"bar index {key} is in the future "
-                f"(current bar index {self._cursor})"
+                f"bar index {key} is in the future (current bar index {self._cursor})"
             )
         if index < 0:
             raise IndexError(f"bar index {key} out of range")

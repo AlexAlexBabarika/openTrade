@@ -69,7 +69,7 @@ from backend.routes.volume_profile_routes import router as volume_profile_router
 from backend.routes.position_metrics_routes import router as position_metrics_router
 from backend.routes.script_routes import router as script_router
 from backend.routes.comparison_routes import router as comparison_router
-from backend.routes.sweep_routes import router as sweep_router
+from backend.routes.sweep_routes import router as sweep_router, shutdown_sweeps
 from backend.routes.backtest_routes import router as backtest_router
 from backend.routes.run_routes import router as run_router
 from backend.routes.portfolio_routes import router as portfolio_router
@@ -166,6 +166,9 @@ async def lifespan(app: FastAPI):
     finally:
         if seed_task is not None and not seed_task.done():
             seed_task.cancel()
+        sweeps_stopped = await run_in_threadpool(shutdown_sweeps)
+        if not sweeps_stopped:
+            logger.warning("Timed out waiting for optimization sweeps to stop")
         await hub.stop()
 
 

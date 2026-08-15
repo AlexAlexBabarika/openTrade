@@ -36,11 +36,7 @@ def df() -> pl.DataFrame:
 
 
 def test_buy_and_hold_strategy_runs_end_to_end(df: pl.DataFrame) -> None:
-    code = (
-        "def on_bar(ctx):\n"
-        "    if ctx.position.quantity == 0:\n"
-        "        ctx.buy(10)\n"
-    )
+    code = "def on_bar(ctx):\n    if ctx.position.quantity == 0:\n        ctx.buy(10)\n"
     res = run_strategy(code, df, starting_cash=100_000.0, timeout_s=10.0)
     assert res.status == "ok", res.stderr
     assert len(res.equity) == 30

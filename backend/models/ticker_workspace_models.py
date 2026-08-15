@@ -79,9 +79,9 @@ class TickerWorkspaceBody(BaseModel):
 def default_ticker_workspace() -> TickerWorkspaceBody:
     return TickerWorkspaceBody(
         groups=[TickerGroupModel(name="All", tickers=[])],
-        selected_group="All",
-        selected_priority=None,
-        selected_stance=None,
+        selectedGroup="All",
+        selectedPriority=None,
+        selectedStance=None,
     )
 
 

@@ -54,6 +54,11 @@ No `.env` file, provider key, or PostgreSQL administration is needed for the def
 
 Docker support ultimately depends on the [platforms supported by Docker](https://docs.docker.com/desktop/setup/install/). OpenTrade currently binds to `127.0.0.1`, so other devices on your network cannot connect by default.
 
+The default stack caps OpenTrade at 2 CPU cores, 2 GiB RAM, and 512 processes,
+and PostgreSQL at 1 CPU core, 1 GiB RAM, and 256 processes. Optimization sweeps
+are limited to two concurrent jobs. These conservative limits protect a typical
+desktop; lower `MAX_CONCURRENT_SWEEPS` to `1` on smaller systems.
+
 ## Data providers
 
 | Provider | Credentials | Internet | Notes |
@@ -91,6 +96,37 @@ The project is currently pre-release. Ordered database migrations run automatica
 git pull --ff-only
 docker compose up -d --build
 ```
+
+Tagged releases can be run without a local build. Set an immutable version and
+use the release override:
+
+```bash
+export OPENTRADE_VERSION=0.1.0
+docker compose -f docker-compose.yml -f compose.release.yml pull
+docker compose -f docker-compose.yml -f compose.release.yml up --no-build -d --wait
+```
+
+See [the upgrade and rollback guide](docs/UPGRADING.md) before changing versions.
+
+### Development and HTTPS overrides
+
+The default Compose file remains the local-only configuration. Developers who
+need direct PostgreSQL access can add `compose.dev.yml`:
+
+```bash
+docker compose -f docker-compose.yml -f compose.dev.yml up -d --build
+```
+
+For a host-based HTTPS reverse proxy, set its public hostname and enable the
+secure-cookie override:
+
+```bash
+export PUBLIC_HOST=opentrade.example.com
+docker compose -f docker-compose.yml -f compose.proxy.yml up -d
+```
+
+The proxy should terminate TLS and forward to `127.0.0.1:8000`. Do not expose
+that upstream port directly to the internet.
 
 ### Back up
 
@@ -203,6 +239,7 @@ For unresolved problems, [open a bug report](https://github.com/AlexAlexBabarika
 - [Security policy](SECURITY.md)
 - [API documentation](http://localhost:8000/docs) (available while OpenTrade is running)
 - [Releases and changelog](https://github.com/AlexAlexBabarika/openTrade/releases)
+- [Version history](CHANGELOG.md) and [upgrade guide](docs/UPGRADING.md)
 - [Issue tracker and roadmap](https://github.com/AlexAlexBabarika/openTrade/issues)
 - [Apache License 2.0](LICENSE), [NOTICE](NOTICE), and [third-party notices](THIRD_PARTY_NOTICES.md)
 

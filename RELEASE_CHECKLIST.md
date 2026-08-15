@@ -145,36 +145,49 @@ Open follow-up from this section:
   `docker-entrypoint-initdb.d` run only when PostgreSQL initializes an empty
   volume and therefore do not upgrade existing installations.
 - [ ] Define and test the supported upgrade path for both images and database
-  schema, including rollback and backup compatibility.
+  schema, including rollback and backup compatibility. *(`docs/UPGRADING.md`
+  now defines the forward-upgrade and restore-based rollback contract; testing
+  from the first published version remains.)*
 - [ ] Publish versioned images to a container registry so ordinary users can run
   Compose without building locally. Never make `latest` the only documented
-  version; provide immutable semantic-version tags.
-- [ ] Provide separate Compose profiles/override files for local-only defaults,
+  version; provide immutable semantic-version tags. *(Tag-driven GHCR publishing
+  and `compose.release.yml` are ready; this closes after the first tag succeeds.)*
+- [x] Provide separate Compose profiles/override files for local-only defaults,
   development, and HTTPS/reverse-proxy deployment without complicating the basic
-  path.
-- [ ] Add graceful shutdown and verify in-flight jobs are not corrupted when the
-  app is updated or stopped.
+  path. *(The default remains local-only; use `compose.dev.yml` and
+  `compose.proxy.yml` for the optional modes.)*
+- [x] Add graceful shutdown and verify in-flight jobs are not corrupted when the
+  app is updated or stopped. *(Sweep workers receive cancellation and are joined
+  within the container's shutdown grace period; partial results are not stored.)*
 - [x] Set log rotation/size limits and document basic diagnostics (`docker compose
   ps` and logs) plus common fixes for occupied ports, unhealthy containers,
   provider failures, and corrupted/old volumes.
-- [ ] Document resource expectations and add conservative CPU/memory/job limits
-  so a large backtest cannot make a typical desktop unusable.
+- [x] Document resource expectations and add conservative CPU/memory/job limits
+  so a large backtest cannot make a typical desktop unusable. *(Compose CPU,
+  memory, and process caps plus the existing concurrent-sweep limit.)*
 
 ## P1 — CI and release engineering
 
-- [ ] Add backend test execution to CI. The current backend workflow formats,
-  lints, and type-checks but does not run the existing pytest suite.
-- [ ] Add frontend unit tests and a non-watch CI command (`vitest run`).
+- [x] Add backend test execution to CI. The backend workflow runs the complete
+  pytest suite in addition to formatting, linting, and type checking.
+- [x] Add frontend unit tests and a non-watch CI command (`vitest run`).
 - [x] Extend Docker CI from image build-only to an actual Compose smoke test:
   start the clean stack, wait for health, exercise the UI/API, restart it, and
   inspect container logs before teardown.
 - [ ] Validate the database schema/migrations against a fresh PostgreSQL instance
-  in CI and test an upgrade from the previous released version.
-- [ ] Add automated dependency updates with grouped, reviewed upgrades.
+  in CI and test an upgrade from the previous released version. *(Fresh-schema
+  and idempotence validation are now in CI; no previous release exists yet.)*
+- [x] Add automated dependency updates with grouped, reviewed upgrades.
+  *(`.github/dependabot.yml` groups Python, frontend runtime/development,
+  Actions, and Docker updates.)*
 - [ ] Generate an SBOM and provenance/attestations for release images; sign images
-  if the chosen registry supports the intended verification flow.
+  if the chosen registry supports the intended verification flow. *(The release
+  workflow generates an SBOM and provenance, creates a GitHub attestation, and
+  signs the immutable GHCR digest; verify these on the first published tag.)*
 - [ ] Define semantic versioning, maintain `CHANGELOG.md`, and publish GitHub
   Releases with upgrade notes, breaking changes, checksums, and image tags.
+  *(Semantic versioning, `CHANGELOG.md`, checksums, image tags, and automated
+  GitHub Releases are configured; publication awaits the first release tag.)*
 - [ ] Protect the default branch and require relevant tests, security scans, and
   review before merging.
 
@@ -182,8 +195,8 @@ Open follow-up from this section:
 
 - [ ] Verify the app has a useful first-run state with sample/default content and
   no provider key. Empty screens should explain the next action in the UI.
-- [ ] Make optional API-key configuration available through the UI; users should
-  not need to edit Compose or run database commands.
+- [x] Make optional API-key configuration available through the UI; users can
+  add, update, and delete provider keys from the header's API-key dialog.
 - [ ] Show actionable provider/network/rate-limit errors without exposing
   internals, and make recovery possible without restarting containers.
 - [ ] Test primary workflows in current Chrome, Firefox, Safari, and Edge, plus a
@@ -194,12 +207,14 @@ Open follow-up from this section:
 - [ ] Verify time zones, currency/unit labels, missing candles, adjusted prices,
   delisted symbols, market closures, and provider disagreements are presented
   without implying false precision.
-- [ ] Clearly label simulated/backtested versus live data and prevent any UI copy
+- [x] Clearly label simulated/backtested versus live data and prevent any UI copy
   from implying that the software submits real trades unless it actually does.
+  *(Backtest results explicitly say “simulated results · no real orders”; the
+  application and documentation make no brokerage execution claim.)*
 
 ## P2 — community and project sustainability
 
-- [ ] Publish a concise roadmap based on user outcomes rather than an internal
+- [x] Publish a concise roadmap based on user outcomes rather than an internal
   implementation backlog.
 - [ ] Add architecture and API documentation for contributors, including service
   boundaries, database ownership, and a small data-flow diagram.

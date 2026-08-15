@@ -1,0 +1,8 @@
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+
+  opentrade:
+    environment:
+      SEED_SYMBOLS_ON_STARTUP: "0"

@@ -43,6 +43,11 @@ router = APIRouter(prefix="/sweeps", tags=["sweeps"])
 _registry = SweepRegistry()
 
 
+def shutdown_sweeps(timeout: float = 25.0) -> bool:
+    """Stop accepting unfinished sweep work during application shutdown."""
+    return _registry.shutdown(timeout)
+
+
 class SchemaRequest(BaseModel):
     code: str = Field(..., min_length=1, max_length=200_000)
 

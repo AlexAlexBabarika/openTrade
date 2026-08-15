@@ -49,3 +49,44 @@ jobs:
           cache: 'pip'
       - run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt
       - run: mypy backend/
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+      - run: pytest backend/tests
+
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.14-alpine3.23
+        env:
+          POSTGRES_DB: opentrade
+          POSTGRES_USER: opentrade
+          POSTGRES_PASSWORD: opentrade
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U opentrade -d opentrade"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://opentrade:opentrade@127.0.0.1:5432/opentrade
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - run: pip install -r backend/requirements.txt
+      - name: Apply and verify fresh schema twice
+        run: |
+          python -c 'from backend.core.migrations import apply_migrations; assert apply_migrations() == [1]; assert apply_migrations() == []'
+          python -c 'from backend.core.database import connection; c=connection(); cur=c.cursor(); cur.execute("SELECT count(*) AS count FROM schema_migrations"); assert cur.fetchone()["count"] == 1; cur.close(); c.close()'

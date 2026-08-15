@@ -99,7 +99,7 @@
       <div class="brand">
         <span class="brand-mark">≈</span>
         <span class="brand-title">backtest</span>
-        <span class="brand-sub">/ results</span>
+        <span class="brand-sub">/ simulated results · no real orders</span>
       </div>
 
       <div class="ctx" aria-label="Strategy">

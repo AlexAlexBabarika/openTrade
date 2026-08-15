@@ -2,6 +2,9 @@ services:
   postgres:
     image: postgres:16.14-alpine3.23
     restart: unless-stopped
+    cpus: "1.0"
+    mem_limit: 1g
+    pids_limit: 256
     logging:
       driver: json-file
       options:
@@ -22,6 +25,10 @@ services:
   opentrade:
     build: .
     restart: unless-stopped
+    cpus: "2.0"
+    mem_limit: 2g
+    pids_limit: 512
+    stop_grace_period: 35s
     logging:
       driver: json-file
       options:
