@@ -2,6 +2,24 @@
 
 OpenTrade is a self-hosted research workspace for charting market data, exploring indicators and analytics, and running reproducible backtests and portfolio simulations.
 
+## Start in seconds
+
+Install and start Docker Desktop, download and fully extract the OpenTrade
+folder, then use the launcher for your operating system:
+
+| System | Start OpenTrade | Stop OpenTrade |
+| --- | --- | --- |
+| macOS | Double-click `Start OpenTrade.command` | Double-click `Stop OpenTrade.command` |
+| Windows | Double-click `Start OpenTrade.bat` | Double-click `Stop OpenTrade.bat` |
+| Linux | Run `./scripts/start-opentrade.sh` | Run `./scripts/stop-opentrade.sh` |
+
+The start launcher waits until OpenTrade is healthy and opens it in your
+browser. The stop launcher preserves your accounts, settings, provider keys,
+and database. No `.env` file, API key, or PostgreSQL setup is required.
+
+See **[START_HERE.md](START_HERE.md)** for complete instructions, macOS
+permissions, terminal commands, port configuration, and troubleshooting.
+
 ![OpenTrade dashboard](docs/images/opentrade-dashboard.png)
 
 > [!IMPORTANT]
@@ -27,13 +45,22 @@ Use OpenTrade to:
    cd openTrade
    ```
 
-3. Start OpenTrade from the project directory:
+3. Start OpenTrade using either option:
+
+   - **macOS:** double-click `Start OpenTrade.command`.
+   - **Windows:** double-click `Start OpenTrade.bat`.
+   - **Linux:** run `./scripts/start-opentrade.sh`.
+
+   The launcher waits for healthy containers and opens OpenTrade in your default
+   browser. Alternatively, start it from a terminal:
 
    ```bash
    docker compose up -d
    ```
 
-4. Wait until both services are healthy, then open [http://localhost:8000](http://localhost:8000):
+4. The launcher opens the app when both services are healthy. If you used the
+   terminal command, check readiness and then open
+   [http://localhost:8000](http://localhost:8000):
 
    ```bash
    docker compose ps
@@ -75,6 +102,13 @@ OpenTrade also enforces its own shared market-data limit of 120 requests per 60 
 Run these commands from the repository directory.
 
 ### Start, stop, and inspect
+
+Double-click `Start OpenTrade.command` / `Start OpenTrade.bat` to start the app,
+or `Stop OpenTrade.command` / `Stop OpenTrade.bat` to stop it without deleting
+data. Linux users can run `./scripts/start-opentrade.sh` and
+`./scripts/stop-opentrade.sh`.
+
+The equivalent terminal commands are:
 
 ```bash
 docker compose up -d
@@ -224,6 +258,10 @@ Each provider handles received data under its own privacy policy and terms. Open
 ## Troubleshooting
 
 - **The page does not open:** run `docker compose ps`; wait for both services to report `healthy`, then inspect `docker compose logs opentrade postgres`.
+- **A macOS launcher says permission denied:** ensure the repository was fully
+  extracted, then run `chmod +x "Start OpenTrade.command" "Stop OpenTrade.command" scripts/*.sh`
+  once from Terminal. The files are executable in Git, but some archive tools
+  discard that permission.
 - **A container is unhealthy:** inspect the service's recent output with `docker compose logs --tail=200 opentrade postgres`. Configuration and migration failures are reported in the `opentrade` log; PostgreSQL storage and startup failures appear in the `postgres` log.
 - **Port 8000 is occupied:** set `OPENTRADE_PORT=8001` in `.env`, restart with `docker compose up -d`, and open `http://localhost:8001`.
 - **A provider fails or throttles:** check internet access, symbol/interval support, provider availability, and the provider's rate limit. Twelve Data also requires signing in and saving a valid key.
