@@ -59,10 +59,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build --tag opentrade:security-scan .
+      - run: docker build --tag openquant:security-scan .
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: opentrade:security-scan
+          image-ref: openquant:security-scan
           format: table
           ignore-unfixed: true
           severity: CRITICAL,HIGH

@@ -48,6 +48,6 @@ def test_layout_ensure_dirs_creates_parents(tmp_path: Path):
 
 
 def test_default_root_env(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("OPENTRADE_DATA_ROOT", str(tmp_path / "store"))
+    monkeypatch.setenv("OPENQUANT_DATA_ROOT", str(tmp_path / "store"))
     layout = StoreLayout.default()
     assert layout.root == tmp_path / "store"

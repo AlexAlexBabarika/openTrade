@@ -1,31 +1,31 @@
-# OpenTrade
+# OpenQuant
 
-OpenTrade is a self-hosted research workspace for charting market data, exploring indicators and analytics, and running reproducible backtests and portfolio simulations.
+OpenQuant is a self-hosted research workspace for charting market data, exploring indicators and analytics, and running reproducible backtests and portfolio simulations.
 
 ## Start in seconds
 
-Install and start Docker Desktop, download and fully extract the OpenTrade
+Install and start Docker Desktop, download and fully extract the OpenQuant
 folder, then use the launcher for your operating system:
 
-| System | Start OpenTrade | Stop OpenTrade |
+| System | Start OpenQuant | Stop OpenQuant |
 | --- | --- | --- |
-| macOS | Double-click `Start OpenTrade.command` | Double-click `Stop OpenTrade.command` |
-| Windows | Double-click `Start OpenTrade.bat` | Double-click `Stop OpenTrade.bat` |
-| Linux | Run `./scripts/start-opentrade.sh` | Run `./scripts/stop-opentrade.sh` |
+| macOS | Double-click `Start OpenQuant.command` | Double-click `Stop OpenQuant.command` |
+| Windows | Double-click `Start OpenQuant.bat` | Double-click `Stop OpenQuant.bat` |
+| Linux | Run `./scripts/start-openquant.sh` | Run `./scripts/stop-openquant.sh` |
 
-The start launcher waits until OpenTrade is healthy and opens it in your
+The start launcher waits until OpenQuant is healthy and opens it in your
 browser. The stop launcher preserves your accounts, settings, provider keys,
 and database. No `.env` file, API key, or PostgreSQL setup is required.
 
 See **[START_HERE.md](START_HERE.md)** for complete instructions, macOS
 permissions, terminal commands, port configuration, and troubleshooting.
 
-![OpenTrade dashboard](docs/images/opentrade-dashboard.png)
+![OpenQuant dashboard](docs/images/openquant-dashboard.png)
 
 > [!IMPORTANT]
-> **Project status: pre-release alpha.** OpenTrade is under active development. Expect breaking changes, incomplete workflows, and no guaranteed upgrade path until the first tagged release. The `amd64` and `arm64` acceptance tests are still release blockers.
+> **Project status: pre-release alpha.** OpenQuant is under active development. Expect breaking changes, incomplete workflows, and no guaranteed upgrade path until the first tagged release. The `amd64` and `arm64` acceptance tests are still release blockers.
 
-Use OpenTrade to:
+Use OpenQuant to:
 
 - chart OHLCV data from Yahoo Finance, Binance, Twelve Data, or your own CSV files;
 - compare instruments and explore technical indicators, risk, and distribution analytics;
@@ -33,25 +33,25 @@ Use OpenTrade to:
 - save accounts, provider credentials, strategies, and run history locally.
 
 > [!WARNING]
-> OpenTrade is educational and research software, not investment advice or a brokerage. It does not place trades. Backtests and simulated results do not guarantee future performance. Market data may be delayed, incomplete, or inaccurate; verify important information with an authoritative source before making financial decisions.
+> OpenQuant is educational and research software, not investment advice or a brokerage. It does not place trades. Backtests and simulated results do not guarantee future performance. Market data may be delayed, incomplete, or inaccurate; verify important information with an authoritative source before making financial decisions.
 
 ## Quick start
 
 1. Install [Docker Desktop](https://docs.docker.com/desktop/) (or Docker Engine with the Compose plugin on Linux).
-2. [Download this repository](https://github.com/AlexAlexBabarika/openTrade/archive/refs/heads/main.zip) and extract it, or clone it:
+2. [Download this repository](https://github.com/AlexAlexBabarika/openQuant/archive/refs/heads/main.zip) and extract it, or clone it:
 
    ```bash
-   git clone https://github.com/AlexAlexBabarika/openTrade.git
-   cd openTrade
+   git clone https://github.com/AlexAlexBabarika/openQuant.git
+   cd openQuant
    ```
 
-3. Start OpenTrade using either option:
+3. Start OpenQuant using either option:
 
-   - **macOS:** double-click `Start OpenTrade.command`.
-   - **Windows:** double-click `Start OpenTrade.bat`.
-   - **Linux:** run `./scripts/start-opentrade.sh`.
+   - **macOS:** double-click `Start OpenQuant.command`.
+   - **Windows:** double-click `Start OpenQuant.bat`.
+   - **Linux:** run `./scripts/start-openquant.sh`.
 
-   The launcher waits for healthy containers and opens OpenTrade in your default
+   The launcher waits for healthy containers and opens OpenQuant in your default
    browser. Alternatively, start it from a terminal:
 
    ```bash
@@ -66,7 +66,7 @@ Use OpenTrade to:
    docker compose ps
    ```
 
-No `.env` file, provider key, or PostgreSQL administration is needed for the default experience. OpenTrade generates unique application secrets on first boot and keeps them across restarts.
+No `.env` file, provider key, or PostgreSQL administration is needed for the default experience. OpenQuant generates unique application secrets on first boot and keeps them across restarts.
 
 ## What you need
 
@@ -79,9 +79,9 @@ No `.env` file, provider key, or PostgreSQL administration is needed for the def
 | Browser | A current desktop browser |
 | Network | Required to download/build the containers and for Yahoo Finance, Binance, and Twelve Data; not required after startup when working only with local CSV data |
 
-Docker support ultimately depends on the [platforms supported by Docker](https://docs.docker.com/desktop/setup/install/). OpenTrade currently binds to `127.0.0.1`, so other devices on your network cannot connect by default.
+Docker support ultimately depends on the [platforms supported by Docker](https://docs.docker.com/desktop/setup/install/). OpenQuant currently binds to `127.0.0.1`, so other devices on your network cannot connect by default.
 
-The default stack caps OpenTrade at 2 CPU cores, 2 GiB RAM, and 512 processes,
+The default stack caps OpenQuant at 2 CPU cores, 2 GiB RAM, and 512 processes,
 and PostgreSQL at 1 CPU core, 1 GiB RAM, and 256 processes. Optimization sweeps
 are limited to two concurrent jobs. These conservative limits protect a typical
 desktop; lower `MAX_CONCURRENT_SWEEPS` to `1` on smaller systems.
@@ -92,10 +92,10 @@ desktop; lower `MAX_CONCURRENT_SWEEPS` to `1` on smaller systems.
 | --- | --- | --- | --- |
 | Yahoo Finance (through `yfinance`) | None | Required | Stocks, ETFs, currencies, and crypto. This is an unofficial integration intended for research/personal use; review [Yahoo's terms](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html). Yahoo does not publish a stable API quota, so requests may be throttled. |
 | Binance | None for public market data; a user-owned key is optional | Required | Crypto pairs and live public streams. Limits are IP- and request-weight-based; see the [official API limits](https://developers.binance.com/docs/binance-spot-api-docs/rest-api/limits) and [terms](https://www.binance.com/en/terms). Availability varies by jurisdiction. |
-| Twelve Data | User-owned API key and an OpenTrade account | Required | Add the key inside OpenTrade's API key settings. Allowances depend on the subscription; see [pricing/rate limits](https://twelvedata.com/pricing) and [terms](https://twelvedata.com/terms). |
-| CSV | None | No | The file is uploaded to your local OpenTrade server. CSV uploads default to a 10 MiB maximum. |
+| Twelve Data | User-owned API key and an OpenQuant account | Required | Add the key inside OpenQuant's API key settings. Allowances depend on the subscription; see [pricing/rate limits](https://twelvedata.com/pricing) and [terms](https://twelvedata.com/terms). |
+| CSV | None | No | The file is uploaded to your local OpenQuant server. CSV uploads default to a 10 MiB maximum. |
 
-OpenTrade also enforces its own shared market-data limit of 120 requests per 60 seconds by default. Provider limits still apply independently.
+OpenQuant also enforces its own shared market-data limit of 120 requests per 60 seconds by default. Provider limits still apply independently.
 
 ## Everyday operations
 
@@ -103,10 +103,10 @@ Run these commands from the repository directory.
 
 ### Start, stop, and inspect
 
-Double-click `Start OpenTrade.command` / `Start OpenTrade.bat` to start the app,
-or `Stop OpenTrade.command` / `Stop OpenTrade.bat` to stop it without deleting
-data. Linux users can run `./scripts/start-opentrade.sh` and
-`./scripts/stop-opentrade.sh`.
+Double-click `Start OpenQuant.command` / `Start OpenQuant.bat` to start the app,
+or `Stop OpenQuant.command` / `Stop OpenQuant.bat` to stop it without deleting
+data. Linux users can run `./scripts/start-openquant.sh` and
+`./scripts/stop-openquant.sh`.
 
 The equivalent terminal commands are:
 
@@ -115,7 +115,7 @@ docker compose up -d
 docker compose stop
 docker compose start
 docker compose ps
-docker compose logs -f opentrade
+docker compose logs -f openquant
 ```
 
 `stop`, `start`, and `docker compose down` preserve accounts, saved keys, generated secrets, and database data in Docker volumes. Press `Ctrl+C` to stop following logs.
@@ -124,7 +124,7 @@ routine access and health-check logs cannot grow without bound.
 
 ### Update
 
-The project is currently pre-release. Ordered database migrations run automatically when the updated app starts, but rollback compatibility is not yet guaranteed. Back up first, review the [release notes](https://github.com/AlexAlexBabarika/openTrade/releases), then rebuild from the checked-out revision:
+The project is currently pre-release. Ordered database migrations run automatically when the updated app starts, but rollback compatibility is not yet guaranteed. Back up first, review the [release notes](https://github.com/AlexAlexBabarika/openQuant/releases), then rebuild from the checked-out revision:
 
 ```bash
 git pull --ff-only
@@ -135,7 +135,7 @@ Tagged releases can be run without a local build. Set an immutable version and
 use the release override:
 
 ```bash
-export OPENTRADE_VERSION=0.1.0
+export OPENQUANT_VERSION=0.1.0
 docker compose -f docker-compose.yml -f compose.release.yml pull
 docker compose -f docker-compose.yml -f compose.release.yml up --no-build -d --wait
 ```
@@ -155,7 +155,7 @@ For a host-based HTTPS reverse proxy, set its public hostname and enable the
 secure-cookie override:
 
 ```bash
-export PUBLIC_HOST=opentrade.example.com
+export PUBLIC_HOST=openquant.example.com
 docker compose -f docker-compose.yml -f compose.proxy.yml up -d
 ```
 
@@ -168,27 +168,27 @@ This creates a PostgreSQL dump and copies the application data (including the en
 
 ```bash
 mkdir -p backup/app-data
-docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' > backup/opentrade.sql
-docker compose cp opentrade:/app/data/. backup/app-data
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' > backup/openquant.sql
+docker compose cp openquant:/app/data/. backup/app-data
 ```
 
 Protect the backup: it contains account data and the key material that protects saved provider credentials.
 
 ### Restore
 
-Restore only into a compatible OpenTrade revision. These commands replace the current database contents with the dump:
+Restore only into a compatible OpenQuant revision. These commands replace the current database contents with the dump:
 
 ```bash
 docker compose up -d
-docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backup/opentrade.sql
-docker compose cp backup/app-data/. opentrade:/app/data
-docker compose restart opentrade
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backup/openquant.sql
+docker compose cp backup/app-data/. openquant:/app/data
+docker compose restart openquant
 ```
 
 ### Reset all data
 
 > [!CAUTION]
-> This permanently deletes all OpenTrade accounts, saved API keys, generated secrets, PostgreSQL data, and application data. It cannot be undone without a backup.
+> This permanently deletes all OpenQuant accounts, saved API keys, generated secrets, PostgreSQL data, and application data. It cannot be undone without a backup.
 
 ```bash
 docker compose down --volumes
@@ -202,7 +202,7 @@ To remove the containers and locally built image while preserving data:
 docker compose down --rmi local
 ```
 
-To uninstall OpenTrade **and permanently delete its data**:
+To uninstall OpenQuant **and permanently delete its data**:
 
 ```bash
 docker compose down --volumes --rmi local
@@ -216,10 +216,10 @@ Configuration is optional for local use. Copy `env.example` to `.env` only when 
 
 | Variable | Purpose | Default | Allowed format | Secret? | Required when |
 | --- | --- | --- | --- | --- | --- |
-| `OPENTRADE_PORT` | Local browser port | `8000` | TCP port | No | Only to change the port |
-| `POSTGRES_DB` | Database name | `opentrade` | PostgreSQL identifier | No | Never |
-| `POSTGRES_USER` | Database user | `opentrade` | PostgreSQL identifier | No | Never |
-| `POSTGRES_PASSWORD` | Database password | `opentrade` | String | Yes | Only when overriding the local default |
+| `OPENQUANT_PORT` | Local browser port | `8000` | TCP port | No | Only to change the port |
+| `POSTGRES_DB` | Database name | `openquant` | PostgreSQL identifier | No | Never |
+| `POSTGRES_USER` | Database user | `openquant` | PostgreSQL identifier | No | Never |
+| `POSTGRES_PASSWORD` | Database password | `openquant` | String | Yes | Only when overriding the local default |
 | `JWT_SECRET` | Signs authentication tokens | Generated and persisted | At least 32 characters | Yes | Only for externally managed secrets |
 | `API_KEYS_ENCRYPTION_KEY` | Encrypts saved provider keys | Generated and persisted | Exactly 64 hexadecimal characters | Yes | Only for externally managed secrets; retain across restore/upgrade |
 | `COOKIE_SECURE` | Adds the cookie `Secure` flag | `0` | `0` or `1` | No | Set to `1` for HTTPS/internet exposure |
@@ -240,45 +240,45 @@ Configuration is optional for local use. Copy `env.example` to `.env` only when 
 | `SYMBOL_SEED_PROVIDERS` | Catalogs refreshed at startup | `binance` | Comma-separated `binance`, `twelvedata` | No | Twelve Data also needs `TWELVEDATA_API_KEY` |
 | `TWELVEDATA_API_KEY` | Operator key used only by the startup catalog seeder | Empty | Twelve Data API key | Yes | Only when startup seeding includes `twelvedata` |
 
-`DATABASE_URL` and `OPENTRADE_SECRETS_FILE` are wired internally by Compose and normally should not be overridden. For an internet-facing deployment, use an HTTPS reverse proxy, enable secure cookies, set explicit allowed hosts, and review the [security policy](SECURITY.md).
+`DATABASE_URL` and `OPENQUANT_SECRETS_FILE` are wired internally by Compose and normally should not be overridden. For an internet-facing deployment, use an HTTPS reverse proxy, enable secure cookies, set explicit allowed hosts, and review the [security policy](SECURITY.md).
 
 ## Data and privacy
 
-OpenTrade has no documented telemetry. Local accounts, password hashes, refresh sessions, encrypted provider keys, preferences, and metadata live in the `postgres_data` Docker volume. Generated encryption secrets and application datasets live in `app_data`. Uploaded CSV contents and in-memory market-data caches are not sent to OpenTrade maintainers.
+OpenQuant has no documented telemetry. Local accounts, password hashes, refresh sessions, encrypted provider keys, preferences, and metadata live in the `postgres_data` Docker volume. Generated encryption secrets and application datasets live in `app_data`. Uploaded CSV contents and in-memory market-data caches are not sent to OpenQuant maintainers.
 
-When you request market data, the OpenTrade backend sends the requested symbol, interval, period/time range, and ordinary network metadata such as your public IP address to the selected provider:
+When you request market data, the OpenQuant backend sends the requested symbol, interval, period/time range, and ordinary network metadata such as your public IP address to the selected provider:
 
 - Yahoo Finance receives Yahoo/yfinance market-data requests.
 - Binance receives public REST or WebSocket market-data requests and, if configured, your Binance API credentials.
 - Twelve Data receives market-data requests and your Twelve Data API key.
-- CSV data stays between your browser and your self-hosted OpenTrade instance unless you explicitly use it in another workflow.
+- CSV data stays between your browser and your self-hosted OpenQuant instance unless you explicitly use it in another workflow.
 
-Each provider handles received data under its own privacy policy and terms. OpenTrade does not submit brokerage orders.
+Each provider handles received data under its own privacy policy and terms. OpenQuant does not submit brokerage orders.
 
 ## Troubleshooting
 
-- **The page does not open:** run `docker compose ps`; wait for both services to report `healthy`, then inspect `docker compose logs opentrade postgres`.
+- **The page does not open:** run `docker compose ps`; wait for both services to report `healthy`, then inspect `docker compose logs openquant postgres`.
 - **A macOS launcher says permission denied:** ensure the repository was fully
-  extracted, then run `chmod +x "Start OpenTrade.command" "Stop OpenTrade.command" scripts/*.sh`
+  extracted, then run `chmod +x "Start OpenQuant.command" "Stop OpenQuant.command" scripts/*.sh`
   once from Terminal. The files are executable in Git, but some archive tools
   discard that permission.
-- **A container is unhealthy:** inspect the service's recent output with `docker compose logs --tail=200 opentrade postgres`. Configuration and migration failures are reported in the `opentrade` log; PostgreSQL storage and startup failures appear in the `postgres` log.
-- **Port 8000 is occupied:** set `OPENTRADE_PORT=8001` in `.env`, restart with `docker compose up -d`, and open `http://localhost:8001`.
+- **A container is unhealthy:** inspect the service's recent output with `docker compose logs --tail=200 openquant postgres`. Configuration and migration failures are reported in the `openquant` log; PostgreSQL storage and startup failures appear in the `postgres` log.
+- **Port 8000 is occupied:** set `OPENQUANT_PORT=8001` in `.env`, restart with `docker compose up -d`, and open `http://localhost:8001`.
 - **A provider fails or throttles:** check internet access, symbol/interval support, provider availability, and the provider's rate limit. Twelve Data also requires signing in and saving a valid key.
 - **Saved provider keys no longer decrypt:** restore the matching `app_data` backup or the original `API_KEYS_ENCRYPTION_KEY`. Do not generate a replacement for existing encrypted keys.
-- **The database is unhealthy after an update:** inspect `docker compose logs opentrade postgres`. Migrations are transactional, but restoring a compatible backup is the safest recovery path; automatic rollback is not yet supported.
-- **A volume is old or corrupted:** restore a backup made from a compatible OpenTrade revision. If no data must be retained, use the destructive reset command above to recreate clean volumes. Never delete volumes as a troubleshooting step when their data is still needed.
+- **The database is unhealthy after an update:** inspect `docker compose logs openquant postgres`. Migrations are transactional, but restoring a compatible backup is the safest recovery path; automatic rollback is not yet supported.
+- **A volume is old or corrupted:** restore a backup made from a compatible OpenQuant revision. If no data must be retained, use the destructive reset command above to recreate clean volumes. Never delete volumes as a troubleshooting step when their data is still needed.
 
-For unresolved problems, [open a bug report](https://github.com/AlexAlexBabarika/openTrade/issues/new/choose). Report suspected vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+For unresolved problems, [open a bug report](https://github.com/AlexAlexBabarika/openQuant/issues/new/choose). Report suspected vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
 ## Project links
 
 - [Contributing guide](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
-- [API documentation](http://localhost:8000/docs) (available while OpenTrade is running)
-- [Releases and changelog](https://github.com/AlexAlexBabarika/openTrade/releases)
+- [API documentation](http://localhost:8000/docs) (available while OpenQuant is running)
+- [Releases and changelog](https://github.com/AlexAlexBabarika/openQuant/releases)
 - [Version history](CHANGELOG.md) and [upgrade guide](docs/UPGRADING.md)
-- [Issue tracker and roadmap](https://github.com/AlexAlexBabarika/openTrade/issues)
+- [Issue tracker and roadmap](https://github.com/AlexAlexBabarika/openQuant/issues)
 - [Apache License 2.0](LICENSE), [NOTICE](NOTICE), and [third-party notices](THIRD_PARTY_NOTICES.md)
 
-By contributing, you agree to the [Developer Certificate of Origin process](CONTRIBUTING.md). The OpenTrade name is covered by the repository's [trademark guidance](TRADEMARKS.md).
+By contributing, you agree to the [Developer Certificate of Origin process](CONTRIBUTING.md). The OpenQuant name is covered by the repository's [trademark guidance](TRADEMARKS.md).

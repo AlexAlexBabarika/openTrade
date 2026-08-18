@@ -8,7 +8,7 @@ import secrets
 from pathlib import Path
 
 _SECRET_NAMES = ("JWT_SECRET", "API_KEYS_ENCRYPTION_KEY")
-_DEFAULT_PATH = ".opentrade/secrets.json"
+_DEFAULT_PATH = ".openquant/secrets.json"
 _cached: dict[str, str] | None = None
 
 
@@ -42,7 +42,7 @@ def load_runtime_secrets() -> dict[str, str]:
         _cached = configured
         path = None
     else:
-        path = Path(os.environ.get("OPENTRADE_SECRETS_FILE", _DEFAULT_PATH))
+        path = Path(os.environ.get("OPENQUANT_SECRETS_FILE", _DEFAULT_PATH))
         stored = _load_file(path)
         _cached = {
             name: configured[name] or str(stored.get(name, "")).strip()

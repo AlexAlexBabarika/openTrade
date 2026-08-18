@@ -173,7 +173,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="OpenTrade API",
+    title="OpenQuant API",
     description="OHLCV data API with yfinance and CSV sources, WebSocket streaming",
     version="1.0.0",
     lifespan=lifespan,

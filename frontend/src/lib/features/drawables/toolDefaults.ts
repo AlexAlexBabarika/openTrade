@@ -1,7 +1,7 @@
 // frontend/src/lib/drawables/toolDefaults.ts
 import { safeLocalStorageGet, safeLocalStorageSet } from '$lib/core/storage';
 
-export const TOOL_DEFAULTS_STORAGE_KEY = 'openTrade.drawables.toolDefaults.v1';
+export const TOOL_DEFAULTS_STORAGE_KEY = 'openQuant.drawables.toolDefaults.v1';
 
 type Stored = Record<string, { params: unknown; style: unknown }>;
 

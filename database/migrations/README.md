@@ -1,6 +1,6 @@
 # Database migrations
 
-OpenTrade applies these PostgreSQL migrations during application startup, before
+OpenQuant applies these PostgreSQL migrations during application startup, before
 the service becomes ready. Each migration and its ledger entry commit in the
 same transaction, and an advisory lock prevents two app instances from migrating
 concurrently.
@@ -9,7 +9,7 @@ Migration files must be named `<version>_<name>.sql`, for example
 `002_add_watchlists.sql`. Versions are positive, unique integers and run in
 numeric order.
 
-Applied files are immutable: OpenTrade stores their SHA-256 checksums and refuses
+Applied files are immutable: OpenQuant stores their SHA-256 checksums and refuses
 to start if an applied file changes. Fixes must be added as a new migration.
 Before releasing a migration, test both paths:
 

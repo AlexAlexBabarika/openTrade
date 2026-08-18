@@ -79,7 +79,7 @@
   <div
     class="flex items-center gap-1.5 font-mono text-sm font-semibold tracking-tight select-none"
   >
-    <span>openTrade</span>
+    <span>openQuant</span>
     <ChartCandlestick class="h-4 w-4 text-primary" />
   </div>
 

@@ -1,7 +1,7 @@
 /**
  * Optional drawable/chart profiling for Chrome DevTools **Performance** → **Timings** / **User Timing**.
- * Set `localStorage.opentrade:profileDrawables = '1'` then look for `opentrade:drawables:workKey` and
- * `opentrade:drawables:compute-pass` when tuning ChartDrawablesCompute / store paths.
+ * Set `localStorage.openquant:profileDrawables = '1'` then look for `openquant:drawables:workKey` and
+ * `openquant:drawables:compute-pass` when tuning ChartDrawablesCompute / store paths.
  */
 
 let measureSeq = 0;
@@ -12,7 +12,7 @@ export function isDrawablesProfilingEnabled(): boolean {
     typeof performance !== 'undefined' &&
     typeof performance.mark === 'function' &&
     typeof localStorage !== 'undefined' &&
-    localStorage.getItem('opentrade:profileDrawables') === '1'
+    localStorage.getItem('openquant:profileDrawables') === '1'
   );
 }
 
@@ -20,9 +20,9 @@ export function isDrawablesProfilingEnabled(): boolean {
 export function measureDrawablesSync<T>(measureName: string, fn: () => T): T {
   if (!isDrawablesProfilingEnabled()) return fn();
   const id = ++measureSeq;
-  const start = `opentrade:${measureName}:s:${id}`;
-  const end = `opentrade:${measureName}:e:${id}`;
-  const label = `opentrade:${measureName}`;
+  const start = `openquant:${measureName}:s:${id}`;
+  const end = `openquant:${measureName}:e:${id}`;
+  const label = `openquant:${measureName}`;
   performance.mark(start);
   try {
     return fn();

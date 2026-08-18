@@ -14,7 +14,7 @@ from psycopg.types.json import Jsonb
 
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://opentrade:opentrade@127.0.0.1:5432/opentrade"
+    "DATABASE_URL", "postgresql://openquant:openquant@127.0.0.1:5432/openquant"
 ).strip()
 
 
@@ -60,7 +60,7 @@ class Database:
 
 
 class Query:
-    """Small parameterized query builder for the CRUD shapes used by OpenTrade."""
+    """Small parameterized query builder for the CRUD shapes used by OpenQuant."""
 
     def __init__(self, table: str):
         self.table = table

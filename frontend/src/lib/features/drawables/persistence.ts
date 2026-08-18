@@ -7,7 +7,7 @@ import {
 } from './bundledNarrow';
 import { getTool } from './registry';
 
-export const DRAWABLES_STORAGE_KEY = 'openTrade.drawables.v1';
+export const DRAWABLES_STORAGE_KEY = 'openQuant.drawables.v1';
 
 function hydrateEntry(entry: unknown): BundledDrawable | null {
   if (!entry || typeof entry !== 'object') return null;

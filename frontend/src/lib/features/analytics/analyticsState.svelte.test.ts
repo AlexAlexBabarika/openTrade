@@ -389,7 +389,7 @@ describe('correlation benchmark persistence', () => {
   it('loads from localStorage when present', () => {
     const stub = makeLocalStorageStub();
     stub.setItem(
-      'opentrade:analytics:correlationBenchmarks',
+      'openquant:analytics:correlationBenchmarks',
       JSON.stringify(['IWM', 'DIA']),
     );
     vi.stubGlobal('localStorage', stub);
@@ -408,7 +408,7 @@ describe('correlation benchmark persistence', () => {
   it('honours an explicitly-empty stored list', () => {
     const stub = makeLocalStorageStub();
     stub.setItem(
-      'opentrade:analytics:correlationBenchmarks',
+      'openquant:analytics:correlationBenchmarks',
       JSON.stringify([]),
     );
     vi.stubGlobal('localStorage', stub);
@@ -421,7 +421,7 @@ describe('correlation benchmark persistence', () => {
     vi.stubGlobal('localStorage', stub);
     const state = new AnalyticsState();
     state.setCorrelationBenchmarks(['msft', 'nvda', 'MSFT']);
-    expect(stub.getItem('opentrade:analytics:correlationBenchmarks')).toBe(
+    expect(stub.getItem('openquant:analytics:correlationBenchmarks')).toBe(
       JSON.stringify(['MSFT', 'NVDA']),
     );
   });
@@ -430,7 +430,7 @@ describe('correlation benchmark persistence', () => {
     const stub = makeLocalStorageStub();
     vi.stubGlobal('localStorage', stub);
     persistCorrelationBenchmarks(['GLD', 'TLT']);
-    expect(stub.getItem('opentrade:analytics:correlationBenchmarks')).toBe(
+    expect(stub.getItem('openquant:analytics:correlationBenchmarks')).toBe(
       JSON.stringify(['GLD', 'TLT']),
     );
   });

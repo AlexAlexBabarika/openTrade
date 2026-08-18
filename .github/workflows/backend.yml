@@ -67,18 +67,18 @@ jobs:
       postgres:
         image: postgres:16.14-alpine3.23
         env:
-          POSTGRES_DB: opentrade
-          POSTGRES_USER: opentrade
-          POSTGRES_PASSWORD: opentrade
+          POSTGRES_DB: openquant
+          POSTGRES_USER: openquant
+          POSTGRES_PASSWORD: openquant
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U opentrade -d opentrade"
+          --health-cmd "pg_isready -U openquant -d openquant"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://opentrade:opentrade@127.0.0.1:5432/opentrade
+      DATABASE_URL: postgresql://openquant:openquant@127.0.0.1:5432/openquant
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -1,6 +1,6 @@
 export type Theme = 'dark' | 'light';
 
-const STORAGE_KEY = 'opentrade:theme';
+const STORAGE_KEY = 'openquant:theme';
 const DEFAULT_THEME: Theme = 'dark';
 
 export function loadTheme(): Theme {
@@ -18,7 +18,7 @@ export function persistTheme(theme: Theme): void {
   try {
     localStorage.setItem(STORAGE_KEY, theme);
   } catch (e) {
-    console.warn('[opentrade] Failed to persist theme', e);
+    console.warn('[openquant] Failed to persist theme', e);
   }
 }
 

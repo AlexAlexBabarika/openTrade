@@ -10,7 +10,7 @@ unsupported framework combination.
 
 The container scan maps two of these to `CVE-2026-48818` (UNC paths in
 `StaticFiles`) and `CVE-2026-54283` (URL-encoded form limits). The UNC behavior
-is not reachable in the Linux image. OpenTrade rejects declared HTTP bodies
+is not reachable in the Linux image. OpenQuant rejects declared HTTP bodies
 over 12 MiB and reads uploads through a separate 10 MiB cap, reducing the form
 denial-of-service exposure. The service remains bound to localhost by default.
 

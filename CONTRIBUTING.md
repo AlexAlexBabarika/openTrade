@@ -1,6 +1,6 @@
-# Contributing to OpenTrade
+# Contributing to OpenQuant
 
-Thanks for your interest in OpenTrade. This guide covers local setup, the checks
+Thanks for your interest in OpenQuant. This guide covers local setup, the checks
 your change must pass, and how to get a pull request merged.
 
 By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
@@ -19,8 +19,8 @@ By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 You need Python 3.12+, Node.js 20+, and Docker (only for the Compose path).
 
 ```bash
-git clone https://github.com/AlexAlexBabarika/openTrade.git
-cd openTrade
+git clone https://github.com/AlexAlexBabarika/openQuant.git
+cd openQuant
 
 python3 -m venv .venv
 source .venv/bin/activate                      # Windows: .venv\Scripts\activate
@@ -57,7 +57,7 @@ docker compose up -d --build           # http://localhost:8000
 ```
 
 Stopping containers preserves your data. Deleting the named volume
-(`docker compose down --volumes`) permanently resets OpenTrade.
+(`docker compose down --volumes`) permanently resets OpenQuant.
 
 ## Checks your change must pass
 
@@ -146,7 +146,7 @@ fix(chart): keep crosshair aligned after interval change
 
 ### Developer Certificate of Origin
 
-OpenTrade uses the [Developer Certificate of Origin](https://developercertificate.org/)
+OpenQuant uses the [Developer Certificate of Origin](https://developercertificate.org/)
 (DCO) rather than a CLA. There is nothing to sign and no account to create — you
 certify that you wrote the contribution, or otherwise have the right to submit it
 under the project's license, by adding a `Signed-off-by` line to each commit:

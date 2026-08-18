@@ -9,9 +9,9 @@ cd -- "$PROJECT_DIR" || exit 1
 launcher_require_docker
 launcher_start_docker
 
-printf 'Stopping OpenTrade…\n'
+printf 'Stopping OpenQuant…\n'
 if ! docker compose stop; then
-  launcher_fail "OpenTrade could not be stopped. Review the message above."
+  launcher_fail "OpenQuant could not be stopped. Review the message above."
 fi
 
-printf '\nOpenTrade is stopped. Your accounts, settings, and data were preserved.\n'
+printf '\nOpenQuant is stopped. Your accounts, settings, and data were preserved.\n'

@@ -1,14 +1,14 @@
 #!/bin/sh
 
 launcher_pause_on_error() {
-  if [ "${OPENTRADE_LAUNCHED_FROM_GUI:-0}" = "1" ]; then
+  if [ "${OPENQUANT_LAUNCHED_FROM_GUI:-0}" = "1" ]; then
     printf '\nPress Return to close this window.'
     read -r _launcher_reply
   fi
 }
 
 launcher_fail() {
-  printf '\nOpenTrade: %s\n' "$1" >&2
+  printf '\nOpenQuant: %s\n' "$1" >&2
   launcher_pause_on_error
   exit 1
 }
@@ -43,4 +43,22 @@ launcher_start_docker() {
     fi
     sleep 2
   done
+}
+
+launcher_port_is_published() {
+  docker ps --format '{{.Ports}}' 2>/dev/null |
+    grep -E "(^|[,[:space:]])(0\\.0\\.0\\.0:|127\\.0\\.0\\.1:|\\[::\\]:|:::)$1->" \
+      >/dev/null 2>&1
+}
+
+launcher_select_port() {
+  candidate=$1
+  while [ "$candidate" -le 65535 ]; do
+    if ! launcher_port_is_published "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    candidate=$((candidate + 1))
+  done
+  return 1
 }

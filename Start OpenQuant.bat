@@ -10,17 +10,21 @@ if errorlevel 1 goto compose_missing
 call :ensure_docker
 if errorlevel 1 goto docker_timeout
 
-echo Stopping OpenTrade...
-docker compose stop
-if errorlevel 1 goto stop_failed
+echo Starting OpenQuant...
+docker compose up -d --wait --wait-timeout 180
+if errorlevel 1 goto start_failed
+
+set "OPENQUANT_PORT=8000"
+for /f "tokens=2 delims=:" %%P in ('docker compose port openquant 8000 2^>nul') do set "OPENQUANT_PORT=%%P"
 echo.
-echo OpenTrade is stopped. Your accounts, settings, and data were preserved.
+echo OpenQuant is ready at http://localhost:%OPENQUANT_PORT%
+start "" "http://localhost:%OPENQUANT_PORT%"
 exit /b 0
 
 :ensure_docker
 docker info >nul 2>&1
 if not errorlevel 1 exit /b 0
-echo Starting Docker Desktop so OpenTrade can be stopped cleanly...
+echo Starting Docker Desktop...
 docker desktop start >nul 2>&1
 if errorlevel 1 (
   if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" start "" "%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
@@ -32,8 +36,12 @@ for /l %%I in (1,1,60) do (
 )
 exit /b 1
 
-:stop_failed
-echo OpenTrade could not be stopped. Review the message above.
+:start_failed
+echo.
+echo Recent container logs:
+docker compose logs --tail=100
+echo.
+echo OpenQuant startup failed. Review the messages above for the cause.
 pause
 exit /b 1
 

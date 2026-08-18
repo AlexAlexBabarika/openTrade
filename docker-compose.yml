@@ -11,9 +11,9 @@ services:
         max-size: "10m"
         max-file: "3"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-opentrade}
-      POSTGRES_USER: ${POSTGRES_USER:-opentrade}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opentrade}
+      POSTGRES_DB: ${POSTGRES_DB:-openquant}
+      POSTGRES_USER: ${POSTGRES_USER:-openquant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openquant}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,24 @@ services:
       timeout: 5s
       retries: 10
 
-  opentrade:
+  postgres_identity_migration:
+    image: postgres:16.14-alpine3.23
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-openquant}
+      POSTGRES_USER: ${POSTGRES_USER:-openquant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openquant}
+      LEGACY_POSTGRES_DB: ${LEGACY_POSTGRES_DB:-opentrade}
+      LEGACY_POSTGRES_USER: ${LEGACY_POSTGRES_USER:-opentrade}
+      LEGACY_POSTGRES_PASSWORD: ${LEGACY_POSTGRES_PASSWORD:-opentrade}
+    volumes:
+      - ./scripts/migrate-postgres-identity.sh:/usr/local/bin/migrate-postgres-identity.sh:ro
+    command: ["sh", "/usr/local/bin/migrate-postgres-identity.sh"]
+
+  openquant:
     build: .
     restart: unless-stopped
     cpus: "2.0"
@@ -35,14 +52,14 @@ services:
         max-size: "10m"
         max-file: "3"
     ports:
-      - "127.0.0.1:${OPENTRADE_PORT:-8000}:8000"
+      - "127.0.0.1:${OPENQUANT_PORT:-8000}:8000"
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres_identity_migration:
+        condition: service_completed_successfully
     environment:
       PYTHONUNBUFFERED: "1"
-      DATABASE_URL: postgresql://${POSTGRES_USER:-opentrade}:${POSTGRES_PASSWORD:-opentrade}@postgres:5432/${POSTGRES_DB:-opentrade}
-      OPENTRADE_SECRETS_FILE: /app/data/secrets.json
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openquant}:${POSTGRES_PASSWORD:-openquant}@postgres:5432/${POSTGRES_DB:-openquant}
+      OPENQUANT_SECRETS_FILE: /app/data/secrets.json
       JWT_SECRET: ${JWT_SECRET:-}
       API_KEYS_ENCRYPTION_KEY: ${API_KEYS_ENCRYPTION_KEY:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-0}

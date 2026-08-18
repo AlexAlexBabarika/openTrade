@@ -1,6 +1,6 @@
 # Changelog
 
-OpenTrade follows [Semantic Versioning](https://semver.org/). Until version
+OpenQuant follows [Semantic Versioning](https://semver.org/). Until version
 `1.0.0`, minor releases may contain breaking changes and release notes will call
 them out explicitly.
 

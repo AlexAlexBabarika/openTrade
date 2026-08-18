@@ -258,7 +258,7 @@
         <div
           class="flex items-center gap-1.5 font-mono text-lg font-semibold tracking-tight select-none"
         >
-          <span>openTrade</span>
+          <span>openQuant</span>
           <ChartCandlestick class="h-5 w-5 text-primary" />
         </div>
         <h2 class="ml-auto text-lg font-semibold font-mono">Toolbox</h2>

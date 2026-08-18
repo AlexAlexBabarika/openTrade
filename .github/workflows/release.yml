@@ -15,7 +15,7 @@ jobs:
   image:
     runs-on: ubuntu-latest
     env:
-      IMAGE_NAME: ghcr.io/alexalexbabarika/opentrade
+      IMAGE_NAME: ghcr.io/alexalexbabarika/openquant
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -61,4 +61,4 @@ jobs:
         run: |
           sha256sum docker-compose.yml compose.release.yml > SHA256SUMS
           gh release create "${GITHUB_REF_NAME}" SHA256SUMS \
-            --verify-tag --generate-notes --title "OpenTrade ${GITHUB_REF_NAME}"
+            --verify-tag --generate-notes --title "OpenQuant ${GITHUB_REF_NAME}"

@@ -1,6 +1,6 @@
 """On-disk path conventions for the store.
 
-Root resolves from ``OPENTRADE_DATA_ROOT`` or defaults to
+Root resolves from ``OPENQUANT_DATA_ROOT`` or defaults to
 ``backend/datastore/_data``. All paths are derived from one ``root`` so the
 whole store is relocatable and testable against ``tmp_path``.
 """
@@ -20,7 +20,7 @@ class StoreLayout:
 
     @classmethod
     def default(cls) -> "StoreLayout":
-        env = os.environ.get("OPENTRADE_DATA_ROOT")
+        env = os.environ.get("OPENQUANT_DATA_ROOT")
         return cls(root=Path(env) if env else _DEFAULT_ROOT)
 
     def bars(self, provider: str, symbol: str) -> Path:

@@ -1,5 +1,5 @@
-OpenTrade
-Copyright 2026 Aleksandr Babarika and the OpenTrade contributors
+OpenQuant
+Copyright 2026 Aleksandr Babarika and the OpenQuant contributors
 
 This product is licensed under the Apache License, Version 2.0. A copy of the
 license is distributed with this software in the file LICENSE.
@@ -13,5 +13,5 @@ THIRD_PARTY_NOTICES.md.
 Charting is provided by TradingView Lightweight Charts™
 Copyright (c) 2025 TradingView, Inc. https://www.tradingview.com/
 
-OpenTrade is educational and research software. It is not investment advice,
+OpenQuant is educational and research software. It is not investment advice,
 not a brokerage, and does not submit real trades.

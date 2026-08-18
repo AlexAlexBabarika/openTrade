@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in OpenTrade behaves incorrectly
+description: Something in OpenQuant behaves incorrectly
 labels: ['bug', 'needs triage']
 body:
   - type: markdown
@@ -8,7 +8,7 @@ body:
         Thanks for taking the time to file a report.
 
         **Do not use this form for security vulnerabilities.** Report those
-        privately via [a security advisory](https://github.com/AlexAlexBabarika/openTrade/security/advisories/new).
+        privately via [a security advisory](https://github.com/AlexAlexBabarika/openQuant/security/advisories/new).
 
         **Never paste API keys, passwords, session cookies, tokens, database
         URLs, or real account data** into this issue. Redact them first.
@@ -52,7 +52,7 @@ body:
   - type: dropdown
     id: how-running
     attributes:
-      label: How are you running OpenTrade?
+      label: How are you running OpenQuant?
       options:
         - Docker Compose (default)
         - Docker Compose with custom configuration
@@ -103,7 +103,7 @@ body:
     attributes:
       label: Relevant logs
       description: >-
-        Output from `docker compose logs opentrade` and/or the browser console.
+        Output from `docker compose logs openquant` and/or the browser console.
         Redact secrets before pasting. This is rendered as a code block.
       render: shell
 

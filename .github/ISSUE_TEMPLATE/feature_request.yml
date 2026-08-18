@@ -9,7 +9,7 @@ body:
         proposals that describe a solution in isolation.
 
         If you are unsure whether an idea fits the project, start a
-        [discussion](https://github.com/AlexAlexBabarika/openTrade/discussions)
+        [discussion](https://github.com/AlexAlexBabarika/openQuant/discussions)
         instead — that is cheaper for everyone than a rejected issue.
 
   - type: checkboxes
@@ -26,7 +26,7 @@ body:
       label: What problem does this solve?
       description: >-
         Describe the situation you are actually in, not the feature you want.
-        What are you trying to accomplish, and where does OpenTrade get in the way?
+        What are you trying to accomplish, and where does OpenQuant get in the way?
       placeholder: >-
         I compare the same strategy across several symbols, and I have to
         re-enter the parameters each time because there is no way to save a
@@ -75,6 +75,6 @@ body:
   - type: markdown
     attributes:
       value: |
-        Note: OpenTrade is educational and research software. It does not place
+        Note: OpenQuant is educational and research software. It does not place
         real orders and does not connect to brokerages for live trading, so
         requests for live order execution are out of scope.

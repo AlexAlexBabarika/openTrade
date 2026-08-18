@@ -28,7 +28,7 @@ from backend.models.auth_models import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-REFRESH_COOKIE_NAME = "opentrade_refresh_token"
+REFRESH_COOKIE_NAME = "openquant_refresh_token"
 REFRESH_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 ACCESS_TOKEN_MAX_AGE = 60 * 15
 _passwords = PasswordHasher()

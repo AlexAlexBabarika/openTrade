@@ -14,7 +14,7 @@ def reset_cache(monkeypatch):
 
 def test_generates_and_reuses_persistent_secrets(tmp_path, monkeypatch):
     path = tmp_path / "secrets.json"
-    monkeypatch.setenv("OPENTRADE_SECRETS_FILE", str(path))
+    monkeypatch.setenv("OPENQUANT_SECRETS_FILE", str(path))
 
     first = runtime_secrets.load_runtime_secrets()
     runtime_secrets._cached = None
@@ -30,7 +30,7 @@ def test_environment_values_take_precedence(tmp_path, monkeypatch):
     path.write_text(
         json.dumps({name: "a" * 64 for name in runtime_secrets._SECRET_NAMES})
     )
-    monkeypatch.setenv("OPENTRADE_SECRETS_FILE", str(path))
+    monkeypatch.setenv("OPENQUANT_SECRETS_FILE", str(path))
     monkeypatch.setenv("JWT_SECRET", "configured" * 4)
 
     loaded = runtime_secrets.load_runtime_secrets()
@@ -41,7 +41,7 @@ def test_environment_values_take_precedence(tmp_path, monkeypatch):
 
 def test_does_not_create_file_when_both_values_are_configured(tmp_path, monkeypatch):
     path = tmp_path / "secrets.json"
-    monkeypatch.setenv("OPENTRADE_SECRETS_FILE", str(path))
+    monkeypatch.setenv("OPENQUANT_SECRETS_FILE", str(path))
     for name in runtime_secrets._SECRET_NAMES:
         monkeypatch.setenv(name, "a" * 64)
 
@@ -50,7 +50,7 @@ def test_does_not_create_file_when_both_values_are_configured(tmp_path, monkeypa
 
 
 def test_rejects_invalid_operator_secret(tmp_path, monkeypatch):
-    monkeypatch.setenv("OPENTRADE_SECRETS_FILE", str(tmp_path / "secrets.json"))
+    monkeypatch.setenv("OPENQUANT_SECRETS_FILE", str(tmp_path / "secrets.json"))
     monkeypatch.setenv("JWT_SECRET", "too-short")
     monkeypatch.setenv("API_KEYS_ENCRYPTION_KEY", "not-hex")
 

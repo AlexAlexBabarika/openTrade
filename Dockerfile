@@ -20,9 +20,9 @@ COPY run_backend.py .
 COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY --from=frontend-build /app/frontend/dist frontend/dist
-RUN useradd --create-home --uid 10001 opentrade \
+RUN useradd --create-home --uid 10001 openquant \
     && mkdir -p /app/data \
-    && chown opentrade:opentrade /app/data
-USER opentrade
+    && chown openquant:openquant /app/data
+USER openquant
 EXPOSE 8000
 CMD ["python", "run_backend.py"]

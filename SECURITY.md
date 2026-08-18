@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Until OpenTrade reaches a stable `1.0` release, security fixes are provided only
+Until OpenQuant reaches a stable `1.0` release, security fixes are provided only
 for the latest published release. Upgrade to the newest patch before reporting a
 problem that may already have been fixed.
 
@@ -26,7 +26,7 @@ project, not a paid bug-bounty commitment.
 
 ## Deployment boundary
 
-The default Compose configuration binds OpenTrade only to `127.0.0.1`. It is not
+The default Compose configuration binds OpenQuant only to `127.0.0.1`. It is not
 an internet-ready edge deployment. Before exposing it publicly, place it behind
 an HTTPS reverse proxy, set `COOKIE_SECURE=1`, configure explicit
 `CORS_ORIGINS` only if a separate frontend is required, use unique database

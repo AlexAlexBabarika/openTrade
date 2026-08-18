@@ -71,7 +71,7 @@ Community leaders will follow these Community Impact Guidelines in determining t
 
 ## How to report
 
-OpenTrade is a small, volunteer-run project. The maintainer responsible for
+OpenQuant is a small, volunteer-run project. The maintainer responsible for
 enforcement is:
 
 | Role | Contact |

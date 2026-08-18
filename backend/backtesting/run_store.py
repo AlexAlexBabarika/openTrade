@@ -1,6 +1,6 @@
 """Content-addressed, on-disk run snapshot store.
 
-Layout per run_id, under ``<OPENTRADE_DATA_ROOT or backend/datastore/_data>/runs/``:
+Layout per run_id, under ``<OPENQUANT_DATA_ROOT or backend/datastore/_data>/runs/``:
     runs/<run_id>/
       meta.json strategy.py params.json config.json metrics.json log.jsonl
       bars.parquet result.json
@@ -55,7 +55,7 @@ class RunStore:
 
     @classmethod
     def default(cls) -> "RunStore":
-        env = os.environ.get("OPENTRADE_DATA_ROOT")
+        env = os.environ.get("OPENQUANT_DATA_ROOT")
         base = Path(env) if env else _DEFAULT_DATA_ROOT
         return cls(base / "runs")
 

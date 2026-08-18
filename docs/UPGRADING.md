@@ -1,6 +1,6 @@
-# Upgrading OpenTrade
+# Upgrading OpenQuant
 
-OpenTrade uses semantic versions. Always upgrade one released minor version at a
+OpenQuant uses semantic versions. Always upgrade one released minor version at a
 time unless the intervening release notes explicitly permit skipping versions.
 
 ## Before upgrading
@@ -18,11 +18,11 @@ time unless the intervening release notes explicitly permit skipping versions.
 Set the exact new semantic version—never `latest`—then pull and start it:
 
 ```bash
-export OPENTRADE_VERSION=0.2.0
+export OPENQUANT_VERSION=0.2.0
 docker compose -f docker-compose.yml -f compose.release.yml pull
 docker compose -f docker-compose.yml -f compose.release.yml up --no-build -d --wait
 docker compose ps
-docker compose logs --tail=200 opentrade postgres
+docker compose logs --tail=200 openquant postgres
 ```
 
 Database migrations run transactionally before the application becomes healthy.
@@ -37,7 +37,7 @@ back safely:
 
 1. Stop the stack without deleting volumes.
 2. Restore the pre-upgrade PostgreSQL dump and its matching `app_data` backup.
-3. Set `OPENTRADE_VERSION` back to the exact previous tag.
+3. Set `OPENQUANT_VERSION` back to the exact previous tag.
 4. Start the release Compose files and repeat the health and acceptance checks.
 
 A backup created by a newer release is not assumed compatible with an older

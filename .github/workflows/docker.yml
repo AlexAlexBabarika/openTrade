@@ -51,21 +51,21 @@ jobs:
       - name: Verify UI, chart data, account lifecycle, and persistence
         run: |
           curl --fail --retry 5 http://127.0.0.1:8000/
-          curl --fail --cookie-jar /tmp/opentrade-cookies \
+          curl --fail --cookie-jar /tmp/openquant-cookies \
             --header 'Content-Type: application/json' \
             --data '{"email":"compose-smoke@example.com","password":"smoke-test-password"}' \
             http://127.0.0.1:8000/auth/signup
           curl --fail --retry 3 --retry-all-errors \
             'http://127.0.0.1:8000/data/market?symbol=AAPL&provider=yfinance&period=5d&interval=1d'
-          curl --fail --cookie /tmp/opentrade-cookies \
+          curl --fail --cookie /tmp/openquant-cookies \
             --request POST http://127.0.0.1:8000/auth/logout
-          curl --fail --cookie-jar /tmp/opentrade-cookies \
+          curl --fail --cookie-jar /tmp/openquant-cookies \
             --header 'Content-Type: application/json' \
             --data '{"email":"compose-smoke@example.com","password":"smoke-test-password"}' \
             http://127.0.0.1:8000/auth/login
           docker compose down
           docker compose up --wait --wait-timeout 180
-          curl --fail --cookie-jar /tmp/opentrade-cookies \
+          curl --fail --cookie-jar /tmp/openquant-cookies \
             --header 'Content-Type: application/json' \
             --data '{"email":"compose-smoke@example.com","password":"smoke-test-password"}' \
             http://127.0.0.1:8000/auth/login

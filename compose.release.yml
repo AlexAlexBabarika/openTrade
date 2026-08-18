@@ -1,4 +1,4 @@
 services:
-  opentrade:
-    image: "ghcr.io/alexalexbabarika/opentrade:${OPENTRADE_VERSION:?Set OPENTRADE_VERSION to an immutable release tag}"
+  openquant:
+    image: "ghcr.io/alexalexbabarika/openquant:${OPENQUANT_VERSION:?Set OPENQUANT_VERSION to an immutable release tag}"
     pull_policy: always
