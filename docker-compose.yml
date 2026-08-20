@@ -59,6 +59,7 @@ services:
     environment:
       PYTHONUNBUFFERED: "1"
       DATABASE_URL: postgresql://${POSTGRES_USER:-openquant}:${POSTGRES_PASSWORD:-openquant}@postgres:5432/${POSTGRES_DB:-openquant}
+      OPENQUANT_DATA_ROOT: /app/data
       OPENQUANT_SECRETS_FILE: /app/data/secrets.json
       JWT_SECRET: ${JWT_SECRET:-}
       API_KEYS_ENCRYPTION_KEY: ${API_KEYS_ENCRYPTION_KEY:-}
