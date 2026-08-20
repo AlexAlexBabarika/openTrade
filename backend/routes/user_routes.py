@@ -1,5 +1,5 @@
 """
-User profile endpoints backed by Supabase public.profiles.
+User profile endpoints backed by PostgreSQL.
 """
 
 from fastapi import APIRouter, Depends
@@ -10,7 +10,7 @@ from backend.models.auth_models import (
     UserProfile,
     UserProfileResponse,
 )
-from backend.core.supabase_client import require_supabase_client
+from backend.core.database import get_database
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -31,9 +31,9 @@ def _to_profile(user: AuthUserInfo, row: dict | None) -> UserProfile:
 
 
 def _fetch_profile_row(user_id: str) -> dict | None:
-    supabase = require_supabase_client()
+    database = get_database()
     response = (
-        supabase.table("profiles")
+        database.table("profiles")
         .select("id,email,created_at,updated_at")
         .eq("id", user_id)
         .maybe_single()
@@ -52,8 +52,8 @@ def get_profile(user: AuthUserInfo = Depends(get_current_user)):
     """
     row = _fetch_profile_row(user.id)
     if row is None:
-        supabase = require_supabase_client()
-        supabase.table("profiles").upsert(
+        database = get_database()
+        database.table("profiles").upsert(
             {"id": user.id, "email": user.email}, on_conflict="id"
         ).execute()
         row = _fetch_profile_row(user.id)

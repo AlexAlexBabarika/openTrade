@@ -21,8 +21,8 @@ def rsi(series: pl.Series, period: int = 14) -> pl.Series:
     delta = series.diff()
     gain = delta.clip(lower_bound=0.0)
     loss = (-delta).clip(lower_bound=0.0)
-    avg_gain = gain.ewm_mean(alpha=1 / period, adjust=False, min_periods=period)
-    avg_loss = loss.ewm_mean(alpha=1 / period, adjust=False, min_periods=period)
+    avg_gain = gain.ewm_mean(alpha=1 / period, adjust=False, min_samples=period)
+    avg_loss = loss.ewm_mean(alpha=1 / period, adjust=False, min_samples=period)
     avg_loss_safe = pl.select(
         pl.when(avg_loss == 0.0).then(float("nan")).otherwise(avg_loss)
     ).to_series()
@@ -65,4 +65,4 @@ def atr(
         .select(pl.max_horizontal("a", "b", "c"))
         .to_series()
     )
-    return tr.ewm_mean(alpha=1 / period, adjust=False, min_periods=period)
+    return tr.ewm_mean(alpha=1 / period, adjust=False, min_samples=period)

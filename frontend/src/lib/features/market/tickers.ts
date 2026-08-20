@@ -128,10 +128,10 @@ export interface GroupActions {
   delete: () => void;
 }
 
-const GROUPS_STORAGE_KEY = 'opentrade:groups';
-const SELECTED_GROUP_STORAGE_KEY = 'opentrade:selectedGroup';
-const SELECTED_PRIORITY_STORAGE_KEY = 'opentrade:selectedPriority';
-const SELECTED_STANCE_STORAGE_KEY = 'opentrade:selectedStance';
+const GROUPS_STORAGE_KEY = 'openquant:groups';
+const SELECTED_GROUP_STORAGE_KEY = 'openquant:selectedGroup';
+const SELECTED_PRIORITY_STORAGE_KEY = 'openquant:selectedPriority';
+const SELECTED_STANCE_STORAGE_KEY = 'openquant:selectedStance';
 
 function isValidGroup(value: unknown): value is TickerGroup {
   if (!value || typeof value !== 'object') return false;
@@ -169,7 +169,7 @@ export function clearTickerLocalStorage(): void {
     localStorage.removeItem(SELECTED_PRIORITY_STORAGE_KEY);
     localStorage.removeItem(SELECTED_STANCE_STORAGE_KEY);
   } catch (e) {
-    console.warn('[opentrade] Failed to clear ticker local storage', e);
+    console.warn('[openquant] Failed to clear ticker local storage', e);
   }
 }
 

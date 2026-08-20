@@ -1,7 +1,7 @@
 """
-The DB is faked with a tiny in-memory fluent shim that mimics the postgrest
+The DB is faked with a tiny in-memory fluent shim that mimics the database
 calls actually used by `script_routes` — enough for round-tripping without
-spinning up Supabase.
+spinning up PostgreSQL.
 """
 
 from __future__ import annotations
@@ -77,9 +77,9 @@ class _Query:
                     r["user_id"] == p["user_id"] and r["name"] == p["name"]
                     for r in rows
                 ):
-                    from postgrest.exceptions import APIError
+                    from backend.core.database import DatabaseError
 
-                    raise APIError(
+                    raise DatabaseError(
                         {"code": "23505", "message": "duplicate key", "hint": ""}
                     )
                 row = {
@@ -140,7 +140,7 @@ class _FakeDB:
 @pytest.fixture
 def fake_db(monkeypatch):
     db = _FakeDB()
-    monkeypatch.setattr(script_routes, "get_service_postgrest", lambda: db)
+    monkeypatch.setattr(script_routes, "get_database", lambda: db)
     return db
 
 

@@ -11,7 +11,7 @@ export type TickerNote = {
 
 export type NotesBySymbol = Record<string, TickerNote[]>;
 
-const NOTES_STORAGE_KEY = 'opentrade:notes';
+const NOTES_STORAGE_KEY = 'openquant:notes';
 
 function normalizeSymbol(s: string): string {
   return s.trim().toUpperCase();

@@ -40,8 +40,15 @@
       style={`stroke:${stroke(line.coords[line.coords.length - 1])}`}
       class="trial"
       onclick={() => ontrial?.(line.trialId)}
+      onkeydown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          ontrial?.(line.trialId);
+        }
+      }}
       role="button"
-      tabindex="-1"
+      tabindex="0"
+      aria-label={`Open trial ${line.trialId}`}
     />
   {/each}
 </svg>

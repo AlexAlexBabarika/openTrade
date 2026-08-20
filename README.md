@@ -1,229 +1,284 @@
-# openTrade
+# OpenQuant
 
-A fully functional trading charter web-app created for financial instrument analysis, including: shares, crypto, ETFs, etc. using multiple data-sources.
+OpenQuant is a self-hosted research workspace for charting market data, exploring indicators and analytics, and running reproducible backtests and portfolio simulations.
 
-## Core functionality
+## Start in seconds
 
-   1. Load OHLCV data (Open, High, Low, Close, Volume) from different sources:
-      - YFinance — Yahoo Finance (stocks, ETFs, cryptocurrencies)
-      - Binance — cryptocurrency pairs from Binance exchange
-      - Twelve Data API — professional financial data
-      - CSV files — upload custom data
-   2. Display interactive charts:
-      - Candlestick (Japanese candles)
-      - Line charts
-      - Volume histograms
-      - Legend with price, date, and volume
+Install and start Docker Desktop, download and fully extract the OpenQuant
+folder, then use the launcher for your operating system:
 
----
+| System | Start OpenQuant | Stop OpenQuant |
+| --- | --- | --- |
+| macOS | Double-click `Start OpenQuant.command` | Double-click `Stop OpenQuant.command` |
+| Windows | Double-click `Start OpenQuant.bat` | Double-click `Stop OpenQuant.bat` |
+| Linux | Run `./scripts/start-openquant.sh` | Run `./scripts/stop-openquant.sh` |
 
-## Architecture and Technologies
+The start launcher waits until OpenQuant is healthy and opens it in your
+browser. The stop launcher preserves your accounts, settings, provider keys,
+and database. No `.env` file, API key, or PostgreSQL setup is required.
 
-### **Backend** (Python/FastAPI)
+See **[START_HERE.md](START_HERE.md)** for complete instructions, macOS
+permissions, terminal commands, port configuration, and troubleshooting.
 
-  FastAPI server (asynchronous)
+![OpenQuant dashboard](docs/images/openquant-dashboard.png)
 
-  ├── REST API for data loading
+> [!IMPORTANT]
+> **Project status: pre-release alpha.** OpenQuant is under active development. Expect breaking changes, incomplete workflows, and no guaranteed upgrade path until the first tagged release. The `amd64` and `arm64` acceptance tests are still release blockers.
 
-  ├── WebSocket for direct streaming
+Use OpenQuant to:
 
-  ├── Authentication via Supabase
+- chart OHLCV data from Yahoo Finance, Binance, Twelve Data, or your own CSV files;
+- compare instruments and explore technical indicators, risk, and distribution analytics;
+- write and run research scripts and backtests; and
+- save accounts, provider credentials, strategies, and run history locally.
 
-  ├── API key encryption
+> [!WARNING]
+> OpenQuant is educational and research software, not investment advice or a brokerage. It does not place trades. Backtests and simulated results do not guarantee future performance. Market data may be delayed, incomplete, or inaccurate; verify important information with an authoritative source before making financial decisions.
 
-  ├── In-memory data caching
+## Quick start
 
-  └── Data providers:
+1. Install [Docker Desktop](https://docs.docker.com/desktop/) (or Docker Engine with the Compose plugin on Linux).
+2. [Download this repository](https://github.com/AlexAlexBabarika/openQuant/archive/refs/heads/main.zip) and extract it, or clone it:
 
-      ├── yfinance (Python library)
+   ```bash
+   git clone https://github.com/AlexAlexBabarika/openQuant.git
+   cd openQuant
+   ```
 
-      ├── python-binance (Binance API client)
+3. Start OpenQuant using either option:
 
-      ├── requests (HTTP for Twelve Data)
+   - **macOS:** double-click `Start OpenQuant.command`.
+   - **Windows:** double-click `Start OpenQuant.bat`.
+   - **Linux:** run `./scripts/start-openquant.sh`.
 
-      └── pandas (CSV parsing)
+   The launcher waits for healthy containers and opens OpenQuant in your default
+   browser. Alternatively, start it from a terminal:
 
-### **Frontend** (Svelte 5 / TypeScript)
+   ```bash
+   docker compose up -d
+   ```
 
-  Svelte 5 components (SPA)
+4. The launcher opens the app when both services are healthy. If you used the
+   terminal command, check readiness and then open
+   [http://localhost:8000](http://localhost:8000):
 
-  ├── App.svelte — main container
+   ```bash
+   docker compose ps
+   ```
 
-  ├── Header.svelte — control panel
+No `.env` file, provider key, or PostgreSQL administration is needed for the default experience. OpenQuant generates unique application secrets on first boot and keeps them across restarts.
 
-  ├── Chart.svelte — interactive chart (lightweight-charts)
+## What you need
 
-  ├── AuthDialog.svelte — login/signup
+| Requirement | Support |
+| --- | --- |
+| Operating system | Current macOS or Windows with Docker Desktop; Linux with Docker Engine and Compose v2 |
+| CPU architecture | `linux/amd64` and `linux/arm64` are intended targets; formal clean-machine validation is still pending |
+| Memory | 4 GB available to Docker recommended; a formal minimum has not been benchmarked |
+| Disk | 2 GB free recommended for images and initial data, plus space for uploaded and generated datasets |
+| Browser | A current desktop browser |
+| Network | Required to download/build the containers and for Yahoo Finance, Binance, and Twelve Data; not required after startup when working only with local CSV data |
 
-  ├── ApiKeysModal.svelte — key management
+Docker support ultimately depends on the [platforms supported by Docker](https://docs.docker.com/desktop/setup/install/). OpenQuant currently binds to `127.0.0.1`, so other devices on your network cannot connect by default.
 
-  └── lib/ — utilities
+The default stack caps OpenQuant at 2 CPU cores, 2 GiB RAM, and 512 processes,
+and PostgreSQL at 1 CPU core, 1 GiB RAM, and 256 processes. Optimization sweeps
+are limited to two concurrent jobs. These conservative limits protect a typical
+desktop; lower `MAX_CONCURRENT_SWEEPS` to `1` on smaller systems.
 
-      ├── api.ts — HTTP client
+## Data providers
 
-      ├── auth.ts — authentication state management
+| Provider | Credentials | Internet | Notes |
+| --- | --- | --- | --- |
+| Yahoo Finance (through `yfinance`) | None | Required | Stocks, ETFs, currencies, and crypto. This is an unofficial integration intended for research/personal use; review [Yahoo's terms](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html). Yahoo does not publish a stable API quota, so requests may be throttled. |
+| Binance | None for public market data; a user-owned key is optional | Required | Crypto pairs and live public streams. Limits are IP- and request-weight-based; see the [official API limits](https://developers.binance.com/docs/binance-spot-api-docs/rest-api/limits) and [terms](https://www.binance.com/en/terms). Availability varies by jurisdiction. |
+| Twelve Data | User-owned API key and an OpenQuant account | Required | Add the key inside OpenQuant's API key settings. Allowances depend on the subscription; see [pricing/rate limits](https://twelvedata.com/pricing) and [terms](https://twelvedata.com/terms). |
+| CSV | None | No | The file is uploaded to your local OpenQuant server. CSV uploads default to a 10 MiB maximum. |
 
-      ├── ws.ts — WebSocket client with auto-reconnect
+OpenQuant also enforces its own shared market-data limit of 120 requests per 60 seconds by default. Provider limits still apply independently.
 
-      └── chart.ts — chart configuration
+## Everyday operations
 
-### **Database** (Supabase/PostgreSQL)
+Run these commands from the repository directory.
 
-  Tables:
+### Start, stop, and inspect
 
-  ├── auth.users — built-in Supabase authentication
+Double-click `Start OpenQuant.command` / `Start OpenQuant.bat` to start the app,
+or `Stop OpenQuant.command` / `Stop OpenQuant.bat` to stop it without deleting
+data. Linux users can run `./scripts/start-openquant.sh` and
+`./scripts/stop-openquant.sh`.
 
-  ├── profiles — user profiles (auto-created)
+The equivalent terminal commands are:
 
-  ├── api_keys — encrypted API keys
+```bash
+docker compose up -d
+docker compose stop
+docker compose start
+docker compose ps
+docker compose logs -f openquant
+```
 
-  ├── api_key_audit_log — operation history with keys
+`stop`, `start`, and `docker compose down` preserve accounts, saved keys, generated secrets, and database data in Docker volumes. Press `Ctrl+C` to stop following logs.
+Compose rotates each service's local logs at 10 MiB and retains three files, so
+routine access and health-check logs cannot grow without bound.
 
-  ├── symbol — 50 samples of stocks, crypto, forex
+### Update
 
-  └── asset_type — enum of asset types
+The project is currently pre-release. Ordered database migrations run automatically when the updated app starts, but rollback compatibility is not yet guaranteed. Back up first, review the [release notes](https://github.com/AlexAlexBabarika/openQuant/releases), then rebuild from the checked-out revision:
 
-## Requirements for full functionality
+```bash
+git pull --ff-only
+docker compose up -d --build
+```
 
-1. *Supabase account*
+Tagged releases can be run without a local build. Set an immutable version and
+use the release override:
 
-   - database, auth and key encryption.
+```bash
+export OPENQUANT_VERSION=0.1.0
+docker compose -f docker-compose.yml -f compose.release.yml pull
+docker compose -f docker-compose.yml -f compose.release.yml up --no-build -d --wait
+```
 
-2. *API keys*
+See [the upgrade and rollback guide](docs/UPGRADING.md) before changing versions.
 
-   - Twelve data for professional data.
-   - Binance for crypto.
+### Development and HTTPS overrides
 
-## TODO'S
+The default Compose file remains the local-only configuration. Developers who
+need direct PostgreSQL access can add `compose.dev.yml`:
 
-### Architecture & Infrastructure
+```bash
+docker compose -f docker-compose.yml -f compose.dev.yml up -d --build
+```
 
-1. **Redis/External Cache** — Replace in-memory cache with Redis for multi-worker support. Current cache is per-process; if running multiple uvicorn workers, each has its own cache causing redundant API calls and inconsistent data.
+For a host-based HTTPS reverse proxy, set its public hostname and enable the
+secure-cookie override:
 
-2. **Persistent Data Storage** — Store historical OHLCV data in Supabase/PostgreSQL with TimescaleDB extension. Currently all market data is fetched fresh every time and only cached in memory (lost on restart).
+```bash
+export PUBLIC_HOST=openquant.example.com
+docker compose -f docker-compose.yml -f compose.proxy.yml up -d
+```
 
-3. **Distributed Rate Limiting** — Current rate limiter is per-process. Use Redis-based sliding window (or token bucket) for accurate rate limiting across multiple workers/containers.
+The proxy should terminate TLS and forward to `127.0.0.1:8000`. Do not expose
+that upstream port directly to the internet.
 
-4. **Background Task Queue** — Add Celery/ARQ for long-running data fetches. Currently all provider calls block a thread pool thread; heavy loads could exhaust the pool.
+### Back up
 
-5. **API Versioning** — Add `/api/v1/` prefix for proper versioning. The deprecated `/data/yfinance/{symbol}` endpoint shows versioning is already a concern.
+This creates a PostgreSQL dump and copies the application data (including the encryption secrets needed by saved provider keys) into `backup/`:
 
-6. **Environment Configuration** — Use pydantic-settings for validated, typed configuration instead of scattered `os.environ.get()` calls.
+```bash
+mkdir -p backup/app-data
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' > backup/openquant.sql
+docker compose cp openquant:/app/data/. backup/app-data
+```
 
-7. **Structured Logging** — Add JSON structured logging with correlation IDs for request tracing.
+Protect the backup: it contains account data and the key material that protects saved provider credentials.
 
-8. **Health Check Enhancement** — The `/health` endpoint should check Supabase connectivity, not just return `{"status": "ok"}`.
+### Restore
 
-### Security
+Restore only into a compatible OpenQuant revision. These commands replace the current database contents with the dump:
 
-9. **CORS Restriction** — `allow_origins=["*"]` is too permissive for production. Should be configurable via env var with specific allowed origins.
+```bash
+docker compose up -d
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backup/openquant.sql
+docker compose cp backup/app-data/. openquant:/app/data
+docker compose restart openquant
+```
 
-10. **WebSocket Authentication** — WebSocket endpoints have no auth. Anyone can connect and replay cached data. Add token-based auth on WS handshake.
+### Reset all data
 
-11. **CSRF Protection** — The refresh token cookie uses `SameSite=lax` which helps, but explicit CSRF tokens would add defense-in-depth for state-changing operations.
+> [!CAUTION]
+> This permanently deletes all OpenQuant accounts, saved API keys, generated secrets, PostgreSQL data, and application data. It cannot be undone without a backup.
 
-12. **Input Sanitization** — Symbol inputs are `.strip()`ped but not validated against injection patterns. Add regex validation for symbol format.
+```bash
+docker compose down --volumes
+```
 
-13. **API Key Rotation Reminders** — Track key age and warn users when keys are old (e.g., >90 days).
+### Uninstall
 
-### Data & Market Features
+To remove the containers and locally built image while preserving data:
 
-14. **Technical Indicators** — Add SMA, EMA, RSI, MACD, Bollinger Bands. The frontend already has `smaUrl()` in config.ts suggesting this was planned. Could be computed server-side or client-side using lightweight libraries.
+```bash
+docker compose down --rmi local
+```
 
-15. **Real-Time Streaming** — Current WebSocket only replays cached data. Implement true real-time streaming using Binance WebSocket API (`wss://stream.binance.com`) or Twelve Data WebSocket for live price updates.
+To uninstall OpenQuant **and permanently delete its data**:
 
-16. **Multi-Chart / Comparison** — Allow viewing multiple symbols side-by-side or overlaid on the same chart for comparison.
+```bash
+docker compose down --volumes --rmi local
+```
 
-17. **Drawing Tools** — Add trendlines, horizontal lines, Fibonacci retracement, support/resistance zones on the chart using lightweight-charts markers and lines.
+You can then delete the downloaded repository directory.
 
-18. **Watchlists** — Let users save favorite symbols as watchlists, persisted in Supabase. The seed data already has 50 symbols ready to use.
+## Configuration
 
-19. **Symbol Search / Autocomplete** — The `symbol` table from seed.sql isn't currently used. Build a search endpoint that queries it for symbol lookup with autocomplete.
+Configuration is optional for local use. Copy `env.example` to `.env` only when overriding a default. Byte values are positive integers; comma-separated lists must not contain `*`.
 
-20. **Asset Type Filtering** — Use the `asset_type` enum to let users filter symbols by category (stocks, crypto, forex, etc.).
+| Variable | Purpose | Default | Allowed format | Secret? | Required when |
+| --- | --- | --- | --- | --- | --- |
+| `OPENQUANT_PORT` | Local browser port | `8000` | TCP port | No | Only to change the port |
+| `POSTGRES_DB` | Database name | `openquant` | PostgreSQL identifier | No | Never |
+| `POSTGRES_USER` | Database user | `openquant` | PostgreSQL identifier | No | Never |
+| `POSTGRES_PASSWORD` | Database password | `openquant` | String | Yes | Only when overriding the local default |
+| `JWT_SECRET` | Signs authentication tokens | Generated and persisted | At least 32 characters | Yes | Only for externally managed secrets |
+| `API_KEYS_ENCRYPTION_KEY` | Encrypts saved provider keys | Generated and persisted | Exactly 64 hexadecimal characters | Yes | Only for externally managed secrets; retain across restore/upgrade |
+| `COOKIE_SECURE` | Adds the cookie `Secure` flag | `0` | `0` or `1` | No | Set to `1` for HTTPS/internet exposure |
+| `COOKIE_SAMESITE` | Refresh-cookie cross-site policy | `lax` | `lax`, `strict`, or `none` | No | `none` requires `COOKIE_SECURE=1` |
+| `CORS_ORIGINS` | Permitted separate frontend origins | Empty (same-origin only) | Comma-separated origins | No | Only for a separate frontend |
+| `ALLOWED_HOSTS` | Accepted HTTP hostnames | `localhost,127.0.0.1` | Comma-separated hostnames | No | Add every reverse-proxy/public hostname |
+| `MAX_UPLOAD_BYTES` | Maximum CSV upload | `10485760` | Positive bytes | No | Never |
+| `MAX_REQUEST_BYTES` | Maximum HTTP request body | `12582912` | Positive bytes, at least upload limit | No | Never |
+| `WS_MAX_MESSAGE_BYTES` | Maximum WebSocket message | `65536` | Positive bytes | No | Never |
+| `WS_MAX_CONNECTIONS_PER_IP` | WebSocket connection cap per address | `20` | Positive integer | No | Never |
+| `WS_MAX_MESSAGES_PER_MINUTE` | WebSocket message cap per connection | `120` | Positive integer | No | Never |
+| `WS_MAX_SUBSCRIPTIONS` | Active subscriptions per socket | `20` | Positive integer | No | Never |
+| `MAX_CONCURRENT_SWEEPS` | Concurrent optimization sweeps | `2` | Positive integer | No | Never |
+| `MAX_MARKET_OHLCV_CANDLES` | Maximum candles per market response | `8000` | Integer of at least `100` | No | Never |
+| `MARKET_RATE_LIMIT_MAX` | Market requests allowed per window | `120` | Positive integer | No | Never |
+| `MARKET_RATE_LIMIT_WINDOW_SEC` | Market rate-limit window | `60` | Positive number of seconds | No | Never |
+| `SEED_SYMBOLS_ON_STARTUP` | Refresh provider symbol catalogs after startup | `1` in Compose | `0` or `1` | No | Set to `0` to disable |
+| `SYMBOL_SEED_PROVIDERS` | Catalogs refreshed at startup | `binance` | Comma-separated `binance`, `twelvedata` | No | Twelve Data also needs `TWELVEDATA_API_KEY` |
+| `TWELVEDATA_API_KEY` | Operator key used only by the startup catalog seeder | Empty | Twelve Data API key | Yes | Only when startup seeding includes `twelvedata` |
 
-21. **Chart Annotations / Notes** — Allow users to add text annotations at specific timestamps, persisted in Supabase.
+`DATABASE_URL` and `OPENQUANT_SECRETS_FILE` are wired internally by Compose and normally should not be overridden. For an internet-facing deployment, use an HTTPS reverse proxy, enable secure cookies, set explicit allowed hosts, and review the [security policy](SECURITY.md).
 
-22. **Price Alerts** — Let users set price alerts (above/below threshold). Could use WebSocket or push notifications.
+## Data and privacy
 
-23. **Export Data** — Add CSV/JSON export of displayed chart data.
+OpenQuant has no documented telemetry. Local accounts, password hashes, refresh sessions, encrypted provider keys, preferences, and metadata live in the `postgres_data` Docker volume. Generated encryption secrets and application datasets live in `app_data`. Uploaded CSV contents and in-memory market-data caches are not sent to OpenQuant maintainers.
 
-24. **More Data Providers** — Add Alpha Vantage (already in API key enum but no loader), CoinGecko, Polygon.io, Interactive Brokers.
+When you request market data, the OpenQuant backend sends the requested symbol, interval, period/time range, and ordinary network metadata such as your public IP address to the selected provider:
 
-### Frontend UI/UX
+- Yahoo Finance receives Yahoo/yfinance market-data requests.
+- Binance receives public REST or WebSocket market-data requests and, if configured, your Binance API credentials.
+- Twelve Data receives market-data requests and your Twelve Data API key.
+- CSV data stays between your browser and your self-hosted OpenQuant instance unless you explicitly use it in another workflow.
 
-25. **Dark/Light Theme Toggle** — The chart already syncs themes via MutationObserver, but there's no visible toggle button. Add one to the Header.
+Each provider handles received data under its own privacy policy and terms. OpenQuant does not submit brokerage orders.
 
-26. **Responsive / Mobile Layout** — The Header wraps on small screens but isn't optimized for mobile. Add a hamburger menu or collapsible toolbar.
+## Troubleshooting
 
-27. **Chart Type Selector** — Allow switching between candlestick, line, area, and bar chart types.
+- **The page does not open:** run `docker compose ps`; wait for both services to report `healthy`, then inspect `docker compose logs openquant postgres`.
+- **A macOS launcher says permission denied:** ensure the repository was fully
+  extracted, then run `chmod +x "Start OpenQuant.command" "Stop OpenQuant.command" scripts/*.sh`
+  once from Terminal. The files are executable in Git, but some archive tools
+  discard that permission.
+- **A container is unhealthy:** inspect the service's recent output with `docker compose logs --tail=200 openquant postgres`. Configuration and migration failures are reported in the `openquant` log; PostgreSQL storage and startup failures appear in the `postgres` log.
+- **Port 8000 is occupied:** set `OPENQUANT_PORT=8001` in `.env`, restart with `docker compose up -d`, and open `http://localhost:8001`.
+- **A provider fails or throttles:** check internet access, symbol/interval support, provider availability, and the provider's rate limit. Twelve Data also requires signing in and saving a valid key.
+- **Saved provider keys no longer decrypt:** restore the matching `app_data` backup or the original `API_KEYS_ENCRYPTION_KEY`. Do not generate a replacement for existing encrypted keys.
+- **The database is unhealthy after an update:** inspect `docker compose logs openquant postgres`. Migrations are transactional, but restoring a compatible backup is the safest recovery path; automatic rollback is not yet supported.
+- **A volume is old or corrupted:** restore a backup made from a compatible OpenQuant revision. If no data must be retained, use the destructive reset command above to recreate clean volumes. Never delete volumes as a troubleshooting step when their data is still needed.
 
-28. **Fullscreen Chart Mode** — Toggle to hide the header and maximize chart area.
+For unresolved problems, [open a bug report](https://github.com/AlexAlexBabarika/openQuant/issues/new/choose). Report suspected vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
-29. **Keyboard Shortcuts** — Add hotkeys for common actions (e.g., R to reload, S to stream, number keys for periods).
+## Project links
 
-30. **Loading Skeleton** — Replace the simple spinner with skeleton/shimmer loading states for better perceived performance.
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [API documentation](http://localhost:8000/docs) (available while OpenQuant is running)
+- [Releases and changelog](https://github.com/AlexAlexBabarika/openQuant/releases)
+- [Version history](CHANGELOG.md) and [upgrade guide](docs/UPGRADING.md)
+- [Issue tracker and roadmap](https://github.com/AlexAlexBabarika/openQuant/issues)
+- [Apache License 2.0](LICENSE), [NOTICE](NOTICE), and [third-party notices](THIRD_PARTY_NOTICES.md)
 
-31. **Toast Notifications** — Replace the full-screen error modal with less intrusive toast notifications for non-critical errors. Keep the modal for critical/blocking errors only.
-
-32. **Persistent Settings** — Save user preferences (default symbol, period, interval, provider, autoRefresh) to localStorage or Supabase profiles.
-
-33. **Chart Timezone Selection** — Everything is UTC. Add option to display in user's local timezone.
-
-34. **Volume Profile** — Add volume-at-price histogram on the price axis.
-
-35. **Minimap/Overview** — Add a small overview chart below the main chart for quick navigation of long time ranges.
-
-### Testing & Quality
-
-36. **Backend Tests** — No Python tests exist. Add pytest tests for:
-    - Normalizer edge cases (various date formats, missing columns)
-    - Encryption round-trip
-    - Rate limiter behavior
-    - Route integration tests with TestClient
-
-37. **Frontend Tests** — vitest is configured but no test files exist. Add tests for:
-    - `api.ts` (URL resolution, error parsing)
-    - `auth.ts` (login/logout flow)
-    - `chartAdapters.ts` (data conversion)
-    - Component smoke tests
-
-38. **E2E Tests** — Add Playwright tests for critical user flows (load chart, sign in, manage API keys).
-
-39. **API Documentation** — FastAPI auto-generates OpenAPI docs but they could be enhanced with more examples and response schemas.
-
-### DevOps & Operations
-
-40. **Monitoring / Observability** — Add Prometheus metrics (request latency, cache hit rate, provider error rate) and Grafana dashboards.
-
-41. **Docker Compose Enhancement** — Add Redis, Supabase, and optional PgAdmin services to docker-compose for full local development.
-
-42. **CD Pipeline** — Add automated deployment workflow (e.g., to Railway, Fly.io, or AWS).
-
-43. **Database Migrations CI** — Run Supabase migrations in CI to catch schema issues early.
-
-### Performance
-
-44. **Response Compression** — Add gzip/brotli middleware for API responses (large candle arrays can be significantly compressed).
-
-45. **Candle Data Pagination** — For very long periods, return paginated candle data instead of one large payload.
-
-46. **WebSocket Binary Protocol** — Use MessagePack or Protocol Buffers instead of JSON for WebSocket messages to reduce bandwidth.
-
-47. **Frontend Code Splitting** — Lazy-load the chart library and auth dialogs to reduce initial bundle size.
-
-48. **Service Worker / PWA** — Cache static assets and enable offline viewing of previously loaded charts.
-
-### Business Features
-
-49. **Portfolio Tracking** — Let users add holdings (symbol + quantity + cost basis) and track portfolio value over time.
-
-50. **Paper Trading** — Simulated trading with virtual funds using real-time data.
-
-51. **Backtesting Engine** — Let users define simple trading strategies (e.g., moving average crossover) and backtest them against historical data.
-
-52. **News Integration** — Show relevant news headlines alongside chart data (via NewsAPI or similar).
-
-53. **Social Features** — Share chart snapshots or trade ideas with other users.
-
-54. **Multi-Language Support** — i18n for the frontend to support non-English users.
+By contributing, you agree to the [Developer Certificate of Origin process](CONTRIBUTING.md). The OpenQuant name is covered by the repository's [trademark guidance](TRADEMARKS.md).

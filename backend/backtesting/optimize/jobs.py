@@ -12,11 +12,13 @@ the runner or the routes.
 from __future__ import annotations
 
 import threading
+import time
 import uuid
 from dataclasses import dataclass, field
 
 import polars as pl
 
+from backend.core.config import security_settings
 from backend.backtesting.optimize.runner import run_sweep
 from backend.backtesting.optimize.serialize import sweep_to_dict
 from backend.backtesting.optimize.types import SweepConfig, Trial
@@ -34,6 +36,7 @@ class SweepJob:
     error: str | None = None
     result: dict | None = None
     _cancel: threading.Event = field(default_factory=threading.Event)
+    _thread: threading.Thread | None = field(default=None, repr=False)
 
 
 class SweepRegistry:
@@ -45,10 +48,14 @@ class SweepRegistry:
         sweep_id = uuid.uuid4().hex
         job = SweepJob(sweep_id=sweep_id)
         with self._lock:
+            active = sum(item.status == "running" for item in self._jobs.values())
+            if active >= security_settings().max_concurrent_sweeps:
+                raise RuntimeError("Too many optimization jobs are already running")
             self._jobs[sweep_id] = job
         t = threading.Thread(
             target=self._run, args=(job, code, frame, config), daemon=True
         )
+        job._thread = t
         t.start()
         return sweep_id
 
@@ -62,6 +69,24 @@ class SweepRegistry:
             return False
         job._cancel.set()
         return True
+
+    def shutdown(self, timeout: float = 25.0) -> bool:
+        """Cancel active work and wait for worker threads to leave safely.
+
+        Returns ``True`` when every worker stopped before the deadline. Sweep
+        results are never partially persisted, so cancellation cannot corrupt a
+        stored run.
+        """
+        with self._lock:
+            active = [job for job in self._jobs.values() if job.status == "running"]
+            threads = [job._thread for job in active if job._thread is not None]
+            for job in active:
+                job._cancel.set()
+
+        deadline = time.monotonic() + max(0.0, timeout)
+        for thread in threads:
+            thread.join(max(0.0, deadline - time.monotonic()))
+        return all(not thread.is_alive() for thread in threads)
 
     def _run(
         self, job: SweepJob, code: str, frame: pl.DataFrame, config: SweepConfig

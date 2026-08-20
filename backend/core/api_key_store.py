@@ -1,15 +1,13 @@
-"""Retrieve and decrypt user API keys stored in Supabase."""
+"""Retrieve and decrypt user API keys stored in PostgreSQL."""
 
 import string
 
-from postgrest.exceptions import APIError
-
 from backend.core.encryption import decrypt_api_key
-from backend.core.supabase_client import get_service_postgrest
+from backend.core.database import DatabaseError, get_database
 
 
-def _api_error_code_message(exc: APIError) -> tuple[str | None, str]:
-    """Best-effort extract PostgREST / Postgres error code and message."""
+def _api_error_code_message(exc: DatabaseError) -> tuple[str | None, str]:
+    """Best-effort extract a PostgreSQL error code and message."""
     code = getattr(exc, "code", None)
     message = getattr(exc, "message", None) or ""
     if (code is None or not message) and exc.args:
@@ -21,10 +19,10 @@ def _api_error_code_message(exc: APIError) -> tuple[str | None, str]:
 
 
 def _bytea_to_bytes(value) -> bytes:
-    """Decode PostgREST / Postgres ``bytea`` column values to raw bytes.
+    """Decode PostgreSQL ``bytea`` column values to raw bytes.
 
-    PostgREST may return ``\\x`` + hex, plain hex, raw ``bytes``, or (rarely) a
-    byte array. Mis-decoding produces garbage plaintext and APIs report
+    Drivers may return prefixed hex, plain hex, raw ``bytes``, or a byte array.
+    Mis-decoding produces garbage plaintext and APIs report
     "apikey incorrect or not specified".
     """
     if value is None:
@@ -72,7 +70,7 @@ def fetch_api_key(user_id: str, provider: str) -> str:
     If the database enum does not include ``provider`` (Postgres 22P02), raises
     ValueError so callers like Binance can fall back to unauthenticated access.
     """
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("api_keys")
@@ -82,13 +80,13 @@ def fetch_api_key(user_id: str, provider: str) -> str:
             .limit(1)
             .execute()
         )
-    except APIError as e:
+    except DatabaseError as e:
         code, msg = _api_error_code_message(e)
         msg_l = msg.lower()
         if code == "22P02" or "invalid input value for enum" in msg_l:
             raise ValueError(
                 f"No {provider} API key: add value '{provider}' to api_key_provider "
-                "enum (run Supabase migrations), or omit keys for public access."
+                "enum (run the database migration), or omit keys for public access."
             ) from e
         raise
     if not resp.data:

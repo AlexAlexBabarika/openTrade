@@ -1,0 +1,4 @@
+services:
+  openquant:
+    image: "ghcr.io/alexalexbabarika/openquant:${OPENQUANT_VERSION:?Set OPENQUANT_VERSION to an immutable release tag}"
+    pull_policy: always

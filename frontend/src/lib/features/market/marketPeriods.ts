@@ -65,7 +65,7 @@ export const GROUPED_PERIODS: GroupedPeriod[] = PERIOD_CATEGORY_ORDER.map(
   }),
 ).filter(g => g.options.length > 0);
 
-const PERIOD_FAVOURITES_KEY = 'opentrade:periodFavourites';
+const PERIOD_FAVOURITES_KEY = 'openquant:periodFavourites';
 const DEFAULT_PERIOD_FAVOURITES: readonly string[] = [
   '1d',
   '5d',

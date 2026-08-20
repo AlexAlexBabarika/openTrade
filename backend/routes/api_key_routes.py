@@ -3,13 +3,13 @@ Secure API-key CRUD endpoints.
 
 All mutations encrypt the key before writing and never return the raw key.
 Reads return metadata only (provider, prefix, timestamps).
-Uses service_role for PostgREST; user scoping is enforced in Python via validated user_id.
+User scoping is enforced in Python via the validated user ID.
 """
 
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from postgrest.exceptions import APIError
+from backend.core.database import DatabaseError, get_database
 
 from backend.models.api_key_models import (
     ApiKeyAuditEntry,
@@ -23,7 +23,6 @@ from backend.models.api_key_models import (
 from backend.core.auth_deps import get_current_user
 from backend.models.auth_models import AuthUserInfo
 from backend.core.encryption import encrypt_api_key, make_key_prefix
-from backend.core.supabase_client import get_service_postgrest
 from backend.routes.db_error_handlers.api_key_db_error_handler import (
     ApiKeyDBErrorHandler,
 )
@@ -48,7 +47,7 @@ def _row_to_info(row: dict) -> ApiKeyInfo:
 def list_api_keys(
     user: AuthUserInfo = Depends(get_current_user),
 ):
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("api_keys")
@@ -68,7 +67,7 @@ def create_api_key(
     body: ApiKeyCreateRequest,
     user: AuthUserInfo = Depends(get_current_user),
 ):
-    db = get_service_postgrest()
+    db = get_database()
 
     try:
         encrypted = encrypt_api_key(body.api_key)
@@ -89,7 +88,7 @@ def create_api_key(
             )
             .execute()
         )
-    except APIError as e:
+    except DatabaseError as e:
         if e.code == "23505":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -114,7 +113,7 @@ def update_api_key(
     body: ApiKeyUpdateRequest,
     user: AuthUserInfo = Depends(get_current_user),
 ):
-    db = get_service_postgrest()
+    db = get_database()
     try:
         existing = (
             db.from_("api_keys")
@@ -169,7 +168,7 @@ def delete_api_key(
     provider: ApiKeyProvider,
     user: AuthUserInfo = Depends(get_current_user),
 ):
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("api_keys")
@@ -193,7 +192,7 @@ def list_audit_log(
     limit: int = 50,
     user: AuthUserInfo = Depends(get_current_user),
 ):
-    db = get_service_postgrest()
+    db = get_database()
     clamped_limit = min(max(limit, 1), 200)
     try:
         resp = (

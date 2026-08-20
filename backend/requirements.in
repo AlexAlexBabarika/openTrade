@@ -1,0 +1,15 @@
+fastapi==0.141.1
+uvicorn[standard]==0.40.0
+yfinance==1.5.2
+polars==1.38.1
+pydantic[email]==2.12.5
+python-multipart==0.0.31
+python-dateutil==2.9.0.post0
+websockets==15.0.1
+psycopg[binary]==3.3.3
+PyJWT==2.13.0
+argon2-cffi==25.1.0
+cryptography==48.0.1
+python-binance==1.0.35
+numpy==2.4.4
+scipy==1.17.1

@@ -25,7 +25,7 @@
   <Popover.Portal>
     <Popover.Content
       sideOffset={8}
-      class="z-[60] w-64 rounded-lg border border-border bg-card p-4 shadow-xl outline-none"
+      class="z-[80] w-64 rounded-lg border border-border bg-card p-4 shadow-xl outline-none"
     >
       <ColourPicker bind:colour />
     </Popover.Content>

@@ -6,7 +6,7 @@ export interface RunHistoryEntry {
 }
 
 export const MAX_RUNS = 50;
-export const HISTORY_KEY = 'opentrade.runs.history';
+export const HISTORY_KEY = 'openquant.runs.history';
 
 function safeStorage(s?: Storage): Storage | null {
   if (s) return s;

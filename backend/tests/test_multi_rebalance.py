@@ -20,7 +20,7 @@ from backend.backtesting.errors import UniverseError
 from backend.backtesting.multi.engine import run_portfolio_backtest
 from backend.backtesting.multi.universe import Membership, Universe
 from backend.backtesting.strategy import Strategy
-from backend.backtesting.types import Side
+from backend.backtesting.types import Order, Side
 
 
 def _t(day: int) -> datetime:
@@ -102,7 +102,7 @@ def test_rebalance_with_no_drift_is_a_no_op() -> None:
 
     class Steady(Strategy):
         def __init__(self) -> None:
-            self.late_orders = []
+            self.late_orders: list[Order] = []
 
         def on_bar(self, ctx) -> None:
             ctx.target_weight("AAPL", 0.5)
@@ -130,7 +130,7 @@ def test_persistent_targets_correct_drift() -> None:
 
     class Drift(Strategy):
         def __init__(self) -> None:
-            self.day3_orders = []
+            self.day3_orders: list[Order] = []
 
         def on_bar(self, ctx) -> None:
             if ctx.time.day == 1:
@@ -160,7 +160,7 @@ def test_min_trade_value_skips_dust_trades() -> None:
 
     class Threshold(Strategy):
         def __init__(self) -> None:
-            self.day3_orders = []
+            self.day3_orders: list[Order] = []
 
         def on_bar(self, ctx) -> None:
             if ctx.time.day == 1:
@@ -222,7 +222,7 @@ def test_rebalance_does_not_runaway_when_costs_exhaust_equity() -> None:
 
     class FullyInvested(Strategy):
         def __init__(self) -> None:
-            self.late_orders = []
+            self.late_orders: list[Order] = []
 
         def on_bar(self, ctx) -> None:
             ctx.target_weight("PENNY", 1.0)
@@ -273,7 +273,7 @@ def test_departure_clears_the_target() -> None:
 
     class SetOnce(Strategy):
         def __init__(self) -> None:
-            self.post_rejoin_orders = []
+            self.post_rejoin_orders: list[Order] = []
 
         def on_bar(self, ctx) -> None:
             if ctx.time.day == 1:

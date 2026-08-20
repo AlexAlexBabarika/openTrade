@@ -28,7 +28,7 @@ _REFERENCE_ENDPOINTS: list[tuple[str, AssetType]] = [
 
 class TwelveDataProvider(MarketDataProvider):
     def __init__(self, user_id: str | None = None, api_key: str | None = None) -> None:
-        """Provide either ``user_id`` (key pulled from Supabase) or a direct ``api_key``."""
+        """Provide either ``user_id`` (key pulled from PostgreSQL) or a direct ``api_key``."""
         if not user_id and not api_key:
             raise ValueError("TwelveDataProvider requires user_id or api_key")
         self._user_id = user_id

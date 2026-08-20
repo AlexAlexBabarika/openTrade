@@ -70,7 +70,7 @@ def _block_network() -> None:
     def _denied(*_a, **_kw):
         raise OSError("network access is disabled in user scripts")
 
-    socket.socket = _denied  # type: ignore[assignment]
+    socket.socket = _denied  # type: ignore[misc,assignment]
     socket.create_connection = _denied  # type: ignore[assignment]
 
 
@@ -206,7 +206,7 @@ def run_script(
         return RunResult(
             status="killed",
             stderr=(
-                f"script exited without returning a result " f"(exitcode={exitcode})\n"
+                f"script exited without returning a result (exitcode={exitcode})\n"
             ),
             elapsed_ms=elapsed_ms,
         )

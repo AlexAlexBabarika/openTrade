@@ -1,14 +1,14 @@
 """
-AES-256-GCM encryption for API keys stored in Supabase.
+AES-256-GCM encryption for API keys stored in PostgreSQL.
 
 The 32-byte key is read from the API_KEYS_ENCRYPTION_KEY env var (hex-encoded).
 Generate one with: python -c "import secrets; print(secrets.token_hex(32))"
 """
 
-import os
 import secrets
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from backend.core.runtime_secrets import runtime_secret
 
 _ENV_KEY_NAME = "API_KEYS_ENCRYPTION_KEY"
 
@@ -19,12 +19,7 @@ def _get_key() -> bytes:
     global _cached_key
     if _cached_key is not None:
         return _cached_key
-    raw = os.environ.get(_ENV_KEY_NAME, "").strip()
-    if not raw:
-        raise RuntimeError(
-            f"{_ENV_KEY_NAME} is not set. "
-            'Generate one: python -c "import secrets; print(secrets.token_hex(32))"'
-        )
+    raw = runtime_secret(_ENV_KEY_NAME)
     key = bytes.fromhex(raw)
     if len(key) != 32:
         raise RuntimeError(f"{_ENV_KEY_NAME} must be exactly 32 bytes (64 hex chars)")

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import time
+import threading
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -61,3 +62,25 @@ def test_start_then_poll_to_done() -> None:
 
 def test_unknown_id_returns_none() -> None:
     assert SweepRegistry().get("nope") is None
+
+
+def test_shutdown_cancels_and_joins_active_workers(monkeypatch) -> None:
+    started = threading.Event()
+
+    def wait_for_cancel(*, should_cancel, **_kwargs):
+        started.set()
+        while not should_cancel():
+            time.sleep(0.01)
+        raise RuntimeError("sweep cancelled")
+
+    monkeypatch.setattr("backend.backtesting.optimize.jobs.run_sweep", wait_for_cancel)
+    reg = SweepRegistry()
+    sid = reg.start(
+        code=CODE,
+        frame=_frame(),
+        config=SweepConfig(search="grid", metric="total_return", vary=["qty"]),
+    )
+    assert started.wait(1.0)
+
+    assert reg.shutdown(timeout=1.0)
+    assert reg.get(sid).status == "error"

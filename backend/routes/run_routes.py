@@ -26,6 +26,7 @@ from backend.backtesting.run_store import (
     export_run,
     import_run,
 )
+from backend.core.uploads import read_upload
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/backtests/runs", tags=["runs"])
@@ -84,7 +85,7 @@ def export(run_id: str) -> FileResponse:
 @router.post("/import")
 async def import_tarball(file: UploadFile) -> dict:
     with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
-        tmp.write(await file.read())
+        tmp.write(await read_upload(file))
         tmp_path = Path(tmp.name)
     try:
         run_id = await run_in_threadpool(import_run, _RUN_STORE, tmp_path)

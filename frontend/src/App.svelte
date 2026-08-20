@@ -403,7 +403,7 @@
           lastPushedPayloadJson = json;
         })
         .catch((err: unknown) => {
-          console.warn('[opentrade] Ticker workspace sync failed', err);
+          console.warn('[openquant] Ticker workspace sync failed', err);
         });
     }, 500);
     return () => clearTimeout(t);
@@ -438,7 +438,7 @@
             ),
           );
         } catch (e) {
-          console.warn('[opentrade] Ticker workspace load failed', e);
+          console.warn('[openquant] Ticker workspace load failed', e);
         }
         clearTickerLocalStorage();
         remoteTickerLoadDone = true;

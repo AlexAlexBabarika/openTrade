@@ -21,7 +21,7 @@ import {
   type VolatilityClusteringResponse,
 } from './analyticsApi';
 
-const BENCHMARKS_STORAGE_KEY = 'opentrade:analytics:correlationBenchmarks';
+const BENCHMARKS_STORAGE_KEY = 'openquant:analytics:correlationBenchmarks';
 
 export function loadCorrelationBenchmarksFromStorage(): string[] | null {
   const raw = safeLocalStorageGet<unknown>(BENCHMARKS_STORAGE_KEY);

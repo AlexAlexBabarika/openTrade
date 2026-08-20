@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# OpenTrade: run backend + frontend in one command.
+# OpenQuant: run backend + frontend in one command.
 # Usage: ./run.sh [--install]
 #   --install  install deps (pip + npm) before starting
 

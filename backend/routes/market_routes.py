@@ -11,7 +11,7 @@ import logging
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from postgrest.exceptions import APIError
+from backend.core.database import DatabaseError
 from starlette.concurrency import run_in_threadpool
 
 from backend.core.auth_deps import optional_current_user
@@ -131,22 +131,22 @@ async def get_market_ohlcv(
             detail=str(e),
         ) from e
     except requests.HTTPError as e:
-        logger.warning("Market data HTTP error: %s", e)
+        logger.warning("Market data provider returned an HTTP error")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(e),
+            detail="Market data provider request failed",
         ) from e
-    except APIError as e:
-        logger.warning("Market data: PostgREST error (e.g. API key lookup): %s", e)
+    except DatabaseError as e:
+        logger.warning("Market data: database error (e.g. API key lookup): %s", e)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Database error while loading provider configuration.",
         ) from e
     except RuntimeError as e:
-        logger.warning("Market data provider error: %s", e)
+        logger.warning("Market data provider rejected the request")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(e),
+            detail="Market data provider request failed",
         ) from e
     except Exception as e:
         logger.exception("Market data fetch failed: %s", e)

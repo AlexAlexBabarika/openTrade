@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from backend.core.auth_deps import get_current_user
-from backend.core.supabase_client import get_service_postgrest
+from backend.core.database import get_database
 from backend.models.auth_models import AuthUserInfo
 from backend.models.comparison_models import (
     ComparisonCreateRequest,
@@ -46,7 +46,7 @@ def list_comparisons(
     main_symbol: str = Query(..., min_length=1, max_length=64),
     user: AuthUserInfo = Depends(get_current_user),
 ) -> ComparisonListResponse:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("symbol_comparisons")
@@ -75,7 +75,7 @@ def create_comparison(
             detail="Comparison symbol must differ from the main symbol.",
         )
 
-    db = get_service_postgrest()
+    db = get_database()
     try:
         existing = (
             db.from_("symbol_comparisons")
@@ -141,7 +141,7 @@ def update_comparison(
             detail="At least one of 'color' or 'series_type' must be provided.",
         )
 
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("symbol_comparisons")
@@ -166,7 +166,7 @@ def delete_comparison(
     comparison_id: str,
     user: AuthUserInfo = Depends(get_current_user),
 ) -> None:
-    db = get_service_postgrest()
+    db = get_database()
     try:
         resp = (
             db.from_("symbol_comparisons")

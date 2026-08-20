@@ -1,52 +1,39 @@
-"""
-FastAPI dependency for JWT verification via Supabase.
-"""
+"""FastAPI dependencies for locally issued access tokens."""
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.models.auth_models import AuthUserInfo
-from backend.core.supabase_client import get_supabase_client
+from backend.core.runtime_secrets import runtime_secret
 
 _bearer_scheme = HTTPBearer(auto_error=False)
+JWT_ALGORITHM = "HS256"
+
+
+def _secret() -> str:
+    return runtime_secret("JWT_SECRET")
 
 
 def _user_from_token(token: str) -> AuthUserInfo:
-    """
-    Verify a Supabase JWT and return the user.
-    Raises HTTPException 401 on any failure.
-    """
-    supabase = get_supabase_client()
-    if supabase is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Auth is not configured on this server",
-        )
     try:
-        response = supabase.auth.get_user(token)
-    except Exception:
+        payload = jwt.decode(token, _secret(), algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "access" or not payload.get("sub"):
+            raise jwt.InvalidTokenError("not an access token")
+        return AuthUserInfo(id=str(payload["sub"]), email=payload.get("email"))
+    except HTTPException:
+        raise
+    except jwt.PyJWTError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
-    user = getattr(response, "user", None) if response else None
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return AuthUserInfo(id=str(user.id), email=getattr(user, "email", None))
+        ) from exc
 
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ) -> AuthUserInfo:
-    """
-    FastAPI dependency: require a valid Bearer token.
-    Returns the authenticated user or raises 401.
-    """
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -59,12 +46,6 @@ def get_current_user(
 def optional_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ) -> AuthUserInfo | None:
-    """
-    FastAPI dependency: return the user if a valid token is present, else None.
-    Does not raise on missing credentials or 401/403 auth failures.
-    Re-raises 5xx (e.g. 503 when Supabase is not configured) so misconfigurations
-    are not silently downgraded to anonymous.
-    """
     if not credentials:
         return None
     try:

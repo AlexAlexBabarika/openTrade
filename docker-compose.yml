@@ -1,12 +1,94 @@
 services:
-  opentrade:
-    build: .
-    ports:
-      - "8000:8000"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+  postgres:
+    image: postgres:16.14-alpine3.23
+    restart: unless-stopped
+    cpus: "1.0"
+    mem_limit: 1g
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
-      - PYTHONUNBUFFERED=1
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - API_KEYS_ENCRYPTION_KEY=${API_KEYS_ENCRYPTION_KEY}
+      POSTGRES_DB: ${POSTGRES_DB:-openquant}
+      POSTGRES_USER: ${POSTGRES_USER:-openquant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openquant}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres_identity_migration:
+    image: postgres:16.14-alpine3.23
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-openquant}
+      POSTGRES_USER: ${POSTGRES_USER:-openquant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openquant}
+      LEGACY_POSTGRES_DB: ${LEGACY_POSTGRES_DB:-opentrade}
+      LEGACY_POSTGRES_USER: ${LEGACY_POSTGRES_USER:-opentrade}
+      LEGACY_POSTGRES_PASSWORD: ${LEGACY_POSTGRES_PASSWORD:-opentrade}
+    volumes:
+      - ./scripts/migrate-postgres-identity.sh:/usr/local/bin/migrate-postgres-identity.sh:ro
+    command: ["sh", "/usr/local/bin/migrate-postgres-identity.sh"]
+
+  openquant:
+    build: .
+    restart: unless-stopped
+    cpus: "2.0"
+    mem_limit: 2g
+    pids_limit: 512
+    stop_grace_period: 35s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    ports:
+      - "127.0.0.1:${OPENQUANT_PORT:-8000}:8000"
+    depends_on:
+      postgres_identity_migration:
+        condition: service_completed_successfully
+    environment:
+      PYTHONUNBUFFERED: "1"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-openquant}:${POSTGRES_PASSWORD:-openquant}@postgres:5432/${POSTGRES_DB:-openquant}
+      OPENQUANT_DATA_ROOT: /app/data
+      OPENQUANT_SECRETS_FILE: /app/data/secrets.json
+      JWT_SECRET: ${JWT_SECRET:-}
+      API_KEYS_ENCRYPTION_KEY: ${API_KEYS_ENCRYPTION_KEY:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
+      MAX_REQUEST_BYTES: ${MAX_REQUEST_BYTES:-12582912}
+      WS_MAX_MESSAGE_BYTES: ${WS_MAX_MESSAGE_BYTES:-65536}
+      WS_MAX_CONNECTIONS_PER_IP: ${WS_MAX_CONNECTIONS_PER_IP:-20}
+      WS_MAX_MESSAGES_PER_MINUTE: ${WS_MAX_MESSAGES_PER_MINUTE:-120}
+      WS_MAX_SUBSCRIPTIONS: ${WS_MAX_SUBSCRIPTIONS:-20}
+      MAX_CONCURRENT_SWEEPS: ${MAX_CONCURRENT_SWEEPS:-2}
+      MAX_MARKET_OHLCV_CANDLES: ${MAX_MARKET_OHLCV_CANDLES:-8000}
+      MARKET_RATE_LIMIT_MAX: ${MARKET_RATE_LIMIT_MAX:-120}
+      MARKET_RATE_LIMIT_WINDOW_SEC: ${MARKET_RATE_LIMIT_WINDOW_SEC:-60}
+      SEED_SYMBOLS_ON_STARTUP: ${SEED_SYMBOLS_ON_STARTUP:-1}
+      SYMBOL_SEED_PROVIDERS: ${SYMBOL_SEED_PROVIDERS:-binance}
+      TWELVEDATA_API_KEY: ${TWELVEDATA_API_KEY:-}
+    volumes:
+      - app_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres_data:
+  app_data:

@@ -1,0 +1,18 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability (private)
+    url: https://github.com/AlexAlexBabarika/openQuant/security/advisories/new
+    about: >-
+      Do NOT open a public issue for a suspected vulnerability. Use this private
+      advisory form instead. See SECURITY.md for what to include and expected
+      response times.
+  - name: Question, idea, or help with setup
+    url: https://github.com/AlexAlexBabarika/openQuant/discussions
+    about: >-
+      Ask in Discussions if something is unclear or you are not sure whether it
+      is a bug. Setup and usage questions belong here rather than in issues.
+  - name: Code of Conduct concern
+    url: mailto:alexalexbabarika@gmail.com
+    about: >-
+      Report behaviour that violates the Code of Conduct privately by email.
+      Do not open a public issue.

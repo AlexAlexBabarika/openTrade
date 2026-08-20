@@ -50,7 +50,7 @@ export const GROUPED_INTERVALS: GroupedInterval[] = CATEGORY_ORDER.map(cat => ({
   ),
 })).filter(g => g.options.length > 0);
 
-const INTERVAL_FAVOURITES_KEY = 'opentrade:intervalFavourites';
+const INTERVAL_FAVOURITES_KEY = 'openquant:intervalFavourites';
 const DEFAULT_FAVOURITES: readonly string[] = [
   '1m',
   '5m',

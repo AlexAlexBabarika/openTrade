@@ -49,7 +49,7 @@ export interface ChartColours {
   textColour: string;
 }
 
-const STORAGE_KEY = 'opentrade:chartColours';
+const STORAGE_KEY = 'openquant:chartColours';
 
 const CHART_COLOUR_KEYS = Object.keys(
   DEFAULT_CHART_COLOURS,
@@ -71,7 +71,7 @@ export function persistChartColours(colours: ChartColours): void {
   safeLocalStorageSet(STORAGE_KEY, colours);
 }
 
-const SETTINGS_KEY = 'opentrade:chartSettings';
+const SETTINGS_KEY = 'openquant:chartSettings';
 
 function boolOr(v: unknown, fallback: boolean): boolean {
   return typeof v === 'boolean' ? v : fallback;
@@ -94,7 +94,7 @@ export function persistChartSettings(settings: ChartSettings): void {
   safeLocalStorageSet(SETTINGS_KEY, settings);
 }
 
-const TEMPLATES_KEY = 'opentrade:chartTemplates';
+const TEMPLATES_KEY = 'openquant:chartTemplates';
 
 export function loadTemplates(): ChartTemplate[] {
   const data = safeLocalStorageGet<unknown>(TEMPLATES_KEY);

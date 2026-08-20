@@ -15,7 +15,7 @@ import logging
 import polars as pl
 import requests
 from fastapi import APIRouter, HTTPException, status
-from postgrest.exceptions import APIError
+from backend.core.database import DatabaseError
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
@@ -41,6 +41,11 @@ from backend.scripts.ast_guard import ScriptValidationError, validate
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sweeps", tags=["sweeps"])
 _registry = SweepRegistry()
+
+
+def shutdown_sweeps(timeout: float = 25.0) -> bool:
+    """Stop accepting unfinished sweep work during application shutdown."""
+    return _registry.shutdown(timeout)
 
 
 class SchemaRequest(BaseModel):
@@ -96,8 +101,10 @@ async def _load_frame(body: _DataRequest) -> tuple[pl.DataFrame, str]:
             )
         except ValueError as e:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
-        except (requests.HTTPError, APIError, RuntimeError) as e:
-            raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(e)) from e
+        except (requests.HTTPError, DatabaseError, RuntimeError) as e:
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, "Market data provider request failed"
+            ) from e
         candles = cap_candles(candles)
         cache.set_cached(
             body.provider.value,
@@ -148,7 +155,13 @@ async def start_sweep(body: SweepRequest) -> dict:
         data_version=data_version,
         fixed=body.fixed,
     )
-    sweep_id = _registry.start(code=body.code, frame=frame, config=config)
+    try:
+        sweep_id = _registry.start(code=body.code, frame=frame, config=config)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many optimization jobs are already running",
+        ) from exc
     return {"sweep_id": sweep_id}
 
 

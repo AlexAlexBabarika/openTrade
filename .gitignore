@@ -34,6 +34,8 @@ frontend/dist/
 .eslintcache
 *.tsbuildinfo
 
+# Showcase Images
+showcase/
 # Environment
 .env
 .env.*
@@ -70,3 +72,4 @@ frontend/src/lib/features/backtest/fixtures
 
 # Datastore local store
 backend/datastore/_data/
+.openquant/

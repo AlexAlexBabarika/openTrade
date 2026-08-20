@@ -25,6 +25,6 @@ export function safeLocalStorageSet(key: string, value: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
-    console.warn(`[opentrade] Failed to persist ${key}`, e);
+    console.warn(`[openquant] Failed to persist ${key}`, e);
   }
 }
